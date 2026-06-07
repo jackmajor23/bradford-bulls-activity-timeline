@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bradford Bulls — Marketing Season Timeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F7F5F2;
+  --card: #FFFFFF;
+  --red: #C8102E;
+  --red-dark: #9E0B23;
+  --gold: #D4AF37;
+  --gold-light: #E8CB6A;
+  --ink: #1A1A1A;
+  --ink-mid: #555555;
+  --ink-light: #999999;
+  --line: #E2DDD8;
+  --blue: #1A4F8B;
+  --orange: #E8660A;
+  --purple: #6B3FA0;
+  --home: #1A4F8B;
+  --away: #E8660A;
+  --neutral: #6B3FA0;
+  --spine: 2px;
+  --spine-color: #D4AF37;
+  --card-radius: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-hover: 0 8px 32px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07);
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-serif: 'DM Serif Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --zoom: 1;
+  --timeline-gap: 48px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── HEADER ─── */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: rgba(247,245,242,0.94);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+
+#header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  flex-shrink: 0;
+}
+
+.brand-bull {
+  width: 32px; height: 32px;
+  background: var(--red);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+
+#header-brand h1 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  line-height: 1;
+}
+#header-brand span {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-light);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: block;
+  margin-top: 1px;
+}
+
+#season-progress {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mid);
+}
+
+.progress-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar-wrap {
+  width: 80px;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--red), var(--gold));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.prog-label { color: var(--red); font-weight: 600; }
+
+#header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-primary { background: var(--red); color: #fff; }
+.btn-primary:hover { background: var(--red-dark); transform: translateY(-1px); }
+.btn-gold { background: var(--gold); color: var(--ink); }
+.btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn-outline:hover { border-color: var(--ink-mid); background: rgba(0,0,0,0.03); }
+.btn-ghost { background: transparent; color: var(--ink-mid); padding: 7px 10px; }
+.btn-ghost:hover { color: var(--ink); background: var(--line); }
+
+.btn svg { width: 14px; height: 14px; }
+
+/* ─── ZOOM CONTROLS ─── */
+#zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+#zoom-bar button {
+  width: 28px; height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--ink-mid);
+  transition: all 0.1s;
+  display: flex; align-items: center; justify-content: center;
+}
+#zoom-bar button:hover { background: var(--line); color: var(--ink); }
+
+#zoom-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-mid);
+  min-width: 32px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── MAIN LAYOUT ─── */
+#main {
+  padding-top: 56px;
+}
+
+#timeline-wrap {
+  position: relative;
+  padding: 0 0 120px;
+  transform-origin: top center;
+  transition: transform 0.2s ease;
+}
+
+/* Spine line */
+#timeline-wrap::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0; bottom: 0;
+  width: var(--spine);
+  background: linear-gradient(180deg, transparent 0%, var(--spine-color) 3%, var(--spine-color) 97%, transparent 100%);
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+/* Clickable spine overlay */
+#spine-overlay {
+  position: absolute;
+  left: calc(50% - 20px);
+  top: 0; bottom: 0;
+  width: 40px;
+  z-index: 2;
+  cursor: crosshair;
+}
+
+/* ─── TODAY MARKER ─── */
+#today-marker {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 0 calc(50% - 60px);
+  margin: 8px 0;
+}
+
+.today-line {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--red) 20%, var(--red) 80%, transparent);
+  opacity: 0.6;
+}
+
+.today-badge {
+  background: var(--red);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+  box-shadow: 0 0 0 4px rgba(200,16,46,0.15);
+  position: relative;
+  z-index: 3;
+}
+
+/* ─── PAST ARCHIVE ACCORDION ─── */
+#past-accordion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+  position: relative;
+  z-index: 5;
+}
+
+#past-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 24px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
+}
+
+#past-toggle:hover { border-color: var(--ink-mid); color: var(--ink); }
+#past-toggle .arrow { transition: transform 0.2s; }
+#past-toggle.open .arrow { transform: rotate(180deg); }
+
+#past-items { display: none; width: 100%; }
+#past-items.open { display: block; }
+
+/* ─── TIMELINE ITEMS ─── */
+.tl-row {
+  display: grid;
+  grid-template-columns: 1fr 32px 1fr;
+  align-items: start;
+  padding: 0 40px;
+  position: relative;
+  z-index: 3;
+  margin-bottom: 0;
+}
+
+.tl-row.side-left .tl-card-wrap { grid-column: 1; grid-row: 1; display: flex; justify-content: flex-end; padding-right: 28px; }
+.tl-row.side-left .tl-node { grid-column: 2; grid-row: 1; }
+.tl-row.side-left .tl-spacer { grid-column: 3; grid-row: 1; }
+
+.tl-row.side-right .tl-spacer { grid-column: 1; grid-row: 1; }
+.tl-row.side-right .tl-node { grid-column: 2; grid-row: 1; }
+.tl-row.side-right .tl-card-wrap { grid-column: 3; grid-row: 1; display: flex; justify-content: flex-start; padding-left: 28px; }
+
+.tl-node {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 20px;
+  position: relative;
+  z-index: 4;
+}
+
+.node-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2.5px solid var(--card);
+  box-shadow: 0 0 0 2px var(--gold);
+  background: var(--gold);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  cursor: default;
+}
+
+.node-dot.fixture-dot { background: var(--red); box-shadow: 0 0 0 2px var(--red); width: 18px; height: 18px; }
+.node-dot.milestone-dot { background: var(--gold); box-shadow: 0 0 0 3px var(--gold), 0 0 0 6px rgba(212,175,55,0.2); width: 22px; height: 22px; }
+.node-dot.past-dot { background: var(--ink-light); box-shadow: 0 0 0 2px var(--ink-light); }
+
+/* Connector line from card to spine */
+.tl-card-wrap { padding-top: 16px; position: relative; max-width: 420px; }
+
+.tl-row.side-left .tl-card-wrap::after,
+.tl-row.side-right .tl-card-wrap::after {
+  content: '';
+  position: absolute;
+  top: 30px;
+  height: 1px;
+  background: var(--line);
+}
+.tl-row.side-left .tl-card-wrap::after { right: 0; width: 28px; }
+.tl-row.side-right .tl-card-wrap::after { left: 0; width: 28px; }
+
+/* ─── FIXTURE CARD ─── */
+.fixture-card {
+  background: var(--card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  cursor: default;
+  transition: box-shadow 0.2s, transform 0.2s;
+  width: 100%;
+}
+.fixture-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+
+.fixture-card.past { opacity: 0.55; filter: grayscale(0.4); }
+
+.fixture-header {
+  padding: 14px 16px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.fixture-venue-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.badge-home { background: rgba(26,79,139,0.12); color: var(--home); }
+.badge-away { background: rgba(232,102,10,0.12); color: var(--away); }
+.badge-neutral { background: rgba(107,63,160,0.12); color: var(--neutral); }
+
+.fixture-meta { flex: 1; }
+
+.fixture-opponent {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.fixture-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ink-mid);
+  font-weight: 400;
+}
+
+.fixture-sub span { display: flex; align-items: center; gap: 3px; }
+
+.fixture-countdown {
+  padding: 10px 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.countdown-text {
+  font-family: var(--font-display);
+  color: var(--red);
+  line-height: 1;
+  transition: font-size 0.3s;
+}
+
+.countdown-text.far { font-size: 15px; color: var(--ink-mid); }
+.countdown-text.near { font-size: 18px; color: var(--orange); }
+.countdown-text.imminent { font-size: 22px; color: var(--red); }
+.countdown-text.past { font-size: 13px; color: var(--ink-light); }
+
+.workload-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.workload-low { background: rgba(76,175,80,0.1); color: #388e3c; }
+.workload-medium { background: rgba(255,167,38,0.1); color: #f57c00; }
+.workload-high { background: rgba(200,16,46,0.1); color: var(--red); }
+.workload-vhigh { background: rgba(200,16,46,0.2); color: var(--red-dark); }
+
+.workload-dots { display: flex; gap: 2px; }
+.workload-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.5; }
+.workload-dot.active { opacity: 1; }
+
+.fixture-actions {
+  border-top: 1px solid var(--line);
+  padding: 8px 12px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-xs {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-xs-outline { background: transparent; border: 1px solid var(--line); color: var(--ink-mid); }
+.btn-xs-outline:hover { border-color: var(--ink-mid); color: var(--ink); }
+.btn-xs-red { background: var(--red); color: #fff; }
+.btn-xs-red:hover { background: var(--red-dark); }
+
+.fixture-activities-toggle {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 600;
+  background: none;
+  border: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  border-radius: 5px;
+  transition: background 0.15s;
+}
+.fixture-activities-toggle:hover { background: rgba(212,175,55,0.1); }
+
+/* ─── ACTIVITY CARDS (children of fixture) ─── */
+.activity-cluster {
+  padding: 4px 0 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-card {
+  background: #FAFAF8;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: grab;
+  transition: all 0.15s;
+  position: relative;
+  user-select: none;
+}
+
+.activity-card:hover { background: var(--card); box-shadow: var(--shadow); }
+.activity-card.dragging { opacity: 0.4; }
+.activity-card.drag-over { border-color: var(--gold); background: rgba(212,175,55,0.06); }
+
+.activity-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.activity-body { flex: 1; min-width: 0; }
+
+.activity-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-meta {
+  font-size: 10px;
+  color: var(--ink-light);
+  margin-top: 1px;
+}
+
+.activity-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.activity-card .drag-handle {
+  color: var(--line);
+  font-size: 14px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.activity-btns { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.activity-card:hover .activity-btns { opacity: 1; }
+
+.activity-btn {
+  width: 22px; height: 22px;
+  border: none;
+  background: var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  transition: background 0.1s;
+}
+.activity-btn:hover { background: #ddd; }
+.activity-btn.del:hover { background: var(--red); color: #fff; }
+
+/* ─── STANDALONE ACTIVITY (no fixture parent) ─── */
+.standalone-activity .tl-card-wrap { max-width: 340px; }
+
+/* ─── MILESTONE CARD ─── */
+.milestone-card {
+  background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+  color: #fff;
+  border-radius: var(--card-radius);
+  padding: 16px 20px;
+  box-shadow: 0 4px 20px rgba(200,16,46,0.3);
+  border: none;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.milestone-card::before {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 80px; height: 80px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 50%;
+}
+.milestone-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(200,16,46,0.4); }
+
+.milestone-card.gold {
+  background: linear-gradient(135deg, var(--gold) 0%, #B8941F 100%);
+  color: var(--ink);
+  box-shadow: 0 4px 20px rgba(212,175,55,0.35);
+}
+.milestone-card.gold:hover { box-shadow: 0 8px 28px rgba(212,175,55,0.5); }
+
+.milestone-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+
+.milestone-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.milestone-date {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* ─── MODAL ─── */
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20,20,20,0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+#modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--card);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+  animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.92) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 0.05em;
+  flex: 1;
+}
+
+.modal-close {
+  width: 32px; height: 32px;
+  border: none;
+  background: var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.modal-close:hover { background: #ddd; }
+
+.modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+
+.form-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-mid);
+}
+
+.form-input, .form-select, .form-textarea {
+  padding: 10px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--bg);
+  transition: border-color 0.15s;
+  outline: none;
+  width: 100%;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--gold); }
+.form-textarea { resize: vertical; min-height: 80px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.type-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.type-opt {
+  flex: 1;
+  padding: 9px 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-mid);
+  transition: all 0.15s;
+  user-select: none;
+}
+.type-opt:hover { border-color: var(--ink-mid); color: var(--ink); }
+.type-opt.selected { border-color: var(--gold); color: var(--ink); background: rgba(212,175,55,0.1); }
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ─── TOAST ─── */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: all;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.toast-undo {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+/* ─── ACTIVITY TYPE COLOURS ─── */
+.type-social { background: rgba(29,161,242,0.12); color: #1DA1F2; }
+.type-email { background: rgba(234,67,53,0.12); color: #EA4335; }
+.type-pr { background: rgba(52,168,83,0.12); color: #34A853; }
+.type-matchday { background: rgba(200,16,46,0.12); color: var(--red); }
+.type-digital { background: rgba(107,63,160,0.12); color: var(--purple); }
+.type-print { background: rgba(212,175,55,0.12); color: #9a7a10; }
+.type-event { background: rgba(232,102,10,0.12); color: var(--orange); }
+.type-other { background: rgba(150,150,150,0.12); color: #777; }
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  text-align: center;
+  padding: 80px 24px;
+  color: var(--ink-light);
+}
+
+.empty-state h2 { font-family: var(--font-serif); font-size: 28px; font-style: italic; color: var(--ink-mid); margin-bottom: 10px; }
+.empty-state p { font-size: 14px; }
+
+/* ─── MONTH DIVIDER ─── */
+.month-divider {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0 12px;
+}
+
+.month-divider-label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.25em;
+  color: var(--ink-light);
+  text-transform: uppercase;
+  background: var(--bg);
+  padding: 2px 16px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 700px) {
+  #season-progress { display: none; }
+  .tl-row { grid-template-columns: 20px 14px 1fr; padding: 0 12px; }
+  .tl-row.side-left .tl-card-wrap { grid-column: 3; justify-content: flex-start; padding-left: 16px; padding-right: 0; }
+  .tl-row.side-left .tl-card-wrap::after { left: 0; right: auto; width: 16px; }
+  .tl-row.side-right .tl-card-wrap { grid-column: 3; padding-left: 16px; }
+  .tl-row.side-left .tl-spacer { display: none; }
+  #timeline-wrap::before { left: 26px; }
+  #spine-overlay { left: 6px; }
+  #today-marker { padding: 0 0 0 26px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="header">
+  <div id="header-brand">
+    <div class="brand-bull">🐂</div>
+    <div>
+      <h1>BRADFORD BULLS</h1>
+      <span>Marketing Season Timeline</span>
+    </div>
+  </div>
+
+  <div id="season-progress">
+    <div class="progress-pill">
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+      <span class="prog-label" id="prog-pct">0%</span>
+      <span>Complete</span>
+    </div>
+    <span>·</span>
+    <span><b id="prog-played">0</b> Played</span>
+    <span>·</span>
+    <span><b id="prog-remaining">0</b> Remaining</span>
+  </div>
+
+  <div id="header-actions">
+    <div id="zoom-bar">
+      <button id="zoom-out" title="Zoom out">−</button>
+      <span id="zoom-label">100%</span>
+      <button id="zoom-in" title="Zoom in">+</button>
+    </div>
+    <button class="btn btn-outline" onclick="openModal('activity')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      Activity
+    </button>
+    <button class="btn btn-primary" onclick="openModal('fixture')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      Match
+    </button>
+    <button class="btn btn-gold" onclick="openModal('milestone')">
+      ⚑ Milestone
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main id="main">
+  <div id="timeline-wrap">
+    <div id="spine-overlay"></div>
+    <div id="timeline-content"></div>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Add Item</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'bbTimeline_v3';
+const ACTIVITY_TYPES = [
+  { id: 'social', label: 'Social', icon: '📱', cls: 'type-social' },
+  { id: 'email', label: 'Email', icon: '📧', cls: 'type-email' },
+  { id: 'pr', label: 'PR', icon: '📰', cls: 'type-pr' },
+  { id: 'matchday', label: 'Matchday', icon: '🏉', cls: 'type-matchday' },
+  { id: 'digital', label: 'Digital', icon: '💻', cls: 'type-digital' },
+  { id: 'print', label: 'Print', icon: '🖨️', cls: 'type-print' },
+  { id: 'event', label: 'Event', icon: '🎟️', cls: 'type-event' },
+  { id: 'other', label: 'Other', icon: '📌', cls: 'type-other' },
+];
+
+let S = {
+  items: [], // { id, type:'fixture'|'activity'|'milestone', date, ...fields }
+};
+
+let undoStack = [];
+let currentModal = null;
+let dragItem = null;
+let zoomLevel = 1;
+
+// ─── PERSISTENCE ─────────────────────────────────────────────────────────────
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch(e) {}
+}
+
+function load() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    if (d) S = JSON.parse(d);
+  } catch(e) {}
+  if (!S.items || !S.items.length) seedDemo();
+}
+
+// ─── DEMO SEED DATA ───────────────────────────────────────────────────────────
+function seedDemo() {
+  const today = new Date();
+  const yr = today.getFullYear();
+
+  const fixtures = [
+    { opponent: 'Halifax Panthers', date: offset(today, -28), venue: 'Odsal Stadium', matchType: 'League', home: true },
+    { opponent: 'Featherstone Rovers', date: offset(today, -14), venue: 'Millenium Stadium', matchType: 'League', home: false },
+    { opponent: 'York Knights', date: offset(today, 7), venue: 'Odsal Stadium', matchType: 'League', home: true },
+    { opponent: 'Toulouse Olympique', date: offset(today, 21), venue: 'Stade Ernest-Wallon', matchType: 'League', home: false },
+    { opponent: 'Sheffield Eagles', date: offset(today, 35), venue: 'Odsal Stadium', matchType: 'League', home: true },
+    { opponent: 'Whitehaven', date: offset(today, 49), venue: 'Recreation Ground', matchType: 'League', home: false },
+    { opponent: 'Batley Bulldogs', date: offset(today, 63), venue: 'Odsal Stadium', matchType: 'League', home: true },
+    { opponent: 'Barrow Raiders', date: offset(today, 77), venue: 'Odsal Stadium', matchType: 'League', home: true },
+    { opponent: 'League 1 Final', date: offset(today, 105), venue: 'Headingley', matchType: 'Playoff', home: false },
+  ];
+
+  fixtures.forEach(f => {
+    const fid = uid();
+    S.items.push({
+      id: fid, type: 'fixture',
+      date: fmtDate(f.date),
+      opponent: f.opponent,
+      venue: f.venue,
+      matchType: f.matchType,
+      venueType: f.home ? 'home' : 'away',
+      notes: ''
+    });
+
+    // attach random activities
+    const count = Math.floor(Math.random() * 8) + 1;
+    for (let i = 0; i < count; i++) {
+      S.items.push({
+        id: uid(), type: 'activity',
+        date: fmtDate(offset(f.date, -Math.floor(Math.random() * 10))),
+        title: randomActivity(),
+        actType: ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id,
+        fixtureId: fid,
+        notes: ''
+      });
+    }
+  });
+
+  // Milestones
+  S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offset(today, -42)), title: 'Season Launch', style: 'gold', notes: 'Kit launch & media day' });
+  S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offset(today, 90)), title: 'Playoffs Begin', style: 'red', notes: '' });
+
+  save();
+}
+
+function randomActivity() {
+  const acts = ['Instagram Post', 'Facebook Reel', 'Email Campaign', 'Press Release', 'Matchday Programme', 'Poster Design', 'Radio Spot', 'Stadium Digital Boards', 'TikTok Video', 'Club Newsletter', 'Twitter Thread', 'Sponsor Activation', 'Fan Competition', 'Pre-match Feature', 'YouTube Highlights', 'Player Interview'];
+  return acts[Math.floor(Math.random() * acts.length)];
+}
+
+function offset(d, days) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + days);
+  return r;
+}
+
+function fmtDate(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+// ─── COMPUTED ─────────────────────────────────────────────────────────────────
+function sortedItems() {
+  return [...S.items].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function fixtures() {
+  return S.items.filter(i => i.type === 'fixture');
+}
+
+function activitiesFor(fixtureId) {
+  return S.items.filter(i => i.type === 'activity' && i.fixtureId === fixtureId);
+}
+
+function standaloneActivities() {
+  return S.items.filter(i => i.type === 'activity' && !i.fixtureId);
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function daysUntil(dateStr) {
+  const t = new Date(today());
+  const d = new Date(dateStr);
+  return Math.round((d - t) / 86400000);
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  updateProgress();
+
+  const content = document.getElementById('timeline-content');
+  const items = sortedItems();
+  const todayStr = today();
+  const cutoff = new Date(todayStr);
+  cutoff.setDate(cutoff.getDate() - 14);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+
+  // Partition: past (>14 days) vs recent/future
+  const pastItems = items.filter(i => i.date < cutoffStr);
+  const activeItems = items.filter(i => i.date >= cutoffStr);
+
+  // Group active items by fixture (fixture + its activities together), milestones, standalone activities
+  const rendered = buildGroups(activeItems, todayStr);
+
+  let html = '';
+
+  // Past accordion
+  if (pastItems.length > 0) {
+    html += buildPastAccordion(pastItems);
+  }
+
+  // Today marker
+  html += `<div id="today-marker">
+    <div class="today-line"></div>
+    <div class="today-badge">▶ Today — ${fmtDisplay(todayStr)}</div>
+    <div class="today-line"></div>
+  </div>`;
+
+  // Active items
+  let lastMonth = '';
+  let side = 0;
+
+  rendered.forEach(group => {
+    const month = group.date.slice(0, 7);
+    if (month !== lastMonth) {
+      lastMonth = month;
+      html += `<div class="month-divider"><span class="month-divider-label">${fmtMonth(group.date)}</span></div>`;
+    }
+
+    const s = side % 2 === 0 ? 'side-left' : 'side-right';
+    html += renderGroup(group, s);
+    side++;
+  });
+
+  if (rendered.length === 0 && pastItems.length === 0) {
+    html += `<div class="empty-state"><h2>The season awaits</h2><p>Add your first match, milestone or activity above.</p></div>`;
+  }
+
+  content.innerHTML = html;
+  attachEvents();
+}
+
+function buildGroups(items, todayStr) {
+  // We want: milestones as single groups, fixtures (with their activities) as groups, standalone activities as single groups
+  const seen = new Set();
+  const groups = [];
+
+  // Build a lookup: fixture activities
+  const fixtureActMap = {};
+  items.filter(i => i.type === 'activity' && i.fixtureId).forEach(a => {
+    if (!fixtureActMap[a.fixtureId]) fixtureActMap[a.fixtureId] = [];
+    fixtureActMap[a.fixtureId].push(a);
+    seen.add(a.id);
+  });
+
+  items.forEach(item => {
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    if (item.type === 'fixture') {
+      groups.push({ type: 'fixture', date: item.date, fixture: item, activities: (fixtureActMap[item.id] || []).sort((a,b)=>a.date.localeCompare(b.date)), past: item.date < todayStr });
+    } else if (item.type === 'milestone') {
+      groups.push({ type: 'milestone', date: item.date, item, past: item.date < todayStr });
+    } else {
+      groups.push({ type: 'standalone-activity', date: item.date, item, past: item.date < todayStr });
+    }
+  });
+
+  return groups.sort((a,b) => a.date.localeCompare(b.date));
+}
+
+function renderGroup(group, side) {
+  if (group.type === 'fixture') return renderFixtureGroup(group, side);
+  if (group.type === 'milestone') return renderMilestoneGroup(group, side);
+  return renderStandaloneActivityGroup(group, side);
+}
+
+function renderFixtureGroup(group, side) {
+  const f = group.fixture;
+  const acts = group.activities;
+  const days = daysUntil(f.date);
+  const isPast = days < 0;
+
+  const venueClass = f.venueType === 'home' ? 'home' : f.venueType === 'away' ? 'away' : 'neutral';
+  const venueLabel = f.venueType === 'home' ? 'Home' : f.venueType === 'away' ? 'Away' : 'Neutral';
+
+  let countdownTxt, countdownCls;
+  if (isPast) { countdownTxt = `${Math.abs(days)}d ago`; countdownCls = 'past'; }
+  else if (days === 0) { countdownTxt = 'MATCHDAY'; countdownCls = 'imminent'; }
+  else if (days === 1) { countdownTxt = 'Tomorrow'; countdownCls = 'imminent'; }
+  else if (days <= 7) { countdownTxt = `${days} Days To Go`; countdownCls = 'imminent'; }
+  else if (days <= 21) { countdownTxt = `${days} Days To Go`; countdownCls = 'near'; }
+  else { countdownTxt = `${days} Days`; countdownCls = 'far'; }
+
+  const wl = acts.length;
+  let wlCls, wlLabel, wlDots;
+  if (wl < 3) { wlCls = 'workload-low'; wlLabel = 'Low'; wlDots = 1; }
+  else if (wl < 10) { wlCls = 'workload-medium'; wlLabel = 'Med'; wlDots = 2; }
+  else if (wl < 15) { wlCls = 'workload-high'; wlLabel = 'High'; wlDots = 3; }
+  else { wlCls = 'workload-vhigh'; wlLabel = 'Heavy'; wlDots = 4; }
+
+  const dotsHtml = Array.from({length:4}, (_,i) => `<div class="workload-dot ${i<wlDots?'active':''}"></div>`).join('');
+
+  const activitiesHtml = acts.map(a => renderActivityCard(a)).join('');
+
+  const actsCollapsed = acts.length > 4;
+
+  return `
+  <div class="tl-row ${side}" data-id="${f.id}">
+    <div class="tl-spacer"></div>
+    <div class="tl-node">
+      <div class="node-dot fixture-dot ${isPast?'past-dot':''}"></div>
+    </div>
+    <div class="tl-card-wrap">
+      <div class="fixture-card ${isPast?'past':''}">
+        <div class="fixture-header">
+          <div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div>
+          <div class="fixture-meta">
+            <div class="fixture-opponent">${esc(f.opponent)}</div>
+            <div class="fixture-sub">
+              <span>📅 ${fmtDisplay(f.date)}</span>
+              <span>📍 ${esc(f.venue)}</span>
+              <span>🏉 ${esc(f.matchType)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="fixture-countdown">
+          <div class="countdown-text ${countdownCls}">${countdownTxt}</div>
+          <div class="workload-badge ${wlCls}">
+            <div class="workload-dots">${dotsHtml}</div>
+            ${acts.length} Acts
+          </div>
+        </div>
+        ${acts.length > 0 ? `
+        <div class="fixture-actions">
+          <button class="btn-xs btn-xs-outline" onclick="openModal('activity','${f.id}')">+ Add Activity</button>
+          <button class="fixture-activities-toggle" onclick="toggleActCluster(this)">
+            ${acts.length} Activities ▾
+          </button>
+        </div>
+        <div class="activity-cluster" style="${actsCollapsed?'display:none':''}">
+          ${activitiesHtml}
+        </div>` : `
+        <div class="fixture-actions">
+          <button class="btn-xs btn-xs-outline" onclick="openModal('activity','${f.id}')">+ Add Activity</button>
+          <button class="btn-xs btn-xs-outline" onclick="editFixture('${f.id}')">Edit</button>
+          <button class="btn-xs btn-xs-outline" style="margin-left:auto;color:var(--red)" onclick="deleteItem('${f.id}')">Delete</button>
+        </div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderActivityCard(a) {
+  const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[7];
+  return `
+  <div class="activity-card" data-id="${a.id}" draggable="true">
+    <div class="drag-handle">⠿</div>
+    <div class="activity-icon ${aType.cls}">${aType.icon}</div>
+    <div class="activity-body">
+      <div class="activity-title">${esc(a.title)}</div>
+      <div class="activity-meta">${fmtDisplay(a.date)} · ${aType.label}</div>
+    </div>
+    <span class="activity-tag ${aType.cls}">${aType.label}</span>
+    <div class="activity-btns">
+      <button class="activity-btn" onclick="editActivity('${a.id}')">✎</button>
+      <button class="activity-btn del" onclick="deleteItem('${a.id}')">✕</button>
+    </div>
+  </div>`;
+}
+
+function renderMilestoneGroup(group, side) {
+  const m = group.item;
+  const isPast = daysUntil(m.date) < 0;
+  const isGold = m.style === 'gold';
+  return `
+  <div class="tl-row ${side}" data-id="${m.id}">
+    <div class="tl-spacer"></div>
+    <div class="tl-node">
+      <div class="node-dot milestone-dot ${isPast?'past-dot':''}"></div>
+    </div>
+    <div class="tl-card-wrap">
+      <div class="milestone-card ${isGold?'gold':''}" ondblclick="editMilestone('${m.id}')">
+        <div class="milestone-label">⚑ Milestone</div>
+        <div class="milestone-title">${esc(m.title)}</div>
+        <div class="milestone-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderStandaloneActivityGroup(group, side) {
+  const a = group.item;
+  const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[7];
+  return `
+  <div class="tl-row ${side} standalone-activity" data-id="${a.id}">
+    <div class="tl-spacer"></div>
+    <div class="tl-node">
+      <div class="node-dot ${daysUntil(a.date)<0?'past-dot':''}"></div>
+    </div>
+    <div class="tl-card-wrap">
+      ${renderActivityCard(a)}
+    </div>
+  </div>`;
+}
+
+function buildPastAccordion(pastItems) {
+  const groups = buildGroups(pastItems, '0000-00-00');
+  let inner = '';
+  let side = 0;
+  groups.forEach(g => {
+    inner += renderGroup(g, side % 2 === 0 ? 'side-left' : 'side-right');
+    side++;
+  });
+  return `
+  <div id="past-accordion">
+    <button id="past-toggle" onclick="togglePast(this)">
+      <span class="arrow">▲</span>
+      Past Activity (${pastItems.length} Items)
+    </button>
+    <div id="past-items">${inner}</div>
+  </div>`;
+}
+
+// ─── PROGRESS ────────────────────────────────────────────────────────────────
+function updateProgress() {
+  const allF = fixtures();
+  const todayStr = today();
+  const played = allF.filter(f => f.date < todayStr).length;
+  const remaining = allF.filter(f => f.date >= todayStr).length;
+  const total = allF.length;
+  const pct = total ? Math.round((played / total) * 100) : 0;
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+  document.getElementById('prog-played').textContent = played;
+  document.getElementById('prog-remaining').textContent = remaining;
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+function attachEvents() {
+  // Drag & drop for activity cards
+  document.querySelectorAll('.activity-card[draggable]').forEach(card => {
+    card.addEventListener('dragstart', onDragStart);
+    card.addEventListener('dragend', onDragEnd);
+    card.addEventListener('dragover', onDragOver);
+    card.addEventListener('drop', onDrop);
+  });
+
+  // Spine click to add
+  document.getElementById('spine-overlay').addEventListener('click', onSpineClick);
+}
+
+function togglePast(btn) {
+  btn.classList.toggle('open');
+  document.getElementById('past-items').classList.toggle('open');
+}
+
+function toggleActCluster(btn) {
+  const cluster = btn.closest('.fixture-card').querySelector('.activity-cluster');
+  if (cluster) {
+    const hidden = cluster.style.display === 'none';
+    cluster.style.display = hidden ? '' : 'none';
+    btn.textContent = btn.textContent.replace(hidden ? '▸' : '▾', hidden ? '▾' : '▸');
+  }
+}
+
+// ─── DRAG & DROP ─────────────────────────────────────────────────────────────
+function onDragStart(e) {
+  dragItem = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  dragItem = null;
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.id;
+  if (!dragItem || dragItem === targetId) return;
+  e.currentTarget.classList.remove('drag-over');
+
+  const src = S.items.find(i => i.id === dragItem);
+  const tgt = S.items.find(i => i.id === targetId);
+  if (!src || !tgt || src.type !== 'activity') return;
+
+  // Snapshot for undo
+  const snapshot = JSON.stringify(S);
+
+  // Swap dates
+  const oldDate = src.date;
+  src.date = tgt.date;
+
+  save();
+  render();
+  showToast(`Activity moved to ${fmtDisplay(src.date)}`, () => {
+    S = JSON.parse(snapshot);
+    save();
+    render();
+  });
+}
+
+// ─── SPINE CLICK ─────────────────────────────────────────────────────────────
+function onSpineClick(e) {
+  // Find nearest item date
+  const clickY = e.clientY;
+  let nearest = null, minDist = Infinity;
+  document.querySelectorAll('.tl-row').forEach(row => {
+    const rect = row.getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const dist = Math.abs(center - clickY);
+    if (dist < minDist) { minDist = dist; nearest = row; }
+  });
+  let date = today();
+  if (nearest) {
+    const id = nearest.dataset.id;
+    const it = S.items.find(i => i.id === id);
+    if (it) date = it.date;
+  }
+  openModal('activity', null, date);
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openModal(type, fixtureId, preDate) {
+  currentModal = { type, fixtureId: fixtureId || null, preDate: preDate || today(), editId: null };
+  renderModal();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function editFixture(id) {
+  const f = S.items.find(i => i.id === id);
+  currentModal = { type: 'fixture', editId: id, data: f };
+  renderModal();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function editActivity(id) {
+  const a = S.items.find(i => i.id === id);
+  currentModal = { type: 'activity', editId: id, data: a };
+  renderModal();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function editMilestone(id) {
+  const m = S.items.find(i => i.id === id);
+  currentModal = { type: 'milestone', editId: id, data: m };
+  renderModal();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  currentModal = null;
+}
+
+function renderModal() {
+  const { type, fixtureId, preDate, editId, data } = currentModal;
+  const titleEl = document.getElementById('modal-title');
+  const bodyEl = document.getElementById('modal-body');
+  const isEdit = !!editId;
+
+  if (type === 'fixture') {
+    titleEl.textContent = isEdit ? 'Edit Match' : 'Add Match';
+    const f = data || {};
+    bodyEl.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Opponent *</label>
+        <input class="form-input" id="f-opponent" placeholder="e.g. Halifax Panthers" value="${esc(f.opponent||'')}">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input class="form-input" id="f-date" type="date" value="${f.date||preDate||today()}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Match Type</label>
+          <select class="form-select" id="f-type">
+            ${['League','Cup','Playoff','Friendly','Challenge Cup'].map(t=>`<option ${(f.matchType===t)?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Venue</label>
+        <input class="form-input" id="f-venue" placeholder="e.g. Odsal Stadium" value="${esc(f.venue||'')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Venue Type</label>
+        <div class="type-selector">
+          ${['home','away','neutral'].map(v=>`<div class="type-opt ${(f.venueType||'home')===v?'selected':''}" data-val="${v}" onclick="selectOpt(this,'venue-type')">${v.charAt(0).toUpperCase()+v.slice(1)}</div>`).join('')}
+        </div>
+        <input type="hidden" id="venue-type" value="${f.venueType||'home'}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="f-notes" placeholder="Additional notes...">${esc(f.notes||'')}</textarea>
+      </div>`;
+  } else if (type === 'activity') {
+    titleEl.textContent = isEdit ? 'Edit Activity' : 'Add Activity';
+    const a = data || {};
+    // Fixture selector for linking
+    const fixtureOpts = fixtures().map(f => `<option value="${f.id}" ${(a.fixtureId||fixtureId)===f.id?'selected':''}>${f.opponent} (${fmtDisplay(f.date)})</option>`).join('');
+    bodyEl.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-input" id="a-title" placeholder="e.g. Instagram Campaign Post" value="${esc(a.title||'')}">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input class="form-input" id="a-date" type="date" value="${a.date||preDate||today()}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-select" id="a-type">
+            ${ACTIVITY_TYPES.map(t=>`<option value="${t.id}" ${(a.actType===t.id)?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Link to Match (optional)</label>
+        <select class="form-select" id="a-fixture">
+          <option value="">— Standalone —</option>
+          ${fixtureOpts}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="a-notes" placeholder="Additional notes...">${esc(a.notes||'')}</textarea>
+      </div>`;
+  } else if (type === 'milestone') {
+    titleEl.textContent = isEdit ? 'Edit Milestone' : 'Add Milestone';
+    const m = data || {};
+    bodyEl.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-input" id="m-title" placeholder="e.g. Season Launch" value="${esc(m.title||'')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input class="form-input" id="m-date" type="date" value="${m.date||preDate||today()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Style</label>
+        <div class="type-selector">
+          <div class="type-opt ${(m.style||'red')==='red'?'selected':''}" data-val="red" onclick="selectOpt(this,'m-style')">🔴 Red</div>
+          <div class="type-opt ${m.style==='gold'?'selected':''}" data-val="gold" onclick="selectOpt(this,'m-style')">🟡 Gold</div>
+        </div>
+        <input type="hidden" id="m-style" value="${m.style||'red'}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="m-notes" placeholder="Subtitle or context...">${esc(m.notes||'')}</textarea>
+      </div>`;
+  }
+}
+
+function selectOpt(el, hiddenId) {
+  el.closest('.type-selector').querySelectorAll('.type-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById(hiddenId).value = el.dataset.val;
+}
+
+function saveModal() {
+  const { type, editId } = currentModal;
+  const snapshot = JSON.stringify(S);
+
+  if (type === 'fixture') {
+    const opponent = document.getElementById('f-opponent').value.trim();
+    const date = document.getElementById('f-date').value;
+    if (!opponent || !date) { alert('Opponent and date are required.'); return; }
+    const obj = {
+      id: editId || uid(),
+      type: 'fixture',
+      date,
+      opponent,
+      venue: document.getElementById('f-venue').value.trim(),
+      matchType: document.getElementById('f-type').value,
+      venueType: document.getElementById('venue-type').value,
+      notes: document.getElementById('f-notes').value.trim(),
+    };
+    if (editId) { const idx = S.items.findIndex(i => i.id === editId); if (idx>=0) S.items[idx] = obj; }
+    else S.items.push(obj);
+  } else if (type === 'activity') {
+    const title = document.getElementById('a-title').value.trim();
+    const date = document.getElementById('a-date').value;
+    if (!title || !date) { alert('Title and date are required.'); return; }
+    const obj = {
+      id: editId || uid(),
+      type: 'activity',
+      date,
+      title,
+      actType: document.getElementById('a-type').value,
+      fixtureId: document.getElementById('a-fixture').value || null,
+      notes: document.getElementById('a-notes').value.trim(),
+    };
+    if (editId) { const idx = S.items.findIndex(i => i.id === editId); if (idx>=0) S.items[idx] = obj; }
+    else S.items.push(obj);
+  } else if (type === 'milestone') {
+    const title = document.getElementById('m-title').value.trim();
+    const date = document.getElementById('m-date').value;
+    if (!title || !date) { alert('Title and date are required.'); return; }
+    const obj = {
+      id: editId || uid(),
+      type: 'milestone',
+      date,
+      title,
+      style: document.getElementById('m-style').value,
+      notes: document.getElementById('m-notes').value.trim(),
+    };
+    if (editId) { const idx = S.items.findIndex(i => i.id === editId); if (idx>=0) S.items[idx] = obj; }
+    else S.items.push(obj);
+  }
+
+  save();
+  closeModal();
+  render();
+  showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} ${editId ? 'updated' : 'added'}`, () => {
+    S = JSON.parse(snapshot);
+    save();
+    render();
+  });
+}
+
+// ─── DELETE ───────────────────────────────────────────────────────────────────
+function deleteItem(id) {
+  const snapshot = JSON.stringify(S);
+  const item = S.items.find(i => i.id === id);
+  if (!item) return;
+  // Also delete child activities if fixture
+  if (item.type === 'fixture') {
+    S.items = S.items.filter(i => !(i.type === 'activity' && i.fixtureId === id));
+  }
+  S.items = S.items.filter(i => i.id !== id);
+  save();
+  render();
+  showToast('Item deleted', () => {
+    S = JSON.parse(snapshot);
+    save();
+    render();
+  });
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg, undoCb) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `${msg}${undoCb ? `<button class="toast-undo" onclick="undoAction(this)">Undo</button>` : ''}`;
+  if (undoCb) el._undo = undoCb;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(12px)'; el.style.transition = 'all 0.3s'; setTimeout(() => el.remove(), 300); }, 4000);
+}
+
+function undoAction(btn) {
+  const toast = btn.closest('.toast');
+  if (toast._undo) toast._undo();
+  toast.remove();
+}
+
+// ─── ZOOM ─────────────────────────────────────────────────────────────────────
+function setZoom(z) {
+  zoomLevel = Math.max(0.5, Math.min(2, z));
+  document.getElementById('timeline-wrap').style.transform = `scale(${zoomLevel})`;
+  document.getElementById('zoom-label').textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+document.getElementById('zoom-in').addEventListener('click', () => setZoom(zoomLevel + 0.1));
+document.getElementById('zoom-out').addEventListener('click', () => setZoom(zoomLevel - 0.1));
+
+// ─── KEYBOARD ────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if ((e.key === '+' || e.key === '=') && !e.target.matches('input,textarea,select')) setZoom(zoomLevel + 0.1);
+  if (e.key === '-' && !e.target.matches('input,textarea,select')) setZoom(zoomLevel - 0.1);
+});
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDisplay(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+function fmtMonth(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+load();
+render();
+</script>
+</body>
+</html>
