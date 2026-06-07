@@ -592,11 +592,12 @@ body {
 .milestone-card {
   background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
   color: #fff;
-  border-radius: var(--card-radius);
-  padding: 16px 20px;
-  box-shadow: 0 4px 20px rgba(200,16,46,0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 10px rgba(200,16,46,0.28);
   border: none;
   width: 100%;
+  max-width: 240px;
   position: relative;
   overflow: hidden;
   cursor: default;
@@ -605,8 +606,8 @@ body {
 .milestone-card::before {
   content: '';
   position: absolute;
-  top: -20px; right: -20px;
-  width: 80px; height: 80px;
+  top: -14px; right: -14px;
+  width: 44px; height: 44px;
   background: rgba(255,255,255,0.07);
   border-radius: 50%;
 }
@@ -615,32 +616,53 @@ body {
 .milestone-card.gold {
   background: linear-gradient(135deg, var(--gold) 0%, #B8941F 100%);
   color: var(--ink);
-  box-shadow: 0 4px 20px rgba(212,175,55,0.35);
+  box-shadow: 0 2px 10px rgba(212,175,55,0.32);
 }
 .milestone-card.gold:hover { box-shadow: 0 8px 28px rgba(212,175,55,0.5); }
 
 .milestone-label {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   opacity: 0.7;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .milestone-title {
   font-family: var(--font-display);
-  font-size: 26px;
-  letter-spacing: 0.06em;
-  line-height: 1;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  padding-right: 22px;
 }
 
 .milestone-date {
-  font-size: 11px;
+  font-size: 9px;
   opacity: 0.7;
-  margin-top: 6px;
+  margin-top: 3px;
   font-weight: 500;
 }
+
+.milestone-edit-btn {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 20px; height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.18);
+  color: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: background 0.12s, opacity 0.12s;
+  z-index: 1;
+}
+.milestone-edit-btn:hover { background: rgba(255,255,255,0.34); opacity: 1; }
 
 /* ─── MODAL ─── */
 #modal-overlay {
@@ -1264,6 +1286,7 @@ function renderMilestoneGroup(group, side) {
     </div>
     <div class="tl-card-wrap">
       <div class="milestone-card ${isGold?'gold':''}" ondblclick="editMilestone('${m.id}')">
+        <button class="milestone-edit-btn" title="Edit milestone" onclick="event.stopPropagation();editMilestone('${m.id}')">✎</button>
         <div class="milestone-label">⚑ Milestone</div>
         <div class="milestone-title">${esc(m.title)}</div>
         <div class="milestone-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div>
