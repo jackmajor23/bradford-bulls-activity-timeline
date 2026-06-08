@@ -2696,14 +2696,13 @@
 
     // ─── LOCAL STORAGE FALLBACK ─────────────────────────────────────────────────────────────
     async function saveToGoogleSheets() {
-      if (!useCloudSync || sheetId === '' || gapi.client.getToken() === null) {
+      if (!useCloudSync || sheetId === '') {
         // Fallback to localStorage
         saveToLocal();
         return;
       }
 
       try {
-        // Save timeline items to 'TimelineItems' sheet
         const itemsData = [['id', 'type', 'title', 'date', 'fixtureId', 'assignees', 'data']];
         S.items.forEach(item => {
           itemsData.push([
@@ -2717,27 +2716,17 @@
           ]);
         });
 
-        await gapi.client.sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: 'TimelineItems!A1',
-          valueInputOption: 'RAW',
-          resource: { values: itemsData }
+        const result = await proxyRequest('/sheets/save', {
+          sheetId: sheetId,
+          items: S.items,
+          savedAssignees: S.savedAssignees || []
         });
 
-        // Save assignees to 'Assignees' sheet
-        const assigneeData = [['name']];
-        (S.savedAssignees || []).forEach(assignee => {
-          assigneeData.push([assignee]);
-        });
-
-        await gapi.client.sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: 'Assignees!A1',
-          valueInputOption: 'RAW',
-          resource: { values: assigneeData }
-        });
-
-        showToast('Saved to Google Sheets!');
+        if (result.success) {
+          showToast('Saved to Google Sheets!');
+        } else {
+          throw new Error(result.error || 'Save failed');
+        }
       } catch (err) {
         console.error('Google Sheets save error:', err);
         showToast('Failed to save to Google Sheets. Using local storage.', 'error');
@@ -4270,11 +4259,7 @@
       localStorage.setItem('bbUseCloudSync', useCloudSync);
 
       if (useCloudSync && sheetId) {
-        if (typeof gapi !== 'undefined' && gapi.client && gapi.client.getToken() !== null) {
-          saveToGoogleSheets();
-        } else {
-          showToast('Configuration saved. Please authenticate with Google.', 'info');
-        }
+        saveToGoogleSheets();
       } else {
         showToast('Configuration saved');
       }
