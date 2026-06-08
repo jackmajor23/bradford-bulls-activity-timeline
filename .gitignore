@@ -5,8 +5,9 @@
 
 # Google Service Account Key
 google-service-account-key.json
-*.json
-!package.json
+*-service-account*.json
+*_credentials.json
+*_secret*.json
 
 # Node modules
 node_modules/

@@ -8,22 +8,26 @@
 // ============================================
 
 // Your Google Service Account JSON key
-// Copy the entire contents of your downloaded JSON key file and paste between the backticks below
-const GOOGLE_SERVICE_ACCOUNT_KEY = `{
+// Set as environment variable: GOOGLE_SERVICE_ACCOUNT_KEY
+// Or paste the JSON content between the backticks below (NOT RECOMMENDED for production)
+const GOOGLE_SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY || `{
   "type": "service_account",
   "project_id": "your-project-id",
-  "private_key_id": "your-key-id",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----\n",
+  "private_key_id": "your-private-key-id",
+  "private_key": "-----BEGIN PRIVATE KEY-----\\nYOUR_PRIVATE_KEY_HERE\\n-----END PRIVATE KEY-----\\n",
   "client_email": "your-service-account@your-project.iam.gserviceaccount.com",
   "client_id": "your-client-id",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
   "token_uri": "https://oauth2.googleapis.com/token",
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project.iam.gserviceaccount.com"
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
 }`;
 
-// Secret key for securing the proxy (change this to something random)
-const PROXY_SECRET_KEY = "bradford-bulls-secure-proxy-key-change-this";
+// Secret key for securing the proxy
+// Set as environment variable: PROXY_SECRET_KEY
+// Or change the value below (NOT RECOMMENDED for production)
+const PROXY_SECRET_KEY = process.env.PROXY_SECRET_KEY || "da4e53877124bfd346c8839762985ed7ecb18e15094f471dbfb04da9a2c13250";
 
 // Server port
 const PORT = 3000;
@@ -85,7 +89,7 @@ try {
 // Error handler
 function handleGoogleError(error, res) {
   console.error('Google API Error:', error);
-  
+
   if (error.code === 403) {
     return res.status(403).json({ error: 'Permission denied. Make sure your service account email has Editor access to the Google Sheet.' });
   } else if (error.code === 404) {
@@ -93,7 +97,7 @@ function handleGoogleError(error, res) {
   } else if (error.code === 401) {
     return res.status(401).json({ error: 'Authentication failed. Check your service account key.' });
   }
-  
+
   return res.status(500).json({ error: 'Failed to connect to Google Sheets API' });
 }
 
@@ -101,8 +105,8 @@ function handleGoogleError(error, res) {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     message: 'Backend proxy is running',
     googleAuth: sheets ? 'configured' : 'not configured'
   });
@@ -112,7 +116,7 @@ app.get('/api/health', (req, res) => {
 app.post('/api/sheets/save', authenticateProxy, async (req, res) => {
   try {
     const { sheetId, items, savedAssignees } = req.body;
-    
+
     if (!sheetId) {
       return res.status(400).json({ error: 'Sheet ID is required' });
     }
@@ -165,7 +169,7 @@ app.post('/api/sheets/save', authenticateProxy, async (req, res) => {
 app.get('/api/sheets/load', authenticateProxy, async (req, res) => {
   try {
     const { sheetId } = req.query;
-    
+
     if (!sheetId) {
       return res.status(400).json({ error: 'Sheet ID is required' });
     }
@@ -218,7 +222,7 @@ app.get('/api/sheets/load', authenticateProxy, async (req, res) => {
 app.post('/api/sheets/setup', authenticateProxy, async (req, res) => {
   try {
     const { sheetId } = req.body;
-    
+
     if (!sheetId) {
       return res.status(400).json({ error: 'Sheet ID is required' });
     }
@@ -233,7 +237,7 @@ app.post('/api/sheets/setup', authenticateProxy, async (req, res) => {
     });
 
     const sheetTitles = spreadsheet.result.sheets.map(s => s.properties.title);
-    
+
     // Create TimelineItems sheet if needed
     if (!sheetTitles.includes('TimelineItems')) {
       await sheets.spreadsheets.batchUpdate({
