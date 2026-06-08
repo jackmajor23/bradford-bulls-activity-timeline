@@ -3,6 +3,9 @@
 // All-in-one server configuration
 // ============================================
 
+// Load environment variables from .env file
+require('dotenv').config();
+
 // ============================================
 // STEP 1: ADD YOUR CREDENTIALS HERE
 // ============================================

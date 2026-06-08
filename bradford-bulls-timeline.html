@@ -315,30 +315,20 @@
     }
 
     #past-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.6);
-      border: 1px solid rgba(226, 221, 216, 0.6);
-      border-radius: 20px;
-      padding: 7px 16px;
+      padding: 8px 16px;
       cursor: pointer;
       font-family: var(--font-body);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 500;
       color: var(--ink-light);
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      transition: all 0.2s;
-      backdrop-filter: blur(6px);
-      position: relative;
-      z-index: 2;
+      transition: color 0.2s;
+      background: var(--bg);
     }
 
     #past-toggle:hover {
       color: var(--ink-mid);
-      border-color: var(--line);
-      background: rgba(255, 255, 255, 0.85);
     }
 
     #past-toggle .arrow {
@@ -352,22 +342,22 @@
       transform: rotate(0deg);
     }
 
+    #past-toggle.open {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
     #past-items {
-      display: none;
-      width: 100%;
       max-height: 0;
       overflow: hidden;
       opacity: 0;
-      transform-origin: bottom;
-      transform: scaleY(0);
-      transition: all 0.3s ease;
-    }
-
-    #past-items.open {
-      display: block;
-      max-height: 2000px;
-      opacity: 1;
-      transform: scaleY(1);
     }
 
     /* ─── TIMELINE ROWS ─── */
@@ -2425,9 +2415,21 @@
         <div class="settings-title">Manage Names</div>
       </div>
       <div class="settings-body">
+        <!-- Names Management Section -->
+        <div style="border: 1px solid var(--line); border-radius: 8px; padding: 16px;">
+          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Manage Names</h3>
+          <p style="color: var(--ink-mid); font-size: 13px; margin-bottom: 16px;">
+            Add, edit, or remove names that appear as quick options when assigning activities.
+          </p>
+          <div class="settings-input-row">
+            <input type="text" id="settings-name-input" placeholder="Enter a name..." class="settings-input">
+            <button class="btn btn-primary" onclick="addName()">Add</button>
+          </div>
+          <div id="settings-names-list" class="settings-names-list"></div>
+        </div>
+
         <!-- Cloud Sync Section -->
-        <div class="settings-section"
-          style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--line);">
+        <div class="settings-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line);">
           <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Cloud Sync (Google
             Sheets)</h3>
           <p style="color: var(--ink-mid); font-size: 12px; margin-bottom: 16px; line-height: 1.5;">
@@ -2435,7 +2437,7 @@
           </p>
 
           <div class="settings-toggle-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-            <input type="checkbox" id="cloud-sync-toggle" onchange="toggleCloudSync()"
+            <input type="checkbox" id="cloud-sync-toggle" onchange="confirmCloudSyncToggle()"
               style="width: 16px; height: 16px; cursor: pointer;">
             <label for="cloud-sync-toggle" style="font-size: 13px; color: var(--ink); cursor: pointer;">Enable cloud
               sync</label>
@@ -2447,7 +2449,7 @@
                 style="font-size: 12px; font-weight: 500; color: var(--ink-mid); display: block; margin-bottom: 4px;">Google
                 Sheet ID</label>
               <input type="text" id="sheet-id-input" placeholder="1BxiMVs0XRA5nFMdKvBdBZjGMUUqptb..."
-                class="settings-input" style="width: 100%; margin-bottom: 8px;">
+                class="settings-input" style="width: 100%; margin-bottom: 8px;" onchange="confirmSheetIdChange()">
               <p style="font-size: 11px; color: var(--ink-light); margin: 0;">
                 From sheet URL: docs.google.com/spreadsheets/d/<strong>THIS_PART</strong>/edit
               </p>
@@ -2460,7 +2462,7 @@
 
             <div id="auth-status" style="font-size: 12px; color: var(--ink-mid); margin-bottom: 12px;"></div>
 
-            <button class="btn btn-gold" onclick="saveFromSettings()" style="width: 100%;">💾 Save
+            <button class="btn btn-gold" onclick="confirmSaveConfiguration()" style="width: 100%;">💾 Save
               Configuration</button>
 
             <div
@@ -2480,19 +2482,6 @@
               </p>
             </div>
           </div>
-        </div>
-
-        <!-- Names Management Section -->
-        <div style="border: 1px solid var(--line); border-radius: 8px; padding: 16px;">
-          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Manage Names</h3>
-          <p style="color: var(--ink-mid); font-size: 13px; margin-bottom: 16px;">
-            Add, edit, or remove names that appear as quick options when assigning activities.
-          </p>
-          <div class="settings-input-row">
-            <input type="text" id="settings-name-input" placeholder="Enter a name..." class="settings-input">
-            <button class="btn btn-primary" onclick="addName()">Add</button>
-          </div>
-          <div id="settings-names-list" class="settings-names-list"></div>
         </div>
       </div>
       <div class="settings-footer">
@@ -3057,9 +3046,9 @@
         });
         html += `
     <div id="past-accordion">
-      <button id="past-toggle" onclick="togglePast(this)">
+      <div id="past-toggle" onclick="togglePast(event, this)">
         show previous activity
-      </button>
+      </div>
       <div id="past-items">${pastInner}</div>
     </div>`;
       }
@@ -3320,14 +3309,39 @@
       showToast('Activity moved to main timeline');
     }
 
-    function togglePast(btn) {
-      btn.classList.toggle('open');
-      const pastBox = document.getElementById('past-items');
-      pastBox.classList.toggle('open');
+    function togglePast(e, btn) {
+      e.preventDefault();
+      e.stopPropagation();
 
-      // Update button text based on state
-      const isOpen = btn.classList.contains('open');
-      btn.textContent = isOpen ? 'hide previous activity' : 'show previous activity';
+      const isOpening = !btn.classList.contains('open');
+      const todayMarker = document.getElementById('today-marker');
+      const pastItems = document.getElementById('past-items');
+
+      if (isOpening) {
+        // Snapshot viewport offset of Today before anything changes
+        const viewportOffset = todayMarker.getBoundingClientRect().top;
+
+        // Expand instantly with no transition
+        pastItems.style.cssText = 'max-height:none; opacity:1; overflow:visible; transition:none;';
+        btn.classList.add('open');
+        btn.textContent = 'hide previous activity';
+
+        // One rAF — layout is now settled, correct scroll
+        requestAnimationFrame(() => {
+          const newOffset = todayMarker.getBoundingClientRect().top;
+          const shift = newOffset - viewportOffset;
+          if (shift !== 0) window.scrollTo({ top: window.scrollY + shift - 200, behavior: 'instant' });
+        });
+
+      } else {
+        // Collapse
+        pastItems.style.cssText = 'max-height:0; opacity:0; overflow:hidden; transition:none;';
+        btn.classList.remove('open');
+        btn.textContent = 'show previous activity';
+
+        // Scroll to today marker instantly
+        todayMarker.scrollIntoView({ behavior: 'instant', block: 'center' });
+      }
     }
 
     function toggleActCluster(fid) {
@@ -4167,6 +4181,85 @@
     function toggleCloudSync() {
       const enabled = document.getElementById('cloud-sync-toggle').checked;
       document.getElementById('cloud-sync-config').style.display = enabled ? 'block' : 'none';
+    }
+
+    function confirmCloudSyncToggle() {
+      const checkbox = document.getElementById('cloud-sync-toggle');
+      const newState = checkbox.checked;
+      const currentState = useCloudSync;
+
+      // If state hasn't actually changed, just toggle UI
+      if (newState === currentState) {
+        toggleCloudSync();
+        return;
+      }
+
+      const message = newState
+        ? '⚠️ Are you sure you want to enable cloud sync?\n\nThis will allow your timeline data to be synced with Google Sheets. Make sure you have configured your Sheet ID correctly before enabling.'
+        : '⚠️ Are you sure you want to disable cloud sync?\n\nYour timeline data will no longer be synced with Google Sheets. Local changes will not be saved to the cloud.';
+
+      if (confirm(message)) {
+        toggleCloudSync();
+      } else {
+        // Revert checkbox to original state
+        checkbox.checked = currentState;
+      }
+    }
+
+    function confirmSheetIdChange() {
+      const input = document.getElementById('sheet-id-input');
+      const newValue = input.value.trim();
+      const currentValue = sheetId;
+
+      // If value hasn't changed, do nothing
+      if (newValue === currentValue) {
+        return;
+      }
+
+      if (newValue === '') {
+        // Allowing empty is fine (clearing the field)
+        return;
+      }
+
+      const message = '⚠️ Are you sure you want to change the Google Sheet ID?\n\nThis will redirect your data sync to a different Google Sheet. Make sure this is the correct Sheet ID from your Google Sheets URL.\n\nCurrent: ' + (currentValue || '(none)') + '\nNew: ' + newValue;
+
+      if (confirm(message)) {
+        // Allow the change
+      } else {
+        // Revert to original value
+        input.value = currentValue;
+      }
+    }
+
+    function confirmSaveConfiguration() {
+      const newSheetId = document.getElementById('sheet-id-input').value.trim();
+      const newUseCloudSync = document.getElementById('cloud-sync-toggle').checked;
+      const currentSheetId = sheetId;
+      const currentUseCloudSync = useCloudSync;
+
+      // Check if anything actually changed
+      if (newSheetId === currentSheetId && newUseCloudSync === currentUseCloudSync) {
+        showToast('No changes to save');
+        return;
+      }
+
+      let message = '⚠️ Are you sure you want to save these cloud sync configuration changes?\n\n';
+
+      if (newUseCloudSync !== currentUseCloudSync) {
+        message += newUseCloudSync ? '- Cloud sync will be ENABLED\n' : '- Cloud sync will be DISABLED\n';
+      }
+
+      if (newSheetId !== currentSheetId) {
+        message += '- Google Sheet ID will be changed\n';
+        message += '  From: ' + (currentSheetId || '(none)') + '\n';
+        message += '  To: ' + (newSheetId || '(none)') + '\n';
+      }
+
+      message += '\nThese changes will affect how your timeline data is synced.';
+
+      if (confirm(message)) {
+        saveFromSettings();
+      }
     }
 
     function saveFromSettings() {
