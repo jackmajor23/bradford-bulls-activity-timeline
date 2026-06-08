@@ -36,7 +36,7 @@ const PROXY_SECRET_KEY = process.env.PROXY_SECRET_KEY || "da4e53877124bfd346c883
 const PORT = 3000;
 
 // Allowed origins (which domains can access this proxy)
-const ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "file://"];
+const ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "file://", "https://jackmajor23.github.io"];
 
 // ============================================
 // STEP 2: INSTALL DEPENDENCIES (run once)
