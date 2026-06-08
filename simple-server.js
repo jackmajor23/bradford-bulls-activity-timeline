@@ -239,7 +239,7 @@ app.post('/api/sheets/setup', authenticateProxy, async (req, res) => {
       spreadsheetId: sheetId
     });
 
-    const sheetTitles = spreadsheet.result.sheets.map(s => s.properties.title);
+    const sheetTitles = spreadsheet.data.sheets.map(s => s.properties.title);
 
     // Create TimelineItems sheet if needed
     if (!sheetTitles.includes('TimelineItems')) {
