@@ -4,45 +4,4291 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bradford Bulls Timeline</title>
+  <title>Bradford Bulls — Activity Timeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
   <style>
-    body {
+    :root {
+      --bg: #F7F5F2;
+      --card: #FFFFFF;
+      --red: #f20c23;
+      --red-dark: #9E0B23;
+      --gold: #f7ba3e;
+      --gold-light: #E8CB6A;
+      --ink: #0a0e12;
+      --ink-mid: #555555;
+      --ink-light: #999999;
+      --line: #E2DDD8;
+      --blue: #1A4F8B;
+      --orange: #E8660A;
+      --purple: #6B3FA0;
+      --green: #2e7d32;
+      --green-bg: rgba(46, 125, 50, 0.08);
+      --home: #1A4F8B;
+      --away: #E8660A;
+      --neutral: #6B3FA0;
+      --spine: 2px;
+      --spine-color: #0a0e12;
+      --card-radius: 10px;
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.13), 0 2px 8px rgba(0, 0, 0, 0.07);
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── HEADER ─── */
+    #header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: linear-gradient(to bottom, rgba(247, 245, 242, 0.96) 0%, rgba(247, 245, 242, 0.85) 100%);
+      backdrop-filter: blur(12px);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    #header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-right: auto;
+      flex-shrink: 0;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .brand-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #header-brand h1 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    #header-brand span {
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-light);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: block;
+      margin-top: 1px;
+    }
+
+    #header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .btn-primary {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--red-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-gold {
+      background: var(--gold);
+      color: var(--ink);
+    }
+
+    .btn-gold:hover {
+      background: var(--gold-light);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--ink);
+      border: 1.5px solid var(--line);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--ink-mid);
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .btn-activity {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn-activity:hover {
+      background: #143d6e;
+      transform: translateY(-1px);
+    }
+
+    .btn-neutral {
+      background: #fff;
+      color: var(--ink);
+      border: 1.5px solid var(--line);
+    }
+
+    .btn-neutral:hover {
+      border-color: var(--ink-mid);
+      background: rgba(0, 0, 0, 0.03);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: var(--red-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-notes {
+      background: linear-gradient(135deg, #ffffff 0%, #e8e4df 100%);
+      color: var(--ink);
+      border: 1.5px solid var(--line);
+    }
+
+    .btn-notes:hover {
+      border-color: var(--ink-mid);
+      background: linear-gradient(135deg, #f5f5f5 0%, #ddd9d4 100%);
+      transform: translateY(-1px);
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .btn-icon-only {
+      padding: 7px;
+    }
+
+    /* Mobile-specific elements - hidden by default on desktop */
+    .mobile-add-btn {
+      display: none;
+    }
+
+    .mobile-dropdown {
+      display: none;
+    }
+
+    /* ─── MAIN ─── */
+    #main {
+      padding-top: 56px;
+    }
+
+    #timeline-wrap {
+      position: relative;
+      padding: 0 0 120px;
+    }
+
+    /* Spine */
+    #timeline-wrap::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: var(--spine);
+      background: linear-gradient(180deg, transparent 0%, var(--spine-color) 3%, var(--spine-color) 97%, transparent 100%);
+      transform: translateX(-50%);
+      z-index: 1;
+    }
+
+    /* ─── TODAY MARKER ─── */
+    #today-marker {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      padding: 0 calc(50% - 100px);
+      margin: 20px 0;
+    }
+
+    .today-line {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--red) 20%, var(--red) 80%, transparent);
+      opacity: 0.6;
+    }
+
+    .today-badge {
+      background: var(--red);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+      box-shadow: 0 0 0 4px rgba(200, 16, 46, 0.15);
+      position: relative;
+      z-index: 3;
+    }
+
+    /* ─── PAST ACCORDION ─── */
+    #past-accordion {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0 0;
+      position: relative;
+      z-index: 5;
+    }
+
+    #past-accordion::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #past-toggle {
+      padding: 8px 16px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-light);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+      background: var(--bg);
+    }
+
+    #past-toggle:hover {
+      color: var(--ink-mid);
+    }
+
+    #past-toggle .arrow {
+      transition: transform 0.2s;
+      font-size: 9px;
+      display: inline-block;
+      transform: rotate(180deg);
+    }
+
+    #past-toggle.open .arrow {
+      transform: rotate(0deg);
+    }
+
+    #past-toggle.open {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    #past-items {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    /* ─── TIMELINE ROWS ─── */
+    .tl-row {
+      display: grid;
+      grid-template-columns: 1fr 32px 1fr;
+      align-items: start;
+      padding: 0 40px;
+      position: relative;
+      z-index: 3;
+      margin-bottom: -10px;
+    }
+
+    .tl-row.side-left .tl-card-wrap {
+      grid-column: 1;
+      grid-row: 1;
+      display: flex;
+      justify-content: flex-end;
+      padding-right: 16px;
+      position: relative;
+      width: 100%;
+    }
+
+    .tl-row.side-left .tl-node {
+      grid-column: 2;
+      grid-row: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 20px;
+      position: relative;
+      z-index: 4;
+    }
+
+    .tl-row.side-left .tl-spacer {
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    .tl-row.side-right .tl-spacer {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .tl-row.side-right .tl-node {
+      grid-column: 2;
+      grid-row: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 20px;
+      position: relative;
+      z-index: 4;
+    }
+
+    .tl-row.side-right .tl-card-wrap {
+      grid-column: 3;
+      grid-row: 1;
+      display: flex;
+      justify-content: flex-start;
+      padding-left: 16px;
+      position: relative;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+
+    /* Highlight card when dot is hovered (right side) - regular dots */
+    .tl-row.side-right .tl-node:hover~.tl-card-wrap .fixture-card,
+    .tl-row.side-right .tl-node:hover~.tl-card-wrap .activity-card,
+    .tl-row.side-right .tl-node:hover~.tl-card-wrap .milestone-card {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--blue);
+    }
+
+    /* Highlight note cards with darker ink color */
+    .tl-row.side-right .tl-node:hover~.tl-card-wrap .note-card {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--ink-mid);
+    }
+
+    /* Highlight card when fixture dot is hovered (right side) - red */
+    .tl-row.side-right .tl-node:hover~.tl-card-wrap .fixture-card,
+    .tl-row.side-right .tl-node .node-dot.fixture-dot:hover~.tl-card-wrap .fixture-card {
+      border-color: var(--red);
+    }
+
+    /* Highlight card when milestone dot is hovered (right side) - gold */
+    .tl-row.side-right .tl-node .node-dot.milestone-dot:hover~.tl-card-wrap .milestone-card {
+      border-color: var(--gold);
+    }
+
+    /* Highlight card when past dot is hovered (right side) - ink-light */
+    .tl-row.side-right .tl-node .node-dot.past-dot:hover~.tl-card-wrap .fixture-card,
+    .tl-row.side-right .tl-node .node-dot.past-dot:hover~.tl-card-wrap .activity-card,
+    .tl-row.side-right .tl-node .node-dot.past-dot:hover~.tl-card-wrap .milestone-card,
+    .tl-row.side-right .tl-node .node-dot.past-dot:hover~.tl-card-wrap .note-card {
+      border-color: var(--ink-light);
+    }
+
+    /* Highlight card when complete dot is hovered (right side) - green */
+    .tl-row.side-right .tl-node .node-dot.complete-dot:hover~.tl-card-wrap .fixture-card,
+    .tl-row.side-right .tl-node .node-dot.complete-dot:hover~.tl-card-wrap .activity-card {
+      border-color: var(--green);
+    }
+
+    /* Highlight card when dot is hovered (left side - via JS) - default blue */
+    .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight,
+    .tl-row.side-left .tl-card-wrap .activity-card.card-highlight,
+    .tl-row.side-left .tl-card-wrap .milestone-card.card-highlight {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--blue);
+    }
+
+    /* Highlight note cards with darker ink color */
+    .tl-row.side-left .tl-card-wrap .note-card.card-highlight {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--ink-mid);
+    }
+
+    /* Highlight card when fixture dot is hovered (left side) - red */
+    .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight.highlight-red {
+      border-color: var(--red);
+    }
+
+    /* Highlight card when milestone dot is hovered (left side) - gold */
+    .tl-row.side-left .tl-card-wrap .milestone-card.card-highlight.highlight-gold {
+      border-color: var(--gold);
+    }
+
+    /* Highlight card when past dot is hovered (left side) - ink-light */
+    .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight.highlight-past,
+    .tl-row.side-left .tl-card-wrap .activity-card.card-highlight.highlight-past,
+    .tl-row.side-left .tl-card-wrap .milestone-card.card-highlight.highlight-past,
+    .tl-row.side-left .tl-card-wrap .note-card.card-highlight.highlight-past {
+      border-color: var(--ink-light);
+    }
+
+    /* Highlight card when complete dot is hovered (left side) - green */
+    .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight.highlight-complete,
+    .tl-row.side-left .tl-card-wrap .activity-card.card-highlight.highlight-complete {
+      border-color: var(--green);
+    }
+
+
+
+    .node-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2.5px solid var(--card);
+      box-shadow: 0 0 0 2px var(--blue);
+      background: var(--blue);
+      flex-shrink: 0;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+
+    .node-dot:hover {
+      transform: scale(1.3);
+      box-shadow: 0 0 0 4px var(--blue);
+    }
+
+    .node-dot.fixture-dot {
+      background: var(--red);
+      box-shadow: 0 0 0 2px var(--red);
+      width: 18px;
+      height: 18px;
+      margin-top: -2px;
+    }
+
+    .node-dot.milestone-dot {
+      background: var(--gold);
+      box-shadow: 0 0 0 3px var(--gold), 0 0 0 6px rgba(212, 175, 55, 0.2);
+      width: 22px;
+      height: 22px;
+      margin-top: -4px;
+    }
+
+    .node-dot.past-dot {
+      background: var(--ink-light) !important;
+      box-shadow: 0 0 0 2px var(--ink-light) !important;
+    }
+
+    .node-dot.complete-dot {
+      background: var(--green);
+      box-shadow: 0 0 0 2px var(--green);
+    }
+
+    .node-date-label {
+      position: absolute;
+      font-family: var(--font-body);
+      font-size: 9px;
+      font-weight: 500;
+      color: var(--ink-light);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(247, 245, 242, 0.9);
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid var(--line);
+    }
+
+    .tl-row.side-left .node-date-label {
+      left: 50%;
+      transform: translateX(-50%);
+      top: 18px;
+    }
+
+    .tl-row.side-right .node-date-label {
+      left: 50%;
+      transform: translateX(-50%);
+      top: 18px;
+    }
+
+    /* ─── FIXTURE CARD ─── */
+    .fixture-card {
+      background: linear-gradient(135deg, #ffe8c0 0%, #ffd0d0 100%);
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      cursor: default;
+      transition: box-shadow 0.2s, transform 0.2s;
+      width: 100%;
+    }
+
+    .fixture-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .fixture-card.past {
+      opacity: 0.55;
+      filter: grayscale(0.4);
+    }
+
+    .fixture-header {
+      padding: 12px 14px 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .fixture-logo-wrap {
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .fixture-logo-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .fixture-logo-initials {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      color: var(--ink-mid);
+      text-align: center;
+    }
+
+    .fixture-venue-badge {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .badge-home {
+      color: var(--ink);
+    }
+
+    .badge-away {
+      color: var(--ink);
+    }
+
+    .badge-neutral {
+      color: var(--ink);
+    }
+
+    .team-badge {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(26, 79, 139, 0.08);
+      color: var(--blue);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .fixture-meta {
+      flex: 1;
+    }
+
+    .fixture-opponent {
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: 0.06em;
+      line-height: 1;
+      color: var(--ink);
+    }
+
+    .fixture-sub {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+      font-size: 10px;
+      color: var(--ink-mid);
+      font-weight: 400;
+      flex-wrap: wrap;
+    }
+
+    .subtle-date {
+      color: var(--ink-light);
+      font-size: 9px;
+      opacity: 0.7;
+    }
+
+    .fixture-footer {
+      padding: 8px 12px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafafa;
+      border-top: 1px solid var(--line);
+    }
+
+    .fixture-actions {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    .countdown-text {
+      font-family: var(--font-display);
+      color: var(--red);
+      line-height: 1;
+      font-size: 16px;
+      letter-spacing: 0.05em;
+    }
+
+    .countdown-text.far {
+      color: var(--ink-mid);
+    }
+
+    .countdown-text.near {
+      color: var(--orange);
+    }
+
+    .countdown-text.imminent {
+      color: var(--red);
+    }
+
+    .countdown-text.past {
+      color: var(--ink-light);
+    }
+
+    .btn-xs {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-xs-outline {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--ink-mid);
+    }
+
+    .btn-xs-outline:hover {
+      border-color: var(--ink-mid);
+      color: var(--ink);
+    }
+
+    .btn-xs-red {
+      background: transparent;
+      border: 1px solid rgba(200, 16, 46, 0.3);
+      color: var(--red);
+    }
+
+    .btn-xs-red:hover {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .fixture-acts-toggle {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--blue);
+      cursor: pointer;
+      font-weight: 600;
+      background: none;
+      border: none;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 8px;
+      border-radius: 5px;
+      transition: background 0.15s;
+    }
+
+    .fixture-acts-toggle:hover {
+      background: rgba(26, 79, 139, 0.08);
+    }
+
+    /* Linked-match chip */
+    .linked-match-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(200, 16, 46, 0.07);
+      color: var(--red);
+      cursor: pointer;
+      border: 1px solid rgba(200, 16, 46, 0.15);
+      transition: background 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .linked-match-chip:hover {
+      background: rgba(200, 16, 46, 0.14);
+    }
+
+    /* ─── ACTIVITY CLUSTER ─── */
+    .activity-cluster {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px solid var(--line);
+      background: #fdfdfd;
+    }
+
+    /* ─── DATE GROUP ─── */
+    .date-group {
+      margin-bottom: 20px;
+    }
+
+    .date-header {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      background: #F7F5F2;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 10px 0 15px;
+      position: relative;
+      z-index: 5;
     }
 
-    .redirect-message {
-      text-align: center;
-      color: #555;
+    .date-label {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      background: rgba(247, 245, 242, 0.95);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 2px solid var(--line);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      white-space: nowrap;
+      z-index: 10;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
     }
 
-    .redirect-message h1 {
+    .date-label:hover {
+      border-color: var(--ink-mid);
+      transform: scale(1.05);
+    }
+
+    /* ─── DATE POPUP MODAL ─── */
+    #date-popup-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #date-popup-modal {
+      background: var(--card);
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow-hover);
+      width: 90%;
+      max-width: 400px;
+      padding: 24px;
+      animation: popupFadeIn 0.2s ease;
+    }
+
+    @keyframes popupFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .popup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .popup-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--ink);
+      letter-spacing: 0.05em;
+    }
+
+    .popup-close {
+      background: none;
+      border: none;
       font-size: 24px;
+      color: var(--ink-light);
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .popup-close:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--ink);
+    }
+
+    .popup-section {
+      margin-bottom: 20px;
+    }
+
+    .popup-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .popup-label {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-mid);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .popup-date-display {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      padding: 10px 14px;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+
+    .popup-date-input {
+      width: 100%;
+      padding: 10px 14px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .popup-date-input:focus {
+      border-color: var(--red);
+    }
+
+    .popup-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .popup-actions .btn {
+      flex: 1;
+      justify-content: center;
+    }
+
+    /* ─── STANDALONE ACTIVITY CARD ─── */
+    .activity-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      width: 100%;
+      transition: box-shadow 0.2s, transform 0.2s;
+      cursor: default;
+    }
+
+    .activity-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .activity-card.past {
+      opacity: 0.55;
+      filter: grayscale(0.4);
+    }
+
+    .activity-card.complete {
+      background: linear-gradient(135deg, #f0faf0 0%, #e8f5e9 100%);
+      border-color: rgba(46, 125, 50, 0.3);
+    }
+
+    .act-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      border-radius: inherit;
+      transition: background 0.15s;
+    }
+
+    .act-row:hover {
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    /* Mini activity card */
+    .mini-activity {
+      background: #FAFAF8;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .mini-activity:hover {
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .mini-activity.complete {
+      background: linear-gradient(135deg, #f0faf0, #e8f5e9);
+      border-color: rgba(46, 125, 50, 0.3);
+    }
+
+    .activity-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .activity-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .activity-meta {
+      font-size: 10px;
+      color: var(--ink-light);
+      margin-top: 1px;
+    }
+
+    .activity-meta.complete-meta {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .drag-handle {
+      color: var(--ink-light);
+      font-size: 16px;
+      cursor: grab;
+      flex-shrink: 0;
+      padding: 0 6px;
+      opacity: 0.5;
+      transition: opacity 0.15s, color 0.15s;
+    }
+
+    .mini-activity:hover .drag-handle {
+      opacity: 1;
+      color: var(--ink-mid);
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .activity-btns {
+      display: flex;
+      gap: 3px;
+      margin-left: auto;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .activity-btn {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: var(--line);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      transition: all 0.1s;
+    }
+
+    .activity-btn:hover {
+      background: #ddd;
+    }
+
+    .activity-btn.del:hover {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .activity-btn.complete-btn.done {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .assignees-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 3px;
+    }
+
+    .mini-activity:hover .activity-btns,
+    .act-row:hover .activity-btns {
+      opacity: 1;
+    }
+
+    .assignee-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 12px;
+      background: rgba(26, 79, 139, 0.1);
+      color: var(--blue);
+      border: 1px solid rgba(26, 79, 139, 0.15);
+    }
+
+    /* ─── MILESTONE CARD ─── */
+    .milestone-card {
+      border-radius: var(--card-radius);
+      padding: 16px 20px;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: none;
+    }
+
+    .milestone-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .milestone-card.red {
+      background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(200, 16, 46, 0.3);
+    }
+
+    .milestone-card.gold {
+      background: linear-gradient(135deg, var(--gold) 0%, #B8941F 100%);
+      color: var(--ink);
+      box-shadow: 0 4px 20px rgba(212, 175, 55, 0.35);
+    }
+
+    .milestone-card.neutral {
+      background: linear-gradient(135deg, #555 0%, #333 100%);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .milestone-card.red .milestone-date {
+      color: #fff;
+    }
+
+    .milestone-card.gold .milestone-date {
+      color: #0a0e12;
+    }
+
+    .milestone-card.past {
+      opacity: 0.55;
+      filter: grayscale(0.4);
+    }
+
+    .milestone-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .milestone-title {
+      font-family: var(--font-display);
+      font-size: 26px;
+      letter-spacing: 0.06em;
+      line-height: 1;
+    }
+
+    .milestone-date {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    /* ─── NOTE CARD ─── */
+    .note-card {
+      background: linear-gradient(135deg, #ffffff 0%, #e8e4df 100%);
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      cursor: default;
+      transition: box-shadow 0.2s, transform 0.2s;
+      width: 100%;
+      padding: 10px 12px;
+    }
+
+    .note-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .note-card.past {
+      opacity: 0.55;
+      filter: grayscale(0.4);
+    }
+
+    .note-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+
+    .note-content {
+      font-family: var(--font-body);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ink-mid);
+    }
+
+    .note-date {
+      padding: 8px 14px;
+      background: var(--bg);
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-light);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .note-footer {
+      padding: 8px 12px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      justify-content: space-between;
+    }
+
+    .note-card .activity-btns {
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .note-card:hover .activity-btns {
+      opacity: 1;
+    }
+
+    /* ─── MONTH DIVIDER ─── */
+    .month-divider {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 0 10px;
+    }
+
+    .month-divider-label {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.25em;
+      color: var(--ink-mid);
+      text-transform: uppercase;
+      background: var(--bg);
+      padding: 2px 16px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ─── MODAL ─── */
+    #modal-overlay,
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 20, 20, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card);
+      border-radius: 16px;
+      width: 500px;
+      max-width: calc(100% - 40px);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
+      animation: modalIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(0.92) translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .modal-header {
+      padding: 22px 24px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      letter-spacing: 0.05em;
+      flex: 1;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--line);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-mid);
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      padding: 10px 13px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--ink);
+      background: var(--bg);
+      width: 100%;
+      outline: none;
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .style-selector {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .style-opt {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 3px solid var(--card);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      transition: all 0.2s;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .style-opt:hover {
+      transform: scale(1.08);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    }
+
+    .style-opt.selected {
+      border-color: var(--ink);
+      transform: scale(1.12);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+    }
+
+    .style-opt.red {
+      background: var(--red);
+    }
+
+    .style-opt.gold {
+      background: var(--gold);
+    }
+
+    .style-opt.neutral {
+      background: var(--ink);
+    }
+
+    .venue-selector {
+      display: flex;
+      gap: 8px;
+    }
+
+    .venue-opt {
+      flex: 1;
+      padding: 10px 16px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .venue-opt:hover {
+      border-color: var(--ink-mid);
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .venue-opt.selected {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .venue-opt.home.selected {
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .venue-opt.away.selected {
+      background: var(--gold);
+      border-color: var(--gold);
+    }
+
+    .venue-opt.neutral.selected {
+      background: var(--ink);
+      border-color: var(--ink);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .type-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px;
+    }
+
+    .type-opt {
+      border: 1.5px solid var(--line);
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .type-opt.selected {
+      border-color: var(--gold);
+      background: rgba(212, 175, 55, 0.1);
+    }
+
+    .team-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px;
+    }
+
+    .team-opt {
+      border: 1.5px solid var(--line);
+      padding: 10px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      font-family: var(--font-body);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s;
+      background: var(--bg);
+    }
+
+    .team-opt:hover {
+      border-color: var(--ink-mid);
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .team-opt.selected {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .assignee-input-wrap {
+      display: flex;
+      gap: 6px;
+    }
+
+    .assignee-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 6px;
+    }
+
+    .quick-add-settings-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      opacity: 0.4;
+      transition: opacity 0.15s;
+      color: var(--ink-light);
+    }
+
+    .quick-add-settings-btn:hover {
+      opacity: 1;
+      color: var(--ink-mid);
+    }
+
+    .quick-add-settings-btn svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .assignee-remove-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(26, 79, 139, 0.1);
+      color: var(--blue);
+      border: 1px solid rgba(26, 79, 139, 0.15);
+      cursor: pointer;
+    }
+
+    .assignee-input-wrap {
+      position: relative;
+      display: flex;
+      gap: 6px;
+    }
+
+    .autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      margin-top: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .autocomplete-item {
+      padding: 10px 13px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--ink);
+      transition: background 0.15s ease;
+    }
+
+    .autocomplete-item:hover {
+      background: var(--bg);
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .quick-add-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      margin-top: 6px;
+    }
+
+    .quick-add-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-light);
+      flex-shrink: 0;
+    }
+
+    .quick-add-pill {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.04);
+      border: 1.5px solid var(--line);
+      color: var(--ink-mid);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .quick-add-pill:hover {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    .custom-assignee-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .custom-assignee-input {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .custom-assignee-row .btn {
+      padding: 6px 10px;
+      font-size: 10px;
+    }
+
+    /* ─── TOAST ─── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: all;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .toast-undo {
+      background: var(--gold);
+      color: var(--ink);
+      border: none;
+      border-radius: 12px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ─── DELETE CONFIRM MODAL ─── */
+    #delete-confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 14, 18, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .delete-confirm-modal {
+      background: var(--card);
+      border-radius: var(--card-radius);
+      max-width: 400px;
+      width: 100%;
+      box-shadow: var(--shadow-hover);
+      animation: scaleIn 0.2s ease;
+      overflow: hidden;
+    }
+
+    .delete-confirm-header {
+      background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .delete-confirm-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .delete-confirm-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      letter-spacing: 0.08em;
+      color: #fff;
+      text-transform: uppercase;
+    }
+
+    .delete-confirm-body {
+      padding: 24px;
+      text-align: center;
+    }
+
+    .delete-confirm-body p {
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--ink-mid);
+      margin: 0;
+    }
+
+    .delete-confirm-footer {
+      padding: 16px 24px 24px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes scaleIn {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* Dynamic drop indicator styles */
+    .fixture-card.drop-active {
+      outline: 2px dashed var(--gold);
+      outline-offset: 2px;
+      background: rgba(212, 175, 55, 0.03);
+    }
+
+    /* Drag and drop styles */
+    .mini-activity.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+
+    .mini-activity.drag-over {
+      border: 2px dashed var(--blue);
+      background: rgba(26, 79, 139, 0.05);
+    }
+
+    .activity-cluster {
+      min-height: 10px;
+    }
+
+    .fixture-acts-toggle.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    /* Settings Modal Styles */
+    .settings-modal {
+      background: var(--card);
+      border-radius: var(--card-radius);
+      max-width: 400px;
+      width: 100%;
+      max-height: 80vh;
+      box-shadow: var(--shadow-hover);
+      animation: scaleIn 0.2s ease;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .settings-header {
+      background: linear-gradient(135deg, #f7ba3e 0%, #e8cb6a 100%);
+      padding: 20px 24px;
+      text-align: center;
+    }
+
+    .settings-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+      text-transform: uppercase;
+    }
+
+    .settings-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .settings-input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .settings-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 7px;
+      font-family: var(--font-body);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .settings-input:focus {
+      border-color: var(--gold);
+    }
+
+    .settings-names-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .settings-name-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #fafafa;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      transition: all 0.15s;
+    }
+
+    .settings-name-item:hover {
+      border-color: var(--ink-light);
+      background: #f5f5f5;
+    }
+
+    .settings-name-item:hover .settings-name-edit {
+      opacity: 1;
+    }
+
+    .settings-name-item:hover .settings-name-delete {
+      opacity: 1;
+    }
+
+    .settings-section {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .settings-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .settings-toggle-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--red);
+    }
+
+    .settings-toggle-row label {
+      font-size: 13px;
+      color: var(--ink);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #cloud-sync-config {
+      animation: fadeIn 0.2s ease;
+    }
+
+    #auth-status {
+      font-size: 12px;
+      color: var(--ink-mid);
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: rgba(247, 245, 242, 0.5);
+      border-radius: 6px;
+      border: 1px solid var(--line);
+    }
+
+    #auth-status.authenticated {
+      color: var(--green);
+      background: rgba(46, 125, 50, 0.1);
+      border-color: var(--green);
+    }
+
+    #auth-status.error {
+      color: var(--red);
+      background: rgba(242, 12, 35, 0.1);
+      border-color: var(--red);
+    }
+
+    .settings-name-text {
+      flex: 1;
+      font-size: 13px;
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .settings-name-edit {
+      opacity: 0.5;
+      padding: 5px;
+      cursor: pointer;
+      color: var(--ink-mid);
+      transition: opacity 0.15s;
+    }
+
+    .settings-name-edit:hover {
+      color: var(--blue);
+      opacity: 1;
+    }
+
+    .settings-name-delete {
+      opacity: 0.5;
+      padding: 5px;
+      cursor: pointer;
+      color: var(--red);
+      transition: opacity 0.15s;
+    }
+
+    .settings-name-delete:hover {
+      opacity: 1;
+    }
+
+    .settings-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 24px;
+      color: var(--ink-light);
+    }
+
+    .empty-state h2 {
+      font-size: 24px;
+      color: var(--ink-mid);
       margin-bottom: 10px;
     }
 
-    .redirect-message p {
-      font-size: 14px;
-      color: #999;
+    @media (max-width: 700px) {
+      #timeline-wrap::before {
+        left: 28px;
+        transform: none;
+      }
+
+      #today-marker {
+        padding: 0 12px 0 52px;
+      }
+
+      .month-divider {
+        padding-left: 52px;
+        justify-content: flex-start;
+      }
+
+      .tl-row {
+        grid-template-columns: 28px 1fr;
+        padding: 0 12px;
+        margin-bottom: 16px;
+      }
+
+      /* Remove spacer column on mobile */
+      .tl-row.side-left .tl-spacer,
+      .tl-row.side-right .tl-spacer {
+        display: none;
+      }
+
+      /* Node column - align dots with spine */
+      .tl-row.side-left .tl-node,
+      .tl-row.side-right .tl-node {
+        grid-column: 1;
+        grid-row: 1;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 20px;
+        position: relative;
+        z-index: 4;
+      }
+
+      /* Card column */
+      .tl-row.side-left .tl-card-wrap,
+      .tl-row.side-right .tl-card-wrap {
+        grid-column: 2;
+        grid-row: 1;
+        justify-content: flex-start;
+        padding-left: 16px;
+        padding-right: 0;
+        max-width: 100%;
+        width: 100%;
+      }
+
+      /* Adjust node date label position for mobile */
+      .node-date-label {
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      /* Ensure cards don't overflow */
+      .fixture-card,
+      .milestone-card,
+      .note-card {
+        max-width: 100%;
+      }
+
+      /* Mobile dropdown button */
+      .mobile-add-btn {
+        display: inline-flex !important;
+        width: 40px;
+        height: 40px;
+        padding: 0 !important;
+        border-radius: 8px;
+        font-size: 24px;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* Hide individual buttons on mobile */
+      #header-actions .btn:not(.mobile-add-btn) {
+        display: none !important;
+      }
+
+      /* Mobile dropdown menu - positioned for mobile */
+      .mobile-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        background: var(--card);
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        border: 1px solid var(--line);
+        min-width: 180px;
+        z-index: 300;
+        overflow: hidden;
+      }
+
+      .mobile-dropdown.show {
+        display: block;
+        animation: slideDown 0.2s ease;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .mobile-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        cursor: pointer;
+        transition: background 0.15s;
+        border-bottom: 1px solid var(--line);
+        font-family: var(--font-body);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+
+      .mobile-dropdown-item:last-child {
+        border-bottom: none;
+      }
+
+      .mobile-dropdown-item:hover {
+        background: var(--bg);
+      }
+
+      .mobile-dropdown-item svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      .mobile-dropdown-item.activity-item svg {
+        color: var(--blue);
+      }
+
+      .mobile-dropdown-item.match-item svg {
+        color: var(--red);
+      }
+
+      .mobile-dropdown-item.milestone-item svg {
+        color: var(--gold);
+      }
+
+      .mobile-dropdown-item.notes-item svg {
+        color: var(--ink-mid);
+      }
+
+      /* Position wrapper for dropdown */
+      .mobile-add-wrapper {
+        position: relative;
+      }
     }
   </style>
-  <script>
-    // Redirect to the main timeline
-    window.location.href = 'bradford-bulls-timeline.html';
-  </script>
 </head>
 
 <body>
-  <div class="redirect-message">
-    <h1>Redirecting to Bradford Bulls Timeline...</h1>
-    <p>If you're not redirected automatically, <a href="bradford-bulls-timeline.html">click here</a>.</p>
+
+  <header id="header">
+    <div id="header-brand">
+      <div class="brand-logo" id="brand-logo-wrap">
+        <img src="https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg"
+          alt="Bradford Bulls">
+      </div>
+      <div>
+        <h1>BRADFORD BULLS</h1>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>Activity Timeline</span>
+          <button onclick="openSettingsModal()"
+            style="background: none; border: none; cursor: pointer; padding: 0; opacity: 0.3; transition: opacity 0.15s; display: flex; align-items: center;">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
+              style="width: 12px; height: 12px;">
+              <circle cx="8" cy="8" r="6" />
+              <circle cx="8" cy="8" r="2" />
+              <path d="M8 2 L8 4" />
+              <path d="M8 12 L8 14" />
+              <path d="M2 8 L4 8" />
+              <path d="M12 8 L14 8" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="header-actions">
+      <button class="btn btn-activity" onclick="openModal('activity')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="8" y1="2" x2="8" y2="14" />
+          <line x1="2" y1="8" x2="14" y2="8" />
+        </svg>
+        Activity
+      </button>
+      <button class="btn btn-primary" onclick="openModal('fixture')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+          <ellipse cx="8" cy="8" rx="5" ry="3.5" />
+          <path d="M3 8 Q8 5 13 8" />
+          <path d="M3 8 Q8 11 13 8" />
+        </svg>
+        Match
+      </button>
+      <button class="btn btn-gold" onclick="openModal('milestone')">⚑ Milestone</button>
+      <button class="btn btn-notes" onclick="openModal('note')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 4h12v8H2z" />
+          <line x1="4" y1="7" x2="10" y2="7" />
+          <line x1="4" y1="10" x2="8" y2="10" />
+        </svg>
+        Notes
+      </button>
+
+      <!-- Mobile add button -->
+      <div class="mobile-add-wrapper">
+        <button class="btn btn-primary mobile-add-btn" onclick="toggleMobileDropdown()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="8" y1="2" x2="8" y2="14" />
+            <line x1="2" y1="8" x2="14" y2="8" />
+          </svg>
+        </button>
+        <div class="mobile-dropdown" id="mobile-dropdown">
+          <div class="mobile-dropdown-item activity-item" onclick="openModal('activity'); toggleMobileDropdown();">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="2" x2="8" y2="14" />
+              <line x1="2" y1="8" x2="14" y2="8" />
+            </svg>
+            Activity
+          </div>
+          <div class="mobile-dropdown-item match-item" onclick="openModal('fixture'); toggleMobileDropdown();">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+              <ellipse cx="8" cy="8" rx="5" ry="3.5" />
+              <path d="M3 8 Q8 5 13 8" />
+              <path d="M3 8 Q8 11 13 8" />
+            </svg>
+            Match
+          </div>
+          <div class="mobile-dropdown-item milestone-item" onclick="openModal('milestone'); toggleMobileDropdown();">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 2 L8 12" />
+              <path d="M5 5 L11 5" />
+              <path d="M5 9 L8 9" />
+              <path d="M8 9 L8 14 L6 16" />
+            </svg>
+            Milestone
+          </div>
+          <div class="mobile-dropdown-item notes-item" onclick="openModal('note'); toggleMobileDropdown();">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 4h12v8H2z" />
+              <line x1="4" y1="7" x2="10" y2="7" />
+              <line x1="4" y1="10" x2="8" y2="10" />
+            </svg>
+            Notes
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div id="timeline-wrap">
+      <div id="timeline-content"></div>
+    </div>
+  </main>
+
+  <div id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">Add Item</div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-danger" id="modal-delete" onclick="deleteModalItem()"
+          style="display:none; margin-right:auto;">Delete</button>
+        <button class="btn btn-primary" id="modal-save" onclick="saveModal()">Save</button>
+      </div>
+    </div>
   </div>
+
+  <div id="delete-confirm-overlay" style="display:none;">
+    <div class="delete-confirm-modal">
+      <div class="delete-confirm-header">
+        <div class="delete-confirm-icon">🗑️</div>
+        <div class="delete-confirm-title">Delete Item</div>
+      </div>
+      <div class="delete-confirm-body">
+        <p>Are you sure you want to delete this item? This action cannot be undone.</p>
+      </div>
+      <div class="delete-confirm-footer">
+        <button class="btn btn-outline" onclick="closeDeleteConfirm()">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Popup Modal -->
+  <div id="date-popup-overlay">
+    <div id="date-popup-modal">
+      <div class="popup-header">
+        <div class="popup-title">Go to Date</div>
+        <button class="popup-close" onclick="closeDatePopup()">✕</button>
+      </div>
+      <div class="popup-section">
+        <div class="popup-label">Current Date</div>
+        <div class="popup-date-display" id="popup-current-date"></div>
+      </div>
+      <div class="popup-section">
+        <div class="popup-label">Select New Date</div>
+        <input type="date" class="popup-date-input" id="popup-date-input">
+      </div>
+      <div class="popup-actions">
+        <button class="btn btn-outline" onclick="closeDatePopup()">Cancel</button>
+        <button class="btn btn-primary" onclick="goToDate()">Go to Date</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-overlay" class="modal-overlay" style="display: none;">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <div class="settings-title">Manage Names</div>
+      </div>
+      <div class="settings-body">
+        <!-- Names Management Section -->
+        <div style="border: 1px solid var(--line); border-radius: 8px; padding: 16px;">
+          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Manage Names</h3>
+          <p style="color: var(--ink-mid); font-size: 13px; margin-bottom: 16px;">
+            Add, edit, or remove names that appear as quick options when assigning activities.
+          </p>
+          <div class="settings-input-row">
+            <input type="text" id="settings-name-input" placeholder="Enter a name..." class="settings-input">
+            <button class="btn btn-primary" onclick="addName()">Add</button>
+          </div>
+          <div id="settings-names-list" class="settings-names-list"></div>
+        </div>
+
+        <!-- Cloud Sync Section -->
+        <div class="settings-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line);">
+          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Cloud Sync (Google
+            Sheets)</h3>
+          <p style="color: var(--ink-mid); font-size: 12px; margin-bottom: 16px; line-height: 1.5;">
+            Store your timeline data in Google Sheets for sharing across devices and with others.
+          </p>
+
+          <div class="settings-toggle-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <input type="checkbox" id="cloud-sync-toggle" onchange="confirmCloudSyncToggle()"
+              style="width: 16px; height: 16px; cursor: pointer;">
+            <label for="cloud-sync-toggle" style="font-size: 13px; color: var(--ink); cursor: pointer;">Enable cloud
+              sync</label>
+          </div>
+
+          <div id="cloud-sync-config" style="display: none;">
+            <div style="margin-bottom: 12px;">
+              <label
+                style="font-size: 12px; font-weight: 500; color: var(--ink-mid); display: block; margin-bottom: 4px;">Google
+                Sheet ID</label>
+              <input type="text" id="sheet-id-input" placeholder="1BxiMVs0XRA5nFMdKvBdBZjGMUUqptb..."
+                class="settings-input" style="width: 100%; margin-bottom: 8px;" onchange="confirmSheetIdChange()">
+              <p style="font-size: 11px; color: var(--ink-light); margin: 0;">
+                From sheet URL: docs.google.com/spreadsheets/d/<strong>THIS_PART</strong>/edit
+              </p>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <button class="btn btn-primary" onclick="authenticateGoogle()">🔗 Test Connection</button>
+              <button class="btn btn-outline" onclick="setupGoogleSheetsStructure()">📊 Setup Sheet</button>
+            </div>
+
+            <div id="auth-status" style="font-size: 12px; color: var(--ink-mid); margin-bottom: 12px;"></div>
+
+            <button class="btn btn-gold" onclick="confirmSaveConfiguration()" style="width: 100%;">💾 Save
+              Configuration</button>
+
+            <div
+              style="margin-top: 16px; padding: 12px; background: rgba(26, 79, 139, 0.1); border-radius: 6px; border: 1px solid var(--blue);">
+              <h4
+                style="font-size: 11px; font-weight: 600; color: var(--blue); margin: 0 0 8px 0; text-transform: uppercase;">
+                Setup Instructions</h4>
+              <ol style="font-size: 11px; color: var(--ink-mid); margin: 0; padding-left: 16px; line-height: 1.6;">
+                <li style="margin-bottom: 4px;">Create a new Google Sheet at sheets.google.com</li>
+                <li style="margin-bottom: 4px;">Copy the Sheet ID from the URL (between /d/ and /edit)</li>
+                <li style="margin-bottom: 4px;">Enter the Sheet ID above and click "Test Connection"</li>
+                <li style="margin-bottom: 4px;">Click "Setup Sheet" to create the data structure</li>
+                <li>Share the sheet with others (Editor = full access, Viewer = read-only)</li>
+              </ol>
+              <p style="font-size: 11px; color: var(--ink-light); margin: 8px 0 0 0; font-style: italic;">
+                Note: Backend proxy server must be running. See BACKEND_PROXY_SETUP.md for details.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button class="btn btn-outline" onclick="closeSettingsModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // ─── CONSTANTS ───────────────────────────────────────────────────────────────
+    const STORAGE_KEY = 'bbTimeline_v5';
+    const ASSIGNEE_KEY = 'bbAssignees';
+
+    // Backend Proxy Configuration (Secure approach)
+    const PROXY_API_URL = 'http://localhost:3000/api';
+    const PROXY_API_KEY = 'da4e53877124bfd346c8839762985ed7ecb18e15094f471dbfb04da9a2c13250';
+
+    let sheetId = localStorage.getItem('bbSheetId') || '';
+    let useCloudSync = localStorage.getItem('bbUseCloudSync') === 'true';
+
+    const ACTIVITY_TYPES = [
+      { id: 'social', label: 'Social', icon: '📱', cls: 'type-social' },
+      { id: 'email', label: 'Email', icon: '📧', cls: 'type-email' },
+      { id: 'pr', label: 'PR', icon: '📰', cls: 'type-pr' },
+      { id: 'matchday', label: 'Matchday', icon: '🏉', cls: 'type-matchday' },
+      { id: 'digital', label: 'Digital', icon: '💻', cls: 'type-digital' },
+      { id: 'print', label: 'Print', icon: '🖨️', cls: 'type-print' },
+      { id: 'event', label: 'Event', icon: '🎟️', cls: 'type-event' },
+      { id: 'photo', label: 'Photography', icon: '📷', cls: 'type-photo' },
+      { id: 'interview', label: 'Interview', icon: '🎙️', cls: 'type-interview' },
+      { id: 'website', label: 'Website', icon: '💻', cls: 'type-website' },
+      { id: 'other', label: 'Other', icon: '📌', cls: 'type-other' }
+    ];
+
+    const TEAM_TYPES = ["Men's", "Women's", 'Reserves', 'Academy', 'Scholarship', 'Wheelchair', 'PD/LDRL'];
+
+    function teamInitials(name) {
+      if (!name) return '?';
+      return name.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
+    }
+
+    function getTeamLogo(name) {
+      if (!name) return null;
+
+      const teamLogos = {
+        'Halifax Panthers': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png',
+        'Featherstone Rovers': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png',
+        'York Knights': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png',
+        'Toulouse Olympique': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png',
+        'Sheffield Eagles': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png',
+        'Leigh Leopards': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Leigh_Leopards_logo.svg/200px-Leigh_Leopards_logo.svg.png',
+        'London Broncos': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png',
+        'Wakefield Trinity': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png',
+        'Castleford Tigers': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png',
+        'Huddersfield Giants': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png',
+        'Warrington Wolves': 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png',
+        'Wigan Warriors': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png',
+        'St Helens': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png',
+        'Leeds Rhinos': 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png',
+        'Hull KR': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png',
+        'Hull FC': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png',
+        'Catalans Dragons': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png',
+        'Salford Red Devils': 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png'
+      };
+
+      // Try exact match first
+      if (teamLogos[name]) {
+        return teamLogos[name];
+      }
+
+      // Try case-insensitive match
+      const lowerName = name.toLowerCase();
+      for (const [team, logo] of Object.entries(teamLogos)) {
+        if (team.toLowerCase() === lowerName) {
+          return logo;
+        }
+      }
+
+      return null; // Falls back to initials if no logo found
+    }
+
+    // ─── STATE ────────────────────────────────────────────────────────────────────
+    let S = { items: [], savedAssignees: [] };
+    let currentModal = null;
+    let dragActivityId = null;
+    let isDraggingActivity = false;
+    let dragEndTime = 0;
+    let disableToggle = false;
+
+    // ─── BACKEND PROXY FUNCTIONS ─────────────────────────────────────────────────────────────
+
+    async function proxyRequest(endpoint, data = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Proxy-Secret-Key': PROXY_API_KEY
+      };
+
+      const config = {
+        method: data ? 'POST' : 'GET',
+        headers: headers,
+      };
+
+      if (data) {
+        config.body = JSON.stringify(data);
+      }
+
+      const url = `${PROXY_API_URL}${endpoint}${data ? '' : '?sheetId=' + encodeURIComponent(sheetId)}`;
+
+      try {
+        const response = await fetch(url, config);
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Proxy request failed');
+        }
+
+        return result;
+      } catch (error) {
+        console.error('Proxy request error:', error);
+        throw error;
+      }
+    }
+
+    async function saveToGoogleSheets() {
+      if (!useCloudSync || sheetId === '') {
+        saveToLocal();
+        return;
+      }
+
+      try {
+        const result = await proxyRequest('/sheets/save', {
+          sheetId: sheetId,
+          items: S.items,
+          savedAssignees: S.savedAssignees
+        });
+
+        if (result.success) {
+          showToast('Saved to Google Sheets!');
+        }
+      } catch (err) {
+        console.error('Google Sheets save error:', err);
+        showToast('Failed to save to Google Sheets. Using local storage.', 'error');
+        saveToLocal();
+      }
+    }
+
+    async function loadFromGoogleSheets() {
+      if (!useCloudSync || sheetId === '') {
+        loadFromLocal();
+        return;
+      }
+
+      try {
+        const result = await proxyRequest('/sheets/load');
+
+        if (result.success && result.data) {
+          if (result.data.items.length > 0) {
+            S.items = result.data.items;
+            S.savedAssignees = result.data.savedAssignees;
+            showToast('Loaded from Google Sheets!');
+            render();
+          } else {
+            showToast('No data found in Google Sheets', 'error');
+          }
+        }
+      } catch (err) {
+        console.error('Google Sheets load error:', err);
+        showToast('Failed to load from Google Sheets. Using local storage.', 'error');
+        loadFromLocal();
+      }
+    }
+
+    async function setupGoogleSheetsStructure() {
+      if (sheetId === '') {
+        showToast('Please set Sheet ID first', 'error');
+        return;
+      }
+
+      try {
+        const result = await proxyRequest('/sheets/setup', { sheetId: sheetId });
+
+        if (result.success) {
+          showToast('Google Sheets structure created!');
+        }
+      } catch (err) {
+        console.error('Setup error:', err);
+        showToast('Failed to setup Google Sheets structure', 'error');
+      }
+    }
+
+    async function authenticateGoogle() {
+      // With backend proxy, no Google OAuth needed - just test connectivity
+      if (sheetId === '') {
+        showToast('Please enter a Google Sheet ID first', 'error');
+        return;
+      }
+
+      try {
+        const result = await proxyRequest('/sheets/load');
+        if (result.success) {
+          showToast('Backend proxy connected successfully!');
+        } else {
+          throw new Error(result.error || 'Connection failed');
+        }
+      } catch (err) {
+        console.error('Proxy connection test failed:', err);
+        showToast('Failed to connect to backend proxy. Is the server running?', 'error');
+      }
+    }
+
+    // ─── LOCAL STORAGE FALLBACK ─────────────────────────────────────────────────────────────
+    async function saveToGoogleSheets() {
+      if (!useCloudSync || sheetId === '') {
+        // Fallback to localStorage
+        saveToLocal();
+        return;
+      }
+
+      try {
+        const itemsData = [['id', 'type', 'title', 'date', 'fixtureId', 'assignees', 'data']];
+        S.items.forEach(item => {
+          itemsData.push([
+            item.id,
+            item.type,
+            item.title,
+            item.date,
+            item.fixtureId || '',
+            JSON.stringify(item.assignees || []),
+            JSON.stringify(item)
+          ]);
+        });
+
+        const result = await proxyRequest('/sheets/save', {
+          sheetId: sheetId,
+          items: S.items,
+          savedAssignees: S.savedAssignees || []
+        });
+
+        if (result.success) {
+          showToast('Saved to Google Sheets!');
+        } else {
+          throw new Error(result.error || 'Save failed');
+        }
+      } catch (err) {
+        console.error('Google Sheets save error:', err);
+        showToast('Failed to save to Google Sheets. Using local storage.', 'error');
+        saveToLocal();
+      }
+    }
+
+    async function loadFromGoogleSheets() {
+      if (!useCloudSync || sheetId === '') {
+        // Fallback to localStorage
+        loadFromLocal();
+        return;
+      }
+
+      try {
+        const result = await proxyRequest('/sheets/load');
+
+        if (result.success) {
+          S.items = result.data.items;
+          S.savedAssignees = result.data.savedAssignees;
+          render();
+          showToast('Loaded from Google Sheets!');
+        } else {
+          throw new Error(result.error || 'Load failed');
+        }
+      } catch (err) {
+        console.error('Google Sheets load error:', err);
+        showToast('Failed to load from Google Sheets. Using local storage.', 'error');
+        loadFromLocal();
+      }
+    }
+
+    async function setupGoogleSheetsStructure() {
+      if (sheetId === '') {
+        showToast('Please set Sheet ID first', 'error');
+        return;
+      }
+
+      try {
+        const result = await proxyRequest('/sheets/setup', { sheetId: sheetId });
+
+        if (result.success) {
+          showToast('Google Sheets structure created successfully!');
+        } else {
+          throw new Error(result.error || 'Setup failed');
+        }
+      } catch (err) {
+        console.error('Setup error:', err);
+        showToast('Failed to setup Google Sheets structure', 'error');
+      }
+    }
+
+    // ─── LOCAL STORAGE FALLBACK ─────────────────────────────────────────────────────────────
+    function saveToLocal() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch (e) { }
+    }
+
+    function saveAssigneesToLocal() {
+      try { localStorage.setItem(ASSIGNEE_KEY, JSON.stringify(S.savedAssignees)); } catch (e) { }
+    }
+
+    function loadAssigneesFromLocal() {
+      try {
+        const d = localStorage.getItem(ASSIGNEE_KEY);
+        if (d) S.savedAssignees = JSON.parse(d);
+      } catch (e) { }
+      if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
+    }
+
+    function loadFromLocal() {
+      try { const d = localStorage.getItem(STORAGE_KEY); if (d) S = JSON.parse(d); } catch (e) { }
+      if (!S.items || !S.items.length) seedDemo();
+      S.items.forEach(i => { if (!i.assignees) i.assignees = []; });
+      if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
+      loadAssigneesFromLocal();
+    }
+
+    // ─── UNIFIED PERSISTENCE FUNCTIONS ─────────────────────────────────────────────────────────────
+    function save() {
+      if (useCloudSync) {
+        saveToGoogleSheets();
+      } else {
+        saveToLocal();
+      }
+    }
+
+    function saveAssignees() {
+      if (useCloudSync) {
+        saveToGoogleSheets();
+      } else {
+        saveAssigneesToLocal();
+      }
+    }
+
+    function loadAssignees() {
+      if (useCloudSync) {
+        loadFromGoogleSheets();
+      } else {
+        loadAssigneesFromLocal();
+      }
+    }
+
+    function load() {
+      if (useCloudSync) {
+        loadFromGoogleSheets();
+      } else {
+        loadFromLocal();
+      }
+    }
+
+    // ─── SEED ─────────────────────────────────────────────────────────────────────
+    function seedDemo() {
+      const today = new Date();
+      const fixtures = [
+        { opponent: 'Halifax Panthers', offset: -15, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" },
+        { opponent: 'Featherstone Rovers', offset: -5, venue: 'Millenium Stadium', matchType: 'League', home: false, team: "Men's" },
+        { opponent: 'York Knights', offset: 4, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" },
+        { opponent: 'Toulouse Olympique', offset: 14, venue: 'Stade Ernest-Wallon', matchType: 'League', home: false, team: "Men's" },
+        { opponent: 'Sheffield Eagles', offset: 25, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }
+      ];
+
+      fixtures.forEach(f => {
+        const fid = uid();
+        const fdate = offsetDate(today, f.offset);
+        S.items.push({
+          id: fid, type: 'fixture', date: fmtDate(fdate),
+          opponent: f.opponent, venue: f.venue, matchType: f.matchType,
+          venueType: f.home ? 'home' : 'away', teamType: f.team || "Men's", notes: '', assignees: []
+        });
+
+        const count = Math.floor(Math.random() * 3) + 1;
+        for (let i = 0; i < count; i++) {
+          S.items.push({
+            id: uid(), type: 'activity',
+            date: fmtDate(offsetDate(fdate, -Math.floor(Math.random() * 4))),
+            title: randomActivity(), actType: ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id,
+            fixtureId: fid, notes: '', assignees: [], complete: Math.random() > 0.5
+          });
+        }
+      });
+
+      S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offsetDate(today, -20)), title: 'Mid-Season Launch', style: 'gold', notes: 'Media Day Arena Reveal', assignees: [] });
+      S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offsetDate(today, 30)), title: 'Playoffs Kick-off', style: 'red', notes: 'Championship Bracket Matchup', assignees: [] });
+      S.items.push({ id: uid(), type: 'note', date: fmtDate(offsetDate(today, 7)), content: 'Key sponsor wants increased signage on east stand. Follow up by end of week with deck.', assignees: [] });
+      S.items.push({ id: uid(), type: 'note', date: fmtDate(offsetDate(today, -3)), content: 'Season ticket sales ahead of target. Digital reach up 18% YoY. Action: produce mid-season report.', assignees: [] });
+
+      if (!S.savedAssignees || !S.savedAssignees.length) {
+        S.savedAssignees = ['Sarah Mitchell', 'Tom Bradley', 'Jake Whitfield', 'Emma Clarke', 'Dave Sutton'];
+        saveAssignees();
+      }
+
+      save();
+    }
+
+    function randomActivity() {
+      const acts = ['Instagram Post', 'Facebook Reel', 'Press Release', 'Matchday Programme Matchup Story', 'TikTok Video Wrap', 'Twitter Thread Breakdown', 'Sponsor Video Spot'];
+      return acts[Math.floor(Math.random() * acts.length)];
+    }
+
+    function offsetDate(d, days) { const r = new Date(d); r.setDate(r.getDate() + days); return r; }
+    function fmtDate(d) { return d.toISOString().split('T')[0]; }
+    function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+    function todayStr() { return new Date().toISOString().split('T')[0]; }
+    function daysUntil(ds) { return Math.round((new Date(ds + 'T12:00:00') - new Date(todayStr() + 'T12:00:00')) / 86400000); }
+    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function fmtDisplay(ds) { if (!ds) return ''; return new Date(ds + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' }); }
+    function fmtMonth(ds) { return new Date(ds + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
+
+    // ─── COMPUTED GROUPS BUILDER ──────────────────────────────────────────────────
+    function buildGroups(items) {
+      const seen = new Set();
+      const groups = [];
+      const fixtureActMap = {};
+
+      // Map fixture activities
+      S.items.filter(i => i.type === 'activity' && i.fixtureId).forEach(a => {
+        if (!fixtureActMap[a.fixtureId]) fixtureActMap[a.fixtureId] = [];
+        fixtureActMap[a.fixtureId].push(a);
+      });
+
+      // Group items by date
+      const dateMap = {};
+      items.forEach(item => {
+        if (seen.has(item.id)) return;
+
+        if (item.type === 'fixture') {
+          seen.add(item.id);
+          const linkedActs = fixtureActMap[item.id] || [];
+          linkedActs.forEach(a => seen.add(a.id));
+
+          if (!dateMap[item.date]) {
+            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
+          }
+          dateMap[item.date].items.push({
+            type: 'fixture',
+            fixture: item,
+            activities: linkedActs.sort((a, b) => a.date.localeCompare(b.date))
+          });
+        } else if (item.type === 'milestone') {
+          seen.add(item.id);
+          if (!dateMap[item.date]) {
+            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
+          }
+          dateMap[item.date].items.push({ type: 'milestone', item });
+        } else if (item.type === 'note') {
+          seen.add(item.id);
+          if (!dateMap[item.date]) {
+            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
+          }
+          dateMap[item.date].items.push({ type: 'note', item });
+        } else if (item.type === 'activity' && !item.fixtureId) {
+          seen.add(item.id);
+          if (!dateMap[item.date]) {
+            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
+          }
+          dateMap[item.date].items.push({ type: 'activity', item });
+        }
+      });
+
+      // Convert date map to groups
+      Object.values(dateMap).forEach(dateGroup => {
+        groups.push(dateGroup);
+      });
+
+      return groups.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    // ─── RENDER ENGINE ────────────────────────────────────────────────────────────
+    function render() {
+      const content = document.getElementById('timeline-content');
+      const today = todayStr();
+
+      const pastItems = S.items.filter(i => i.date < today);
+      const activeItems = S.items.filter(i => i.date >= today);
+
+      const pastGroups = buildGroups(pastItems);
+      const activeGroups = buildGroups(activeItems);
+
+      let html = '';
+
+      if (pastGroups.length > 0) {
+        let pastInner = '';
+        let side = 0, lastMonth = '';
+        pastGroups.forEach(g => {
+          const month = g.date.slice(0, 7);
+          if (month !== lastMonth) { lastMonth = month; pastInner += `<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`; }
+          pastInner += renderGroup(g, side % 2 === 0 ? 'side-left' : 'side-right', true);
+          side++;
+        });
+        html += `
+    <div id="past-accordion">
+      <div id="past-toggle" onclick="togglePast(event, this)">
+        show previous activity
+      </div>
+      <div id="past-items">${pastInner}</div>
+    </div>`;
+      }
+
+      html += `<div id="today-marker">
+    <div class="today-line"></div>
+    <div class="today-badge">Today — ${fmtDisplay(today)}</div>
+    <div class="today-line"></div>
+  </div>`;
+
+      let side = 0, lastMonth = '';
+      activeGroups.forEach(g => {
+        const month = g.date.slice(0, 7);
+        if (month !== lastMonth) { lastMonth = month; html += `<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`; }
+        html += renderGroup(g, side % 2 === 0 ? 'side-left' : 'side-right', false);
+        side++;
+      });
+
+      if (activeGroups.length === 0 && pastGroups.length === 0) {
+        html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
+      }
+
+      content.innerHTML = html;
+      attachEvents();
+    }
+
+    function renderGroup(g, side, isPast) {
+      if (g.type === 'date-group') return renderDateGroup(g, side, isPast);
+      if (g.type === 'fixture') return renderFixtureGroup(g, side, isPast);
+      if (g.type === 'milestone') return renderMilestoneGroup(g, side, isPast);
+      if (g.type === 'note') return renderNoteGroup(g, side, isPast);
+      return renderActivityGroup(g, side, isPast);
+    }
+
+    function renderDateGroup(g, side, isPast) {
+      const items = g.items;
+      let itemsHtml = '';
+      let itemSide = 0;
+
+      items.forEach(item => {
+        if (item.type === 'fixture') {
+          itemsHtml += renderFixtureGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
+        } else if (item.type === 'milestone') {
+          itemsHtml += renderMilestoneGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
+        } else if (item.type === 'note') {
+          itemsHtml += renderNoteGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
+        } else if (item.type === 'activity') {
+          itemsHtml += renderActivityGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
+        }
+        itemSide++;
+      });
+
+      return `
+  <div class="date-group">
+    <div class="date-header">
+      <div class="date-label" data-date="${g.date}" onclick="copyDateLink('${g.date}')" ondblclick="showDatePopup('${g.date}')">${fmtDisplay(g.date)}</div>
+    </div>
+    ${itemsHtml}
+  </div>`;
+    }
+
+    function renderFixtureGroup(g, side, isPast) {
+      const f = g.fixture;
+      const acts = g.activities;
+      const days = daysUntil(f.date);
+
+      const venueClass = f.venueType === 'home' ? 'home' : f.venueType === 'away' ? 'away' : 'neutral';
+      const venueLabel = f.venueType === 'home' ? 'H' : f.venueType === 'away' ? 'A' : 'N';
+
+      let countdownTxt, countdownCls;
+      if (isPast || days < 0) { countdownTxt = `${Math.abs(days)}d ago`; countdownCls = 'past'; }
+      else if (days === 0) { countdownTxt = 'MATCHDAY'; countdownCls = 'imminent'; }
+      else if (days === 1) { countdownTxt = 'Tomorrow'; countdownCls = 'imminent'; }
+      else if (days <= 7) { countdownTxt = `${days} Days To Go`; countdownCls = 'imminent'; }
+      else { countdownTxt = `${days} Days`; countdownCls = 'far'; }
+
+      const teamLogo = getTeamLogo(f.opponent);
+      const logoHtml = teamLogo
+        ? `<img src="${teamLogo}" alt="${esc(f.opponent)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="fixture-logo-initials" style="display:none">${esc(teamInitials(f.opponent))}</div>`
+        : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
+      const teamBadge = f.teamType ? `<span class="team-badge">${esc(f.teamType)}</span>` : '';
+      const actsHtml = acts.map(a => renderMiniActivity(a)).join('');
+
+      return `
+  <div class="tl-row ${side}" data-id="${f.id}">
+    <div class="tl-spacer"></div>
+    <div class="tl-node">
+      <div class="node-dot fixture-dot${isPast ? ' past-dot' : ''}"></div>
+    </div>
+    <div class="tl-card-wrap">
+      <div class="fixture-card${isPast ? ' past' : ''}" id="fc-${f.id}" data-fixture-id="${f.id}">
+        <div class="fixture-header">
+          <div class="fixture-logo-wrap">${logoHtml}</div>
+          <div class="fixture-meta">
+            <div class="fixture-opponent">${esc(f.opponent)}</div>
+            <div class="fixture-sub">
+              <span class="subtle-date">${fmtDisplay(f.date)}</span>
+              ${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ''}
+              <span>🏉 ${esc(f.matchType || '')}</span>
+              ${teamBadge}
+            </div>
+          </div>
+          <div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div>
+        </div>
+        <div class="fixture-footer">
+          <div class="countdown-text ${countdownCls}">${countdownTxt}</div>
+          ${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ''}
+          <div class="fixture-actions">
+            <button class="activity-btn" title="Edit" onclick="editFixture('${f.id}')">✎</button>
+            <button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button>
+          </div>
+        </div>
+        ${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ''}
+      </div>
+    </div>
+  </div>`;
+    }
+
+    function renderMiniActivity(a) {
+      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[7];
+      const completeCls = a.complete ? ' complete' : '';
+      const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
+      return `
+  <div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true">
+    <div class="drag-handle">⠿</div>
+    <div class="activity-icon ${aType.cls}">${aType.icon}</div>
+    <div class="activity-body">
+      <div class="activity-title">${esc(a.title)}</div>
+      <div class="activity-meta${a.complete ? ' complete-meta' : ''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}</div>
+      ${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}
+    </div>
+    <div class="activity-btns">
+      <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
+      <button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button>
+      <button class="activity-btn" title="Edit" onclick="editActivity('${a.id}')">✎</button>
+      <button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button>
+    </div>
+  </div>`;
+    }
+
+    function renderActivityGroup(g, side, isPast) {
+      const a = g.item;
+      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[7];
+      const completeCls = a.complete ? ' complete' : '';
+      const pastCls = isPast ? ' past' : '';
+      const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
+
+      return `
+  <div class="tl-row ${side}" data-id="${a.id}">
+    <div class="tl-spacer"></div>
+    <div class="tl-node">
+      <div class="node-dot${a.complete ? ' complete-dot' : ''}${isPast && !a.complete ? ' past-dot' : ''}"></div>
+    </div>
+    <div class="tl-card-wrap">
+      <div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}">
+        <div class="act-row" draggable="true">
+          <div class="drag-handle">⠿</div>
+          <div class="activity-icon ${aType.cls}">${aType.icon}</div>
+          <div class="activity-body">
+            <div class="activity-title">${esc(a.title)}</div>
+            <div class="activity-meta${a.complete ? ' complete-meta' : ''}">
+              <span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}
+            </div>
+            ${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}
+          </div>
+          <div class="activity-btns">
+            <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
+            <button class="activity-btn" title="Edit" onclick="editActivity('${a.id}')">✎</button>
+            <button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+    }
+
+    function renderMilestoneGroup(g, side, isPast) {
+      const m = g.item;
+      const style = m.style || 'red';
+      const pastCls = isPast ? ' past' : '';
+      return `
+  <div class="tl-row ${side}" data-id="${m.id}">
+    <div class="tl-spacer"></div>
+    <div class="tl-node">
+      <div class="node-dot milestone-dot${isPast ? ' past-dot' : ''}"></div>
+    </div>
+    <div class="tl-card-wrap">
+      <div class="milestone-card ${style}${pastCls}" ondblclick="editMilestone('${m.id}')">
+        <div class="milestone-label">⚑ Milestone</div>
+        <div class="milestone-title">${esc(m.title)}</div>
+        <div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div>
+      </div>
+    </div>
+  </div>`;
+    }
+
+    function renderNoteGroup(g, side, isPast) {
+      const n = g.item;
+      const pastCls = isPast ? ' past' : '';
+      return `
+  <div class="tl-row ${side}" data-id="${n.id}">
+    <div class="tl-spacer"></div>
+    <div class="tl-node">
+      <div class="node-dot ${isPast ? 'past-dot' : ''}" style="background: var(--ink-mid); box-shadow: 0 0 0 2px var(--ink-mid);"></div>
+    </div>
+    <div class="tl-card-wrap">
+      <div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}">
+        <div class="act-row">
+          <div class="note-body">
+            <div class="note-content">${esc(n.content)}</div>
+            <div class="note-meta">
+              <span class="subtle-date">${fmtDisplay(n.date)}</span>
+            </div>
+          </div>
+          <div class="activity-btns">
+            <button class="activity-btn" title="Edit" onclick="editNote('${n.id}')">✎</button>
+            <button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+    }
+
+    // ─── INTERACTIONS & CONFIG ───────────────────────────────────────────────────
+    function toggleComplete(id) {
+      const item = S.items.find(i => i.id === id);
+      if (!item) return;
+
+      // Track open dropdowns before render
+      const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
+
+      item.complete = !item.complete;
+      save(); render();
+
+      // Restore open dropdowns after render
+      openDropdowns.forEach(fid => {
+        const cluster = document.getElementById('cluster-' + fid);
+        const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+        if (cluster) {
+          cluster.style.display = '';
+          if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
+        }
+      });
+
+      showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
+    }
+
+    function moveToTimeline(id) {
+      const item = S.items.find(i => i.id === id);
+      if (!item) return;
+      if (!item.fixtureId) {
+        showToast('Activity is already on the main timeline');
+        return;
+      }
+      item.fixtureId = null;
+      save(); render();
+      showToast('Activity moved to main timeline');
+    }
+
+    function togglePast(e, btn) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isOpening = !btn.classList.contains('open');
+      const todayMarker = document.getElementById('today-marker');
+      const pastItems = document.getElementById('past-items');
+
+      if (isOpening) {
+        // Snapshot viewport offset of Today before anything changes
+        const viewportOffset = todayMarker.getBoundingClientRect().top;
+
+        // Expand instantly with no transition
+        pastItems.style.cssText = 'max-height:none; opacity:1; overflow:visible; transition:none;';
+        btn.classList.add('open');
+        btn.textContent = 'hide previous activity';
+
+        // One rAF — layout is now settled, correct scroll
+        requestAnimationFrame(() => {
+          const newOffset = todayMarker.getBoundingClientRect().top;
+          const shift = newOffset - viewportOffset;
+          if (shift !== 0) window.scrollTo({ top: window.scrollY + shift - 200, behavior: 'instant' });
+        });
+
+      } else {
+        // Collapse
+        pastItems.style.cssText = 'max-height:0; opacity:0; overflow:hidden; transition:none;';
+        btn.classList.remove('open');
+        btn.textContent = 'show previous activity';
+
+        // Scroll to today marker instantly
+        todayMarker.scrollIntoView({ behavior: 'instant', block: 'center' });
+      }
+    }
+
+    function toggleActCluster(fid) {
+      // Completely disable toggle functionality during/after drag operations
+      if (disableToggle) return;
+
+      const cluster = document.getElementById('cluster-' + fid);
+      const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+      if (!cluster) return;
+
+      const hidden = cluster.style.display === 'none';
+      cluster.style.display = hidden ? '' : 'none';
+      if (btn) btn.textContent = (hidden ? '▾ ' : '▸ ') + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
+    }
+
+    function ensureDropdownOpen(fid) {
+      const cluster = document.getElementById('cluster-' + fid);
+      const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+      if (cluster && btn) {
+        // Force it open immediately
+        cluster.style.display = '';
+        btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
+
+        // Keep forcing it open for 3 seconds to prevent any stray clicks from closing it
+        let attempts = 0;
+        const forceOpenInterval = setInterval(() => {
+          attempts++;
+          if (cluster.style.display === 'none') {
+            cluster.style.display = '';
+            btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
+          }
+          if (attempts >= 60) { // 60 * 50ms = 3 seconds
+            clearInterval(forceOpenInterval);
+          }
+        }, 50);
+      }
+    }
+
+    // Prevent dropdown closing when clicking during/after drag operations
+    document.addEventListener('click', function (event) {
+      if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) {
+        const toggleBtn = event.target.closest('.fixture-acts-toggle');
+        if (toggleBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          return false;
+        }
+      }
+    }, true);
+
+    // Close autocomplete dropdown when clicking outside
+    document.addEventListener('click', function (event) {
+      const dropdown = document.getElementById('autocomplete-dropdown');
+      const input = document.getElementById('assignee-input');
+      if (dropdown && input) {
+        if (!dropdown.contains(event.target) && event.target !== input) {
+          hideAssigneeSuggestions();
+        }
+      }
+    });
+
+    // ─── DRAG & DROP ─────────────────────────────────────────────────────────────
+    function attachEvents() {
+      document.querySelectorAll('.activity-card, .mini-activity').forEach(el => {
+        el.addEventListener('dragstart', (e) => {
+          dragActivityId = el.dataset.id;
+          isDraggingActivity = true;
+          e.dataTransfer.effectAllowed = 'move';
+          el.classList.add('dragging');
+
+          // Temporarily disable toggle buttons during drag
+          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+            btn.dataset.originalOnclick = btn.getAttribute('onclick');
+            btn.removeAttribute('onclick');
+          });
+        });
+
+        el.addEventListener('dragend', (e) => {
+          el.classList.remove('dragging');
+          document.querySelectorAll('.mini-activity').forEach(item => {
+            item.classList.remove('drag-over');
+          });
+          isDraggingActivity = false;
+          dragEndTime = Date.now();
+
+          // Restore toggle button onclick handlers after drag
+          setTimeout(() => {
+            document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+              if (btn.dataset.originalOnclick) {
+                btn.setAttribute('onclick', btn.dataset.originalOnclick);
+                delete btn.dataset.originalOnclick;
+              }
+            });
+          }, 200);
+        });
+      });
+
+      document.querySelectorAll('.fixture-card').forEach(fc => {
+        fc.addEventListener('dragover', e => e.preventDefault());
+        fc.addEventListener('dragenter', () => fc.classList.add('drop-active'));
+        fc.addEventListener('dragleave', () => fc.classList.remove('drop-active'));
+        fc.addEventListener('drop', (e) => {
+          e.preventDefault();
+          fc.classList.remove('drop-active');
+          const act = S.items.find(i => i.id === dragActivityId);
+          if (act && act.type === 'activity') {
+            act.fixtureId = fc.dataset.fixtureId;
+            save(); render();
+            showToast('🏉 Activity linked smoothly to match!');
+          }
+        });
+      });
+
+      // Prevent clicks on fixture footers during/after drag operations
+      document.querySelectorAll('.fixture-footer').forEach(footer => {
+        footer.addEventListener('click', (e) => {
+          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) {
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+          }
+        }, true); // Use capture phase to catch clicks early
+      });
+
+      // Prevent clicks on toggle buttons during/after drag operations
+      document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) {
+            e.stopPropagation();
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+          }
+        }, true); // Use capture phase to catch clicks early
+      });
+
+      // Add drag-and-drop for reordering within activity clusters
+      document.querySelectorAll('.activity-cluster').forEach(cluster => {
+        cluster.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const dragging = document.querySelector('.dragging');
+          if (!dragging) return;
+
+          const afterElement = getDragAfterElement(cluster, e.clientY);
+          if (afterElement == null) {
+            cluster.appendChild(dragging);
+          } else {
+            cluster.insertBefore(dragging, afterElement);
+          }
+        });
+
+        cluster.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const fixtureId = cluster.id.replace('cluster-', '');
+          const clusterActivities = Array.from(cluster.querySelectorAll('.mini-activity'));
+          const newOrderIds = clusterActivities.map(el => el.dataset.id);
+
+          // Update the order in the data structure
+          const fixtureActivities = S.items.filter(i => i.fixtureId === fixtureId && i.type === 'activity');
+          const orderedActivities = [];
+
+          newOrderIds.forEach(id => {
+            const activity = fixtureActivities.find(a => a.id === id);
+            if (activity) orderedActivities.push(activity);
+          });
+
+          // Update the main items array to reflect new order
+          // Remove the reordered activities from main array
+          S.items = S.items.filter(i => !newOrderIds.includes(i.id));
+          // Add them back in new order
+          orderedActivities.forEach(act => S.items.push(act));
+
+          // Save without re-rendering - the DOM is already in the correct order
+          save();
+
+          // Temporarily disable the toggle button to prevent it from closing the dropdown
+          const btn = document.querySelector(`[onclick="toggleActCluster('${fixtureId}')"]`);
+          if (btn) {
+            const originalOnClick = btn.getAttribute('onclick');
+            btn.removeAttribute('onclick');
+            btn.style.pointerEvents = 'none';
+
+            setTimeout(() => {
+              btn.setAttribute('onclick', originalOnClick);
+              btn.style.pointerEvents = '';
+            }, 500);
+          }
+
+          // Ensure the dropdown stays open after reordering
+          ensureDropdownOpen(fixtureId);
+        });
+      });
+    }
+
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.mini-activity:not(.dragging)')];
+
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // ─── MODAL CONTROLS ──────────────────────────────────────────────────────────
+    function openModal(type, id) {
+      currentModal = { type, editId: id || null, data: id ? S.items.find(i => i.id === id) : null, assignees: [] };
+      if (id && currentModal.data) currentModal.assignees = [...(currentModal.data.assignees || [])];
+      renderModal();
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentModal = null; }
+
+    function toggleMobileDropdown() {
+      const dropdown = document.getElementById('mobile-dropdown');
+      dropdown.classList.toggle('show');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (event) {
+      const wrapper = document.querySelector('.mobile-add-wrapper');
+      const dropdown = document.getElementById('mobile-dropdown');
+      if (wrapper && dropdown && !wrapper.contains(event.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
+    function editFixture(id) { openModal('fixture', id); }
+    function editActivity(id) { openModal('activity', id); }
+    function editMilestone(id) { openModal('milestone', id); }
+    function editNote(id) { openModal('note', id); }
+
+    function renderModal() {
+      const { type, editId, data } = currentModal;
+      const isEdit = !!editId;
+      document.getElementById('modal-title').textContent = isEdit ? `Edit ${type.toUpperCase()}` : `Add ${type.toUpperCase()}`;
+      const body = document.getElementById('modal-body');
+
+      // Show delete button only for editing milestones
+      const deleteBtn = document.getElementById('modal-delete');
+      deleteBtn.style.display = (isEdit && type === 'milestone') ? 'block' : 'none';
+
+      const assigneeSection = () => {
+        const chips = (currentModal.assignees || []).map((p, i) =>
+          `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`
+        ).join('');
+        const quickPills = S.savedAssignees
+          .filter(n => !(currentModal.assignees || []).includes(n))
+          .slice(0, 8)
+          .map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`)
+          .join('');
+        return `
+    <div class="form-group">
+      <div class="quick-add-row" id="quick-add-row">
+        <span class="quick-add-label">Quick Add:</span>${quickPills}
+      </div>
+      <div class="custom-assignee-row">
+        <input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()">
+        <button class="btn btn-outline" onclick="addCustomAssignee()">Add</button>
+      </div>
+      <div class="assignee-list" id="assignee-list">${chips}</div>
+    </div>`;
+      };
+
+      if (type === 'fixture') {
+        const f = data || {};
+        body.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Opponent *</label>
+        <input class="form-input" id="f-opponent" value="${esc(f.opponent || '')}">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input class="form-input" id="f-date" type="date" value="${f.date || todayStr()}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Match Type</label>
+          <select class="form-select" id="f-type">
+            ${['League', 'Cup', 'Playoff', 'Friendly'].map(t => `<option ${f.matchType === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Team Type</label>
+        <div class="team-selector" id="f-teamtype">
+          <div class="team-opt ${f.teamType === "Men's" || !f.teamType ? 'selected' : ''}" data-value="Men's">Men's</div>
+          <div class="team-opt ${f.teamType === "Women's" ? 'selected' : ''}" data-value="Women's">Women's</div>
+          <div class="team-opt ${f.teamType === 'Reserves' ? 'selected' : ''}" data-value="Reserves">Reserves</div>
+          <div class="team-opt ${f.teamType === 'Academy' ? 'selected' : ''}" data-value="Academy">Academy</div>
+          <div class="team-opt ${f.teamType === 'Scholarship' ? 'selected' : ''}" data-value="Scholarship">Scholarship</div>
+          <div class="team-opt ${f.teamType === 'Wheelchair' ? 'selected' : ''}" data-value="Wheelchair">Wheelchair</div>
+          <div class="team-opt ${f.teamType === 'PD/LDRL' ? 'selected' : ''}" data-value="PD/LDRL">PD/LDRL</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Venue</label>
+        <input class="form-input" id="f-venue" value="${esc(f.venue || '')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Venue Type</label>
+        <div class="venue-selector" id="f-vtype">
+          <div class="venue-opt home ${f.venueType === 'home' ? 'selected' : ''}" data-value="home">Home</div>
+          <div class="venue-opt away ${f.venueType === 'away' ? 'selected' : ''}" data-value="away">Away</div>
+          <div class="venue-opt neutral ${f.venueType === 'neutral' ? 'selected' : ''}" data-value="neutral">Neutral</div>
+        </div>
+      </div>`;
+
+        // Add click handlers for venue selector
+        const venueOpts = document.querySelectorAll('#f-vtype .venue-opt');
+        venueOpts.forEach(opt => {
+          opt.addEventListener('click', function () {
+            venueOpts.forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+          });
+        });
+
+        // Add click handlers for team selector
+        const teamOpts = document.querySelectorAll('#f-teamtype .team-opt');
+        teamOpts.forEach(opt => {
+          opt.addEventListener('click', function () {
+            teamOpts.forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+          });
+        });
+      } else if (type === 'activity') {
+        const a = data || {};
+        body.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-input" id="a-title" value="${esc(a.title || '')}">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-select" id="a-type">
+            ${ACTIVITY_TYPES.map(t => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === 'other') ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || '')}</textarea>
+      </div>
+      ${assigneeSection()}`;
+      } else if (type === 'milestone') {
+        const m = data || {};
+        body.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-input" id="m-title" value="${esc(m.title || '')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Style Color</label>
+        <div class="style-selector" id="m-style">
+          <div class="style-opt red ${m.style === 'red' ? 'selected' : ''}" data-value="red" title="Red"></div>
+          <div class="style-opt gold ${m.style === 'gold' ? 'selected' : ''}" data-value="gold" title="Gold"></div>
+          <div class="style-opt neutral ${m.style === 'neutral' ? 'selected' : ''}" data-value="neutral" title="Neutral"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || '')}</textarea>
+      </div>`;
+
+        // Add click handlers for style selector
+        const styleOpts = document.querySelectorAll('#m-style .style-opt');
+        styleOpts.forEach(opt => {
+          opt.addEventListener('click', function () {
+            styleOpts.forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+          });
+        });
+      } else if (type === 'note') {
+        const n = data || {};
+        body.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input class="form-input" id="n-date" type="date" value="${n.date || todayStr()}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Content *</label>
+        <textarea class="form-input" id="n-content" rows="5">${esc(n.content || '')}</textarea>
+      </div>`;
+      }
+
+      // Add click handlers for venue selector
+      const venueOpts = document.querySelectorAll('#f-vtype .venue-opt');
+      venueOpts.forEach(opt => {
+        opt.addEventListener('click', function () {
+          venueOpts.forEach(o => o.classList.remove('selected'));
+          this.classList.add('selected');
+        });
+      });
+    }
+
+    function quickAddAssignee(name) {
+      if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
+      refreshAssigneeUI();
+    }
+
+    function addCustomAssignee() {
+      const inp = document.getElementById('custom-assignee-input');
+      const name = (inp.value || '').trim();
+      if (!name) return;
+      if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
+      inp.value = '';
+      refreshAssigneeUI();
+    }
+
+    function addAssignee() {
+      const inp = document.getElementById('assignee-input');
+      const name = (inp.value || '').trim();
+      if (!name) return;
+      if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
+      if (!S.savedAssignees.includes(name)) {
+        S.savedAssignees.push(name);
+        saveAssignees();
+      }
+      inp.value = '';
+      hideAssigneeSuggestions();
+      refreshAssigneeUI();
+    }
+
+    function refreshAssigneeUI() {
+      const list = document.getElementById('assignee-list');
+      if (list) list.innerHTML = currentModal.assignees.map((p, i) => `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
+      const quickRow = document.getElementById('quick-add-row');
+      if (quickRow) {
+        const pills = S.savedAssignees
+          .filter(n => !currentModal.assignees.includes(n))
+          .slice(0, 8)
+          .map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`)
+          .join('');
+        if (pills) {
+          quickRow.style.display = '';
+          quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}`;
+        } else {
+          quickRow.style.display = 'none';
+        }
+      }
+    }
+
+    function showAssigneeSuggestions(query) {
+      const dropdown = document.getElementById('autocomplete-dropdown');
+      if (!query || query.trim() === '') {
+        hideAssigneeSuggestions();
+        return;
+      }
+
+      const matches = S.savedAssignees.filter(name =>
+        name.toLowerCase().includes(query.toLowerCase()) &&
+        !currentModal.assignees.includes(name)
+      );
+
+      if (matches.length === 0) {
+        hideAssigneeSuggestions();
+        return;
+      }
+
+      dropdown.innerHTML = matches.map(name =>
+        `<div class="autocomplete-item" onclick="selectAssignee('${esc(name)}')">${esc(name)}</div>`
+      ).join('');
+      dropdown.style.display = 'block';
+    }
+
+    function hideAssigneeSuggestions() {
+      const dropdown = document.getElementById('autocomplete-dropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    }
+
+    function selectAssignee(name) {
+      const inp = document.getElementById('assignee-input');
+      inp.value = name;
+      addAssignee();
+    }
+
+    function handleAssigneeKeydown(event) {
+      const dropdown = document.getElementById('autocomplete-dropdown');
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (dropdown.style.display === 'block' && dropdown.querySelector('.autocomplete-item')) {
+          const firstItem = dropdown.querySelector('.autocomplete-item');
+          firstItem.click();
+        } else {
+          addAssignee();
+        }
+      } else if (event.key === 'Escape') {
+        hideAssigneeSuggestions();
+      }
+    }
+
+    function removeAssignee(idx) {
+      currentModal.assignees.splice(idx, 1);
+      refreshAssigneeUI();
+    }
+
+    function saveModal() {
+      const { type, editId } = currentModal;
+      if (type === 'fixture') {
+        const opponent = document.getElementById('f-opponent').value.trim();
+        const date = document.getElementById('f-date').value;
+        if (!opponent || !date) return alert('Missing Requirements');
+        const selectedVenueType = document.querySelector('#f-vtype .venue-opt.selected')?.dataset.value || 'home';
+        const selectedTeamType = document.querySelector('#f-teamtype .team-opt.selected')?.dataset.value || "Men's";
+        const obj = { id: editId || uid(), type: 'fixture', date, opponent, venue: document.getElementById('f-venue').value, matchType: document.getElementById('f-type').value, venueType: selectedVenueType, teamType: selectedTeamType, assignees: [] };
+        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+      } else if (type === 'activity') {
+        const title = document.getElementById('a-title').value.trim();
+        const date = document.getElementById('a-date').value;
+        const notes = document.getElementById('a-notes').value.trim();
+        if (!title || !date) return alert('Missing Fields');
+        const existingItem = editId ? S.items.find(i => i.id === editId) : null;
+        const obj = { id: editId || uid(), type: 'activity', date, title, actType: document.getElementById('a-type').value, assignees: currentModal.assignees, notes, complete: existingItem ? existingItem.complete : false, fixtureId: existingItem ? existingItem.fixtureId : null };
+        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+      } else if (type === 'milestone') {
+        const title = document.getElementById('m-title').value.trim();
+        const date = document.getElementById('m-date').value;
+        const notes = document.getElementById('m-notes').value.trim();
+        const selectedStyle = document.querySelector('#m-style .style-opt.selected')?.dataset.value || 'neutral';
+        if (!title || !date) return alert('Missing Requirements');
+        const obj = { id: editId || uid(), type: 'milestone', date, title, style: selectedStyle, notes, assignees: [] };
+        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+      } else if (type === 'note') {
+        const date = document.getElementById('n-date').value;
+        const content = document.getElementById('n-content').value.trim();
+        if (!date || !content) return alert('Missing Requirements');
+        const obj = { id: editId || uid(), type: 'note', date, content, assignees: [] };
+        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+      }
+      // Track open dropdowns before render
+      const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
+
+      save(); closeModal(); render();
+
+      // Restore open dropdowns after render
+      openDropdowns.forEach(fid => {
+        const cluster = document.getElementById('cluster-' + fid);
+        const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+        if (cluster) {
+          cluster.style.display = '';
+          if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
+        }
+      });
+
+      showToast('Item changes committed successfully.');
+    }
+
+    let pendingDeleteId = null;
+
+    function showDeleteConfirm(id) {
+      pendingDeleteId = id;
+      const overlay = document.getElementById('delete-confirm-overlay');
+      overlay.style.display = 'flex';
+
+      // Set up the confirm button to execute the deletion
+      const confirmBtn = document.getElementById('confirm-delete-btn');
+      confirmBtn.onclick = function () {
+        if (pendingDeleteId) {
+          S.items = S.items.filter(i => i.id !== pendingDeleteId && i.fixtureId !== pendingDeleteId);
+          save(); render();
+          showToast('Item deleted successfully.');
+          closeDeleteConfirm();
+          pendingDeleteId = null;
+        }
+      };
+    }
+
+    function closeDeleteConfirm() {
+      const overlay = document.getElementById('delete-confirm-overlay');
+      overlay.style.display = 'none';
+      pendingDeleteId = null;
+    }
+
+    function deleteItem(id) {
+      showDeleteConfirm(id);
+    }
+
+    function deleteModalItem() {
+      if (!currentModal.editId) return;
+      closeModal();
+      showDeleteConfirm(currentModal.editId);
+    }
+
+    // ─── DATE POPUP FUNCTIONS ───────────────────────────────────────────────────────────
+    let currentPopupDate = null;
+
+    function copyDateLink(dateStr) {
+      // Find and scroll to the date group with date just below top of screen
+      const dateLabels = document.querySelectorAll('.date-label');
+
+      dateLabels.forEach(label => {
+        const labelDate = label.dataset.date;
+        if (labelDate === dateStr) {
+          const dateGroup = label.closest('.date-group');
+          if (dateGroup) {
+            // Calculate position to scroll date to just below top
+            const rect = dateGroup.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const offsetPosition = scrollTop + rect.top - 80; // 80px offset from top
+
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+          }
+        }
+      });
+    }
+
+    function showDatePopup(dateStr) {
+      currentPopupDate = dateStr;
+      const overlay = document.getElementById('date-popup-overlay');
+      const currentDateDisplay = document.getElementById('popup-current-date');
+      const dateInput = document.getElementById('popup-date-input');
+
+      currentDateDisplay.textContent = fmtDisplay(dateStr);
+      dateInput.value = dateStr;
+
+      overlay.style.display = 'flex';
+    }
+
+    function closeDatePopup() {
+      const overlay = document.getElementById('date-popup-overlay');
+      overlay.style.display = 'none';
+      currentPopupDate = null;
+    }
+
+    function goToDate() {
+      const dateInput = document.getElementById('popup-date-input');
+      const newDate = dateInput.value;
+
+      if (!newDate) {
+        alert('Please select a date');
+        return;
+      }
+
+      // Find and scroll to the date group
+      const dateLabels = document.querySelectorAll('.date-label');
+      let found = false;
+      let nearestDate = null;
+      let nearestDistance = Infinity;
+
+      dateLabels.forEach(label => {
+        const labelDate = label.dataset.date;
+        const distance = Math.abs(new Date(newDate) - new Date(labelDate));
+
+        if (labelDate === newDate) {
+          const dateGroup = label.closest('.date-group');
+          if (dateGroup) {
+            // Calculate position to scroll date to just below top
+            const rect = dateGroup.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const offsetPosition = scrollTop + rect.top - 80; // 80px offset from top
+
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+            found = true;
+          }
+        } else if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestDate = label;
+        }
+      });
+
+      if (!found && nearestDate) {
+        const dateGroup = nearestDate.closest('.date-group');
+        if (dateGroup) {
+          // Calculate position to scroll date to just below top
+          const rect = dateGroup.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const offsetPosition = scrollTop + rect.top - 80; // 80px offset from top
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+          showToast(`Navigated to nearest date: ${fmtDisplay(nearestDate.dataset.date)}`);
+        }
+      } else if (!found) {
+        alert('No dates found in timeline');
+      }
+
+      closeDatePopup();
+    }
+
+    // Close date popup when clicking outside the modal
+    document.getElementById('date-popup-overlay').addEventListener('click', function (e) {
+      if (e.target === this) {
+        closeDatePopup();
+      }
+    });
+
+    // ─── SETTINGS MODAL FUNCTIONS ───────────────────────────────────────────────────────────
+    function openSettingsModal() {
+      document.getElementById('settings-overlay').style.display = 'flex';
+      document.getElementById('settings-name-input').value = '';
+
+      // Set cloud sync toggle state
+      document.getElementById('cloud-sync-toggle').checked = useCloudSync;
+      document.getElementById('sheet-id-input').value = sheetId;
+      toggleCloudSync();
+
+      // Initialize assignee names functionality
+      renderSettingsNames();
+    }
+
+    function renderSettingsNames() {
+      const list = document.getElementById('settings-names-list');
+      if (!list) return;
+
+      list.innerHTML = S.savedAssignees.map((name, idx) => `
+        <div class="settings-name-item">
+          <span class="settings-name-text">${esc(name)}</span>
+          <span class="settings-name-edit" onclick="editSettingsName(${idx})" title="Edit">✎</span>
+          <span class="settings-name-delete" onclick="deleteSettingsName(${idx})" title="Delete">✕</span>
+        </div>
+      `).join('');
+    }
+
+    function addName() {
+      const inp = document.getElementById('settings-name-input');
+      const name = (inp.value || '').trim();
+      if (!name) return;
+      if (S.savedAssignees.includes(name)) {
+        showToast('Name already exists');
+        return;
+      }
+      S.savedAssignees.push(name);
+      saveAssignees();
+      inp.value = '';
+      renderSettingsNames();
+      showToast('Name added');
+    }
+
+    function deleteSettingsName(idx) {
+      const name = S.savedAssignees[idx];
+      S.savedAssignees.splice(idx, 1);
+      saveAssignees();
+      renderSettingsNames();
+      showToast('Name removed');
+    }
+
+    function editSettingsName(idx) {
+      const name = S.savedAssignees[idx];
+      const inp = document.getElementById('settings-name-input');
+      inp.value = name;
+      inp.focus();
+
+      // Remove the current name from the list temporarily
+      S.savedAssignees.splice(idx, 1);
+      renderSettingsNames();
+
+      // Change the add button to update the existing name
+      const addBtn = document.querySelector('.settings-input-row .btn-primary');
+      const originalOnClick = addBtn.onclick;
+      addBtn.textContent = 'Update';
+      addBtn.onclick = function () {
+        const newName = (inp.value || '').trim();
+        if (!newName) {
+          S.savedAssignees.splice(idx, 0, name); // Restore original
+          renderSettingsNames();
+          resetSettingsAddButton(addBtn, originalOnClick);
+          return;
+        }
+        if (S.savedAssignees.includes(newName)) {
+          S.savedAssignees.splice(idx, 0, name); // Restore original
+          renderSettingsNames();
+          resetSettingsAddButton(addBtn, originalOnClick);
+          showToast('Name already exists');
+          return;
+        }
+
+        // Update all items that have the old name to use the new name
+        S.items.forEach(item => {
+          if (item.assignees && item.assignees.includes(name)) {
+            const assigneeIdx = item.assignees.indexOf(name);
+            if (assigneeIdx !== -1) {
+              item.assignees[assigneeIdx] = newName;
+            }
+          }
+        });
+
+        S.savedAssignees.splice(idx, 0, newName); // Insert at original position
+        S.savedAssignees.sort((a, b) => a.localeCompare(b));
+        saveAssignees();
+        save(); // Save the updated items
+        render(); // Re-render to show updated names on cards
+        inp.value = '';
+        renderSettingsNames();
+        resetSettingsAddButton(addBtn, originalOnClick);
+        showToast('Name updated');
+      };
+    }
+
+    function resetSettingsAddButton(btn, originalOnClick) {
+      btn.textContent = 'Add';
+      btn.onclick = originalOnClick;
+    }
+
+    // Handle Enter key in settings name input
+    document.addEventListener('keydown', function (e) {
+      const settingsOverlay = document.getElementById('settings-overlay');
+      if (settingsOverlay && settingsOverlay.style.display === 'flex' && e.key === 'Enter') {
+        const inp = document.getElementById('settings-name-input');
+        if (document.activeElement === inp) {
+          const addBtn = document.querySelector('.settings-input-row .btn-primary');
+          if (addBtn && addBtn.textContent === 'Add') {
+            addName();
+          } else if (addBtn && addBtn.textContent === 'Update') {
+            addBtn.click();
+          }
+        }
+      }
+    });
+
+    function closeSettingsModal() {
+      document.getElementById('settings-overlay').style.display = 'none';
+    }
+
+    function toggleCloudSync() {
+      const enabled = document.getElementById('cloud-sync-toggle').checked;
+      document.getElementById('cloud-sync-config').style.display = enabled ? 'block' : 'none';
+    }
+
+    function confirmCloudSyncToggle() {
+      const checkbox = document.getElementById('cloud-sync-toggle');
+      const newState = checkbox.checked;
+      const currentState = useCloudSync;
+
+      // If state hasn't actually changed, just toggle UI
+      if (newState === currentState) {
+        toggleCloudSync();
+        return;
+      }
+
+      const message = newState
+        ? '⚠️ Are you sure you want to enable cloud sync?\n\nThis will allow your timeline data to be synced with Google Sheets. Make sure you have configured your Sheet ID correctly before enabling.'
+        : '⚠️ Are you sure you want to disable cloud sync?\n\nYour timeline data will no longer be synced with Google Sheets. Local changes will not be saved to the cloud.';
+
+      if (confirm(message)) {
+        toggleCloudSync();
+      } else {
+        // Revert checkbox to original state
+        checkbox.checked = currentState;
+      }
+    }
+
+    function confirmSheetIdChange() {
+      const input = document.getElementById('sheet-id-input');
+      const newValue = input.value.trim();
+      const currentValue = sheetId;
+
+      // If value hasn't changed, do nothing
+      if (newValue === currentValue) {
+        return;
+      }
+
+      if (newValue === '') {
+        // Allowing empty is fine (clearing the field)
+        return;
+      }
+
+      const message = '⚠️ Are you sure you want to change the Google Sheet ID?\n\nThis will redirect your data sync to a different Google Sheet. Make sure this is the correct Sheet ID from your Google Sheets URL.\n\nCurrent: ' + (currentValue || '(none)') + '\nNew: ' + newValue;
+
+      if (confirm(message)) {
+        // Allow the change
+      } else {
+        // Revert to original value
+        input.value = currentValue;
+      }
+    }
+
+    function confirmSaveConfiguration() {
+      const newSheetId = document.getElementById('sheet-id-input').value.trim();
+      const newUseCloudSync = document.getElementById('cloud-sync-toggle').checked;
+      const currentSheetId = sheetId;
+      const currentUseCloudSync = useCloudSync;
+
+      // Check if anything actually changed
+      if (newSheetId === currentSheetId && newUseCloudSync === currentUseCloudSync) {
+        showToast('No changes to save');
+        return;
+      }
+
+      let message = '⚠️ Are you sure you want to save these cloud sync configuration changes?\n\n';
+
+      if (newUseCloudSync !== currentUseCloudSync) {
+        message += newUseCloudSync ? '- Cloud sync will be ENABLED\n' : '- Cloud sync will be DISABLED\n';
+      }
+
+      if (newSheetId !== currentSheetId) {
+        message += '- Google Sheet ID will be changed\n';
+        message += '  From: ' + (currentSheetId || '(none)') + '\n';
+        message += '  To: ' + (newSheetId || '(none)') + '\n';
+      }
+
+      message += '\nThese changes will affect how your timeline data is synced.';
+
+      if (confirm(message)) {
+        saveFromSettings();
+      }
+    }
+
+    function saveFromSettings() {
+      sheetId = document.getElementById('sheet-id-input').value.trim();
+      useCloudSync = document.getElementById('cloud-sync-toggle').checked;
+
+      localStorage.setItem('bbSheetId', sheetId);
+      localStorage.setItem('bbUseCloudSync', useCloudSync);
+
+      if (useCloudSync && sheetId) {
+        saveToGoogleSheets();
+      } else {
+        showToast('Configuration saved');
+      }
+    }
+
+
+    // ─── TOASTS ──────────────────────────────────────────────────────────────────
+    function showToast(msg) {
+      const c = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.innerHTML = `<span>${msg}</span>`;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    // ─── BOOTSTRAP ───────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      // Allow undo/redo shortcuts to pass through
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+        return;
+      }
+      if (e.key === 'Escape') closeModal();
+    });
+    load();
+    render();
+
+    // Click logo to scroll to today
+    document.getElementById('brand-logo-wrap').addEventListener('click', () => {
+      const todayMarker = document.getElementById('today-marker');
+      if (todayMarker) {
+        todayMarker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    // ─── DOT HOVER ANIMATIONS ───────────────────────────────────────────────────────────
+    // Add hover functionality for left-side cards (CSS handles right-side)
+    function setupDotHoverAnimations() {
+      const leftSideDots = document.querySelectorAll('.tl-row.side-left .node-dot');
+
+      leftSideDots.forEach(dot => {
+        const row = dot.closest('.tl-row.side-left');
+        const cardWrap = row.querySelector('.tl-card-wrap');
+        // Target all card types: fixture, activity, milestone, note
+        const cards = cardWrap?.querySelectorAll('.fixture-card, .activity-card, .milestone-card, .note-card');
+
+        cards.forEach(card => {
+          dot.addEventListener('mouseenter', () => {
+            // Add base highlight class
+            card.classList.add('card-highlight');
+
+            // Add color-specific highlight class based on dot type
+            if (dot.classList.contains('fixture-dot')) {
+              card.classList.add('highlight-red');
+            } else if (dot.classList.contains('milestone-dot')) {
+              card.classList.add('highlight-gold');
+            } else if (dot.classList.contains('past-dot')) {
+              card.classList.add('highlight-past');
+            } else if (dot.classList.contains('complete-dot')) {
+              card.classList.add('highlight-complete');
+            }
+          });
+
+          dot.addEventListener('mouseleave', () => {
+            // Remove all highlight classes
+            card.classList.remove('card-highlight', 'highlight-red', 'highlight-gold', 'highlight-past', 'highlight-complete');
+          });
+        });
+      });
+    }
+
+    // Setup dot hover animations after initial render
+    setTimeout(setupDotHoverAnimations, 200);
+
+    // Also call it after render() completes
+    const originalRender = window.render;
+    if (typeof originalRender === 'function') {
+      window.render = function () {
+        originalRender.apply(this, arguments);
+        setTimeout(setupDotHoverAnimations, 100);
+      };
+    }
+  </script>
+</body>
+
+</html>
 </body>
 
 </html>
