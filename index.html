@@ -9,7 +9,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="icon" href="https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg">
+  <link rel="icon"
+    href="https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg">
   <style>
     :root {
       --bg: #F7F5F2;
@@ -2503,7 +2504,7 @@
     const PROXY_API_KEY = 'da4e53877124bfd346c8839762985ed7ecb18e15094f471dbfb04da9a2c13250';
 
     let sheetId = localStorage.getItem('bbSheetId') || '';
-    let useCloudSync = localStorage.getItem('bbUseCloudSync') === 'true';
+    let useCloudSync = localStorage.getItem('bbUseCloudSync') !== 'false'; // Enable by default
 
     const ACTIVITY_TYPES = [
       { id: 'social', label: 'Social', icon: '📱', cls: 'type-social' },
@@ -2609,50 +2610,81 @@
     }
 
     async function saveToGoogleSheets() {
-      if (!useCloudSync || sheetId === '') {
+      if (!useCloudSync) {
         saveToLocal();
         return;
       }
 
       try {
-        const result = await proxyRequest('/sheets/save', {
-          sheetId: sheetId,
-          items: S.items,
-          savedAssignees: S.savedAssignees
+        // Validate data before saving
+        if (!S.items || !Array.isArray(S.items)) {
+          throw new Error('Invalid items data');
+        }
+
+        // Save items as JSON string
+        const result = await submitToSheet({
+          data: JSON.stringify({ items: S.items, savedAssignees: S.savedAssignees || [] })
         });
 
         if (result.success) {
-          showToast('Saved to Google Sheets!');
+          console.log('Autosaved to Google Sheets');
+        } else {
+          console.error('Save failed:', result.error);
+          saveToLocal();
         }
       } catch (err) {
         console.error('Google Sheets save error:', err);
-        showToast('Failed to save to Google Sheets. Using local storage.', 'error');
         saveToLocal();
       }
     }
 
     async function loadFromGoogleSheets() {
-      if (!useCloudSync || sheetId === '') {
+      if (!useCloudSync) {
         loadFromLocal();
         return;
       }
 
       try {
-        const result = await proxyRequest('/sheets/load');
+        const result = await getSheetData();
 
-        if (result.success && result.data) {
-          if (result.data.items.length > 0) {
-            S.items = result.data.items;
-            S.savedAssignees = result.data.savedAssignees;
-            showToast('Loaded from Google Sheets!');
-            render();
+        if (!result) {
+          console.log('No data from Google Sheets, using local');
+          loadFromLocal();
+          return;
+        }
+
+        if (result.rows && result.rows.length > 0) {
+          // Get the most recent data row
+          const latestRow = result.rows[result.rows.length - 1];
+
+          if (latestRow && latestRow.data) {
+            try {
+              const data = JSON.parse(latestRow.data);
+
+              // Validate loaded data
+              if (data.items && Array.isArray(data.items)) {
+                S.items = data.items;
+                S.savedAssignees = data.savedAssignees || [];
+                showToast('Loaded from Google Sheets!');
+                render();
+              } else {
+                console.error('Invalid data format from Google Sheets');
+                loadFromLocal();
+              }
+            } catch (parseError) {
+              console.error('Failed to parse data from Google Sheets:', parseError);
+              loadFromLocal();
+            }
           } else {
-            showToast('No data found in Google Sheets', 'error');
+            console.log('No data field in latest row');
+            loadFromLocal();
           }
+        } else {
+          console.log('No rows in Google Sheets');
+          loadFromLocal();
         }
       } catch (err) {
         console.error('Google Sheets load error:', err);
-        showToast('Failed to load from Google Sheets. Using local storage.', 'error');
         loadFromLocal();
       }
     }
@@ -4231,6 +4263,40 @@
     load();
     render();
 
+    // Start polling for real-time updates if cloud sync is enabled
+    if (useCloudSync) {
+      startPolling(async () => {
+        try {
+          const result = await getSheetData();
+
+          if (result && result.rows && result.rows.length > 0) {
+            const latestRow = result.rows[result.rows.length - 1];
+
+            if (latestRow && latestRow.data) {
+              try {
+                const data = JSON.parse(latestRow.data);
+
+                // Validate data
+                if (data.items && Array.isArray(data.items)) {
+                  // Only update if data has changed
+                  if (JSON.stringify(data.items) !== JSON.stringify(S.items)) {
+                    S.items = data.items;
+                    S.savedAssignees = data.savedAssignees || [];
+                    render();
+                    console.log('Auto-synced from Google Sheets');
+                  }
+                }
+              } catch (parseError) {
+                console.error('Failed to parse synced data:', parseError);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Polling sync error:', error);
+        }
+      });
+    }
+
     // Click logo to scroll to today
     document.getElementById('brand-logo-wrap').addEventListener('click', () => {
       const todayMarker = document.getElementById('today-marker');
@@ -4285,6 +4351,90 @@
         originalRender.apply(this, arguments);
         setTimeout(setupDotHoverAnimations, 100);
       };
+    }
+  </script>
+
+  <script>
+    const SHEET_API = 'https://script.google.com/macros/s/AKfycbwNVr4u5fu9kq36MqXKULfaKiQ9992mhHhfG_gSIZA5FKAAEYnXhW5hInI6KCFXXCFp/exec';
+    const SHEET_TOKEN = 'gnjvsuhg48gh8rwn';
+
+    // Retry configuration
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000;
+
+    async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        if (retries > 0) {
+          console.log(`Retrying... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return fetchWithRetry(url, options, retries - 1);
+        }
+        throw error;
+      }
+    }
+
+    async function getSheetData() {
+      try {
+        const data = await fetchWithRetry(`${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
+        if (data.success) return data;
+        console.error('Read failed:', data.error);
+        return null;
+      } catch (error) {
+        console.error('Fetch error:', error);
+        return null;
+      }
+    }
+
+    async function submitToSheet(formData) {
+      const identifier = sessionStorage.getItem('uid') || Math.random().toString(36).slice(2);
+      sessionStorage.setItem('uid', identifier);
+
+      const params = new URLSearchParams({
+        action: 'write',
+        token: SHEET_TOKEN,
+        identifier,
+        ...formData
+      });
+
+      try {
+        const data = await fetchWithRetry(`${SHEET_API}?${params}`);
+        if (!data.success) console.error('Write failed:', data.error);
+        return data;
+      } catch (error) {
+        console.error('Fetch error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    let pollingInterval = null;
+    function startPolling(callback, intervalMs = 5000) {
+      // Clear any existing polling
+      if (pollingInterval) clearInterval(pollingInterval);
+
+      // Run immediately
+      callback();
+
+      // Set up polling with error handling
+      pollingInterval = setInterval(async () => {
+        try {
+          await callback();
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, intervalMs);
+
+      return pollingInterval;
+    }
+
+    function stopPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
     }
   </script>
 </body>
