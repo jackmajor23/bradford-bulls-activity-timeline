@@ -426,7 +426,6 @@
       transition: all 0.3s ease;
     }
 
-    /* Highlight card when dot is hovered (right side) - regular dots */
     .tl-row.side-right .tl-node:hover~.tl-card-wrap .fixture-card,
     .tl-row.side-right .tl-node:hover~.tl-card-wrap .activity-card,
     .tl-row.side-right .tl-node:hover~.tl-card-wrap .milestone-card {
@@ -435,25 +434,21 @@
       border-color: var(--blue);
     }
 
-    /* Highlight note cards with darker ink color */
     .tl-row.side-right .tl-node:hover~.tl-card-wrap .note-card {
       transform: translateY(-4px);
       box-shadow: var(--shadow-hover);
       border-color: var(--ink-mid);
     }
 
-    /* Highlight card when fixture dot is hovered (right side) - red */
     .tl-row.side-right .tl-node:hover~.tl-card-wrap .fixture-card,
     .tl-row.side-right .tl-node .node-dot.fixture-dot:hover~.tl-card-wrap .fixture-card {
       border-color: var(--red);
     }
 
-    /* Highlight card when milestone dot is hovered (right side) - gold */
     .tl-row.side-right .tl-node .node-dot.milestone-dot:hover~.tl-card-wrap .milestone-card {
       border-color: var(--gold);
     }
 
-    /* Highlight card when past dot is hovered (right side) - ink-light */
     .tl-row.side-right .tl-node .node-dot.past-dot:hover~.tl-card-wrap .fixture-card,
     .tl-row.side-right .tl-node .node-dot.past-dot:hover~.tl-card-wrap .activity-card,
     .tl-row.side-right .tl-node .node-dot.past-dot:hover~.tl-card-wrap .milestone-card,
@@ -461,13 +456,11 @@
       border-color: var(--ink-light);
     }
 
-    /* Highlight card when complete dot is hovered (right side) - green */
     .tl-row.side-right .tl-node .node-dot.complete-dot:hover~.tl-card-wrap .fixture-card,
     .tl-row.side-right .tl-node .node-dot.complete-dot:hover~.tl-card-wrap .activity-card {
       border-color: var(--green);
     }
 
-    /* Highlight card when dot is hovered (left side - via JS) - default blue */
     .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight,
     .tl-row.side-left .tl-card-wrap .activity-card.card-highlight,
     .tl-row.side-left .tl-card-wrap .milestone-card.card-highlight {
@@ -476,24 +469,20 @@
       border-color: var(--blue);
     }
 
-    /* Highlight note cards with darker ink color */
     .tl-row.side-left .tl-card-wrap .note-card.card-highlight {
       transform: translateY(-4px);
       box-shadow: var(--shadow-hover);
       border-color: var(--ink-mid);
     }
 
-    /* Highlight card when fixture dot is hovered (left side) - red */
     .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight.highlight-red {
       border-color: var(--red);
     }
 
-    /* Highlight card when milestone dot is hovered (left side) - gold */
     .tl-row.side-left .tl-card-wrap .milestone-card.card-highlight.highlight-gold {
       border-color: var(--gold);
     }
 
-    /* Highlight card when past dot is hovered (left side) - ink-light */
     .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight.highlight-past,
     .tl-row.side-left .tl-card-wrap .activity-card.card-highlight.highlight-past,
     .tl-row.side-left .tl-card-wrap .milestone-card.card-highlight.highlight-past,
@@ -501,13 +490,10 @@
       border-color: var(--ink-light);
     }
 
-    /* Highlight card when complete dot is hovered (left side) - green */
     .tl-row.side-left .tl-card-wrap .fixture-card.card-highlight.highlight-complete,
     .tl-row.side-left .tl-card-wrap .activity-card.card-highlight.highlight-complete {
       border-color: var(--green);
     }
-
-
 
     .node-dot {
       width: 14px;
@@ -792,7 +778,6 @@
       background: rgba(26, 79, 139, 0.08);
     }
 
-    /* Linked-match chip */
     .linked-match-chip {
       display: inline-flex;
       align-items: center;
@@ -824,6 +809,7 @@
       gap: 6px;
       border-top: 1px solid var(--line);
       background: #fdfdfd;
+      min-height: 10px;
     }
 
     /* ─── DATE GROUP ─── */
@@ -1032,7 +1018,6 @@
       background: rgba(0, 0, 0, 0.02);
     }
 
-    /* Mini activity card */
     .mini-activity {
       background: #FAFAF8;
       border: 1px solid var(--line);
@@ -1878,14 +1863,12 @@
       }
     }
 
-    /* Dynamic drop indicator styles */
     .fixture-card.drop-active {
       outline: 2px dashed var(--gold);
       outline-offset: 2px;
       background: rgba(212, 175, 55, 0.03);
     }
 
-    /* Drag and drop styles */
     .mini-activity.dragging {
       opacity: 0.5;
       cursor: grabbing;
@@ -1894,10 +1877,6 @@
     .mini-activity.drag-over {
       border: 2px dashed var(--blue);
       background: rgba(26, 79, 139, 0.05);
-    }
-
-    .activity-cluster {
-      min-height: 10px;
     }
 
     .fixture-acts-toggle.disabled {
@@ -2116,13 +2095,11 @@
         margin-bottom: 16px;
       }
 
-      /* Remove spacer column on mobile */
       .tl-row.side-left .tl-spacer,
       .tl-row.side-right .tl-spacer {
         display: none;
       }
 
-      /* Node column - align dots with spine */
       .tl-row.side-left .tl-node,
       .tl-row.side-right .tl-node {
         grid-column: 1;
@@ -2135,7 +2112,6 @@
         z-index: 4;
       }
 
-      /* Card column */
       .tl-row.side-left .tl-card-wrap,
       .tl-row.side-right .tl-card-wrap {
         grid-column: 2;
@@ -2147,14 +2123,12 @@
         width: 100%;
       }
 
-      /* Adjust node date label position for mobile */
       .node-date-label {
         top: 18px;
         left: 50%;
         transform: translateX(36px);
       }
 
-      /* Adjust padding for different dot sizes on mobile */
       .tl-row.side-left .tl-node .node-dot.fixture-dot,
       .tl-row.side-right .tl-node .node-dot.fixture-dot {
         margin-top: 0;
@@ -2165,14 +2139,12 @@
         margin-top: -2px;
       }
 
-      /* Ensure cards don't overflow */
       .fixture-card,
       .milestone-card,
       .note-card {
         max-width: 100%;
       }
 
-      /* Mobile dropdown button */
       .mobile-add-btn {
         display: inline-flex !important;
         width: 40px;
@@ -2184,12 +2156,10 @@
         align-items: center;
       }
 
-      /* Hide individual buttons on mobile */
       #header-actions .btn:not(.mobile-add-btn) {
         display: none !important;
       }
 
-      /* Mobile dropdown menu - positioned for mobile */
       .mobile-dropdown {
         position: absolute;
         top: 100%;
@@ -2265,7 +2235,6 @@
         color: var(--ink-mid);
       }
 
-      /* Position wrapper for dropdown */
       .mobile-add-wrapper {
         position: relative;
       }
@@ -2327,7 +2296,6 @@
         Notes
       </button>
 
-      <!-- Mobile add button -->
       <div class="mobile-add-wrapper">
         <button class="btn btn-primary mobile-add-btn" onclick="toggleMobileDropdown()">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -2340,16 +2308,14 @@
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="8" y1="2" x2="8" y2="14" />
               <line x1="2" y1="8" x2="14" y2="8" />
-            </svg>
-            Activity
+            </svg>Activity
           </div>
           <div class="mobile-dropdown-item match-item" onclick="openModal('fixture'); toggleMobileDropdown();">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
               <ellipse cx="8" cy="8" rx="5" ry="3.5" />
               <path d="M3 8 Q8 5 13 8" />
               <path d="M3 8 Q8 11 13 8" />
-            </svg>
-            Match
+            </svg>Match
           </div>
           <div class="mobile-dropdown-item milestone-item" onclick="openModal('milestone'); toggleMobileDropdown();">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
@@ -2357,16 +2323,14 @@
               <path d="M5 5 L11 5" />
               <path d="M5 9 L8 9" />
               <path d="M8 9 L8 14 L6 16" />
-            </svg>
-            Milestone
+            </svg>Milestone
           </div>
           <div class="mobile-dropdown-item notes-item" onclick="openModal('note'); toggleMobileDropdown();">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M2 4h12v8H2z" />
               <line x1="4" y1="7" x2="10" y2="7" />
               <line x1="4" y1="10" x2="8" y2="10" />
-            </svg>
-            Notes
+            </svg>Notes
           </div>
         </div>
       </div>
@@ -2411,7 +2375,6 @@
     </div>
   </div>
 
-  <!-- Date Popup Modal -->
   <div id="date-popup-overlay">
     <div id="date-popup-modal">
       <div class="popup-header">
@@ -2433,14 +2396,12 @@
     </div>
   </div>
 
-  <!-- Settings Modal -->
   <div id="settings-overlay" class="modal-overlay" style="display: none;">
     <div class="settings-modal">
       <div class="settings-header">
-        <div class="settings-title">Manage Names</div>
+        <div class="settings-title">Settings</div>
       </div>
       <div class="settings-body">
-        <!-- Names Management Section -->
         <div style="border: 1px solid var(--line); border-radius: 8px; padding: 16px;">
           <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Manage Names</h3>
           <p style="color: var(--ink-mid); font-size: 13px; margin-bottom: 16px;">
@@ -2453,12 +2414,12 @@
           <div id="settings-names-list" class="settings-names-list"></div>
         </div>
 
-        <!-- Cloud Sync Section -->
         <div class="settings-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line);">
           <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Cloud Sync (Google
             Sheets)</h3>
           <p style="color: var(--ink-mid); font-size: 12px; margin-bottom: 16px; line-height: 1.5;">
             Store your timeline data in Google Sheets for sharing across devices and with others.
+            <strong>Requires the Google Apps Script URL and token to be configured.</strong>
           </p>
 
           <div class="settings-toggle-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
@@ -2469,19 +2430,19 @@
           </div>
 
           <div id="sync-status"
-            style="font-size: 12px; color: var(--ink-mid); margin-bottom: 12px; padding: 8px 12px; background: rgba(247, 245, 242, 0.5); border-radius: 6px; border: 1px solid var(--line);">
+            style="font-size: 12px; color: var(--ink-mid); margin-bottom: 12px; padding: 8px 12px; background: rgba(247,245,242,0.5); border-radius: 6px; border: 1px solid var(--line);">
             Sync status will appear here
           </div>
 
           <div
-            style="margin-top: 16px; padding: 12px; background: rgba(26, 79, 139, 0.1); border-radius: 6px; border: 1px solid var(--blue);">
+            style="margin-top: 16px; padding: 12px; background: rgba(26,79,139,0.1); border-radius: 6px; border: 1px solid var(--blue);">
             <h4
               style="font-size: 11px; font-weight: 600; color: var(--blue); margin: 0 0 8px 0; text-transform: uppercase;">
               How it works</h4>
             <p style="font-size: 11px; color: var(--ink-mid); margin: 0; line-height: 1.6;">
-              This app uses a direct Google Apps Script API for real-time sync. Data is automatically saved to Google
-              Sheets when you make changes, and the app polls for updates every 5 seconds to sync changes from other
-              devices.
+              This app uses a Google Apps Script API for real-time sync. Data is automatically saved to Google Sheets
+              when you make changes,
+              and the app polls for updates every 10 seconds to sync changes from other devices.
             </p>
           </div>
         </div>
@@ -2499,7 +2460,17 @@
     const STORAGE_KEY = 'bbTimeline_v5';
     const ASSIGNEE_KEY = 'bbAssignees';
 
-    let useCloudSync = localStorage.getItem('bbUseCloudSync') !== 'false'; // Enable by default
+    // ─── GOOGLE SHEETS CONFIGURATION ─────────────────────────────────────────────
+    // Replace SHEET_TOKEN with your actual token once the Apps Script is deployed.
+    const SHEET_API = 'https://script.google.com/macros/s/AKfycbwNVr4u5fu9kq36MqXKULfaKiQ9992mhHhfG_gSIZA5FKAAEYnXhW5hInI6KCFXXCFp/exec';
+    const SHEET_TOKEN = 'YOUR_SECURE_TOKEN_HERE';
+
+    // ─── BUG FIX 1: Cloud sync defaults OFF until a real token is configured.
+    // Previously defaulted to true, causing every page load to attempt a failing
+    // network request, then fall through to loadFromLocal() which called seedDemo()
+    // and wiped existing data.
+    const CLOUD_SYNC_CONFIGURED = SHEET_TOKEN !== 'YOUR_SECURE_TOKEN_HERE';
+    let useCloudSync = CLOUD_SYNC_CONFIGURED && localStorage.getItem('bbUseCloudSync') === 'true';
 
     const ACTIVITY_TYPES = [
       { id: 'social', label: 'Social', icon: '📱', cls: 'type-social' },
@@ -2524,7 +2495,6 @@
 
     function getTeamLogo(name) {
       if (!name) return null;
-
       const teamLogos = {
         'Halifax Panthers': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png',
         'Featherstone Rovers': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png',
@@ -2545,28 +2515,14 @@
         'Catalans Dragons': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png',
         'Salford Red Devils': 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png'
       };
-
-      // Try exact match first
-      if (teamLogos[name]) {
-        return teamLogos[name];
-      }
-
-      // Try case-insensitive match
       const lowerName = name.toLowerCase();
       for (const [team, logo] of Object.entries(teamLogos)) {
-        if (team.toLowerCase() === lowerName) {
-          return logo;
-        }
+        if (team.toLowerCase() === lowerName) return logo;
       }
-
-      return null; // Falls back to initials if no logo found
+      return null;
     }
 
-    // ─── GOOGLE SHEETS CONFIGURATION ───────────────────────────────────────────────
-    const SHEET_API = 'https://script.google.com/macros/s/AKfycbwNVr4u5fu9kq36MqXKULfaKiQ9992mhHhfG_gSIZA5FKAAEYnXhW5hInI6KCFXXCFp/exec';
-    const SHEET_TOKEN = 'YOUR_SECURE_TOKEN_HERE'; // Replace with your token from GOOGLE_APPS_SCRIPT_CODE.js
-
-    // Retry configuration
+    // ─── GOOGLE SHEETS HELPERS ────────────────────────────────────────────────────
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000;
 
@@ -2577,7 +2533,6 @@
         return await response.json();
       } catch (error) {
         if (retries > 0) {
-          console.log(`Retrying... (${retries} attempts left)`);
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
           return fetchWithRetry(url, options, retries - 1);
         }
@@ -2600,14 +2555,7 @@
     async function submitToSheet(formData) {
       const identifier = sessionStorage.getItem('uid') || Math.random().toString(36).slice(2);
       sessionStorage.setItem('uid', identifier);
-
-      const params = new URLSearchParams({
-        action: 'write',
-        token: SHEET_TOKEN,
-        identifier,
-        ...formData
-      });
-
+      const params = new URLSearchParams({ action: 'write', token: SHEET_TOKEN, identifier, ...formData });
       try {
         const data = await fetchWithRetry(`${SHEET_API}?${params}`);
         if (!data.success) console.error('Write failed:', data.error);
@@ -2619,22 +2567,13 @@
     }
 
     let pollingInterval = null;
-    function startPolling(callback, intervalMs = 5000) {
-      // Clear any existing polling
+
+    function startPolling(callback, intervalMs = 10000) {
       if (pollingInterval) clearInterval(pollingInterval);
-
-      // Run immediately
       callback();
-
-      // Set up polling with error handling
       pollingInterval = setInterval(async () => {
-        try {
-          await callback();
-        } catch (error) {
-          console.error('Polling error:', error);
-        }
+        try { await callback(); } catch (error) { console.error('Polling error:', error); }
       }, intervalMs);
-
       return pollingInterval;
     }
 
@@ -2653,151 +2592,111 @@
     let dragEndTime = 0;
     let disableToggle = false;
 
-    async function saveToGoogleSheets() {
-      // Always save to localStorage first as immediate backup
-      // This ensures data persists even if cloud sync fails or page refreshes
-      saveToLocal();
+    // ─── PERSISTENCE ─────────────────────────────────────────────────────────────
 
-      if (!useCloudSync) {
-        return;
-      }
-
+    // BUG FIX 3: Save both items and assignees in one atomic write.
+    // Previously, assignees were stored under a separate key and could diverge.
+    function saveToLocal() {
       try {
-        // Validate data before saving
-        if (!S.items || !Array.isArray(S.items)) {
-          throw new Error('Invalid items data');
-        }
-
-        const dataToSend = { items: S.items, savedAssignees: S.savedAssignees || [] };
-        console.log('Saving to Google Sheets:', dataToSend);
-
-        // Save items as JSON string
-        const result = await submitToSheet({
-          data: JSON.stringify(dataToSend)
-        });
-
-        console.log('Save result:', result);
-
-        if (result.success) {
-          console.log('✓ Autosaved to Google Sheets');
-        } else {
-          console.error('Save failed:', result.error);
-        }
-      } catch (err) {
-        console.error('Google Sheets save error:', err);
+        const state = { items: S.items, savedAssignees: S.savedAssignees || [] };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn('Failed to save to localStorage:', e);
       }
     }
 
+    // BUG FIX 2: loadFromLocal now validates the parsed object before using it,
+    // and only calls seedDemo() when there is genuinely no existing data.
+    function loadFromLocal() {
+      try {
+        const d = localStorage.getItem(STORAGE_KEY);
+        if (d) {
+          const parsed = JSON.parse(d);
+          if (parsed && Array.isArray(parsed.items)) {
+            S = parsed;
+          }
+        }
+      } catch (e) {
+        console.warn('localStorage parse failed, starting fresh:', e);
+      }
+
+      if (!S.items || !Array.isArray(S.items) || S.items.length === 0) {
+        seedDemo();
+      }
+
+      S.items.forEach(i => { if (!i.assignees) i.assignees = []; });
+
+      // Only load from separate assignee key if none came from main state blob
+      if (!S.savedAssignees || !S.savedAssignees.length) {
+        try {
+          const a = localStorage.getItem(ASSIGNEE_KEY);
+          if (a) S.savedAssignees = JSON.parse(a);
+        } catch (e) { }
+      }
+      if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
+    }
+
+    // BUG FIX 4: Load local first (instant UI), then overlay cloud data if available.
+    // Previously called loadFromLocal() only as a fallback after a failed cloud fetch,
+    // meaning a failed network call could leave the UI blank or seed-reset.
     async function loadFromGoogleSheets() {
       if (!useCloudSync) {
         loadFromLocal();
         return;
       }
 
+      // Always populate from local storage first — UI is never blank
+      loadFromLocal();
+      render();
+
       try {
         const result = await getSheetData();
-
-        if (!result) {
-          console.log('No data from Google Sheets, using local');
-          loadFromLocal();
+        if (!result || !result.rows || result.rows.length === 0) {
+          console.log('No cloud data found, keeping local state');
           return;
         }
 
-        if (result.rows && result.rows.length > 0) {
-          // Get the most recent data row
-          const latestRow = result.rows[result.rows.length - 1];
+        const latestRow = result.rows[result.rows.length - 1];
+        if (!latestRow || !latestRow.data) return;
 
-          if (latestRow && latestRow.data) {
-            try {
-              const data = JSON.parse(latestRow.data);
-
-              // Validate loaded data
-              if (data.items && Array.isArray(data.items)) {
-                S.items = data.items;
-                S.savedAssignees = data.savedAssignees || [];
-                showToast('Loaded from Google Sheets!');
-                render();
-              } else {
-                console.error('Invalid data format from Google Sheets');
-                loadFromLocal();
-              }
-            } catch (parseError) {
-              console.error('Failed to parse data from Google Sheets:', parseError);
-              loadFromLocal();
-            }
-          } else {
-            console.log('No data field in latest row');
-            loadFromLocal();
-          }
-        } else {
-          console.log('No rows in Google Sheets');
-          loadFromLocal();
+        const data = JSON.parse(latestRow.data);
+        if (!data.items || !Array.isArray(data.items)) {
+          console.warn('Invalid cloud data format, keeping local state');
+          return;
         }
-      } catch (err) {
-        console.error('Google Sheets load error:', err);
-        loadFromLocal();
-      }
-    }
 
-    // ─── LOCAL STORAGE FALLBACK ─────────────────────────────────────────────────────────────
-    function saveToLocal() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); } catch (e) { }
-    }
-
-    function saveAssigneesToLocal() {
-      try { localStorage.setItem(ASSIGNEE_KEY, JSON.stringify(S.savedAssignees)); } catch (e) { }
-    }
-
-    function loadAssigneesFromLocal() {
-      try {
-        const d = localStorage.getItem(ASSIGNEE_KEY);
-        if (d) S.savedAssignees = JSON.parse(d);
-      } catch (e) { }
-      if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
-    }
-
-    function loadFromLocal() {
-      try { const d = localStorage.getItem(STORAGE_KEY); if (d) S = JSON.parse(d); } catch (e) { }
-      if (!S.items || !S.items.length) seedDemo();
-      S.items.forEach(i => { if (!i.assignees) i.assignees = []; });
-      if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
-      loadAssigneesFromLocal();
-    }
-
-    // ─── UNIFIED PERSISTENCE FUNCTIONS ─────────────────────────────────────────────────────────────
-    function save() {
-      if (useCloudSync) {
-        saveToGoogleSheets();
-      } else {
+        S.items = data.items;
+        S.savedAssignees = data.savedAssignees || [];
+        // Cache cloud data locally so next load is instant even offline
         saveToLocal();
+        render();
+        showToast('✓ Synced from cloud');
+      } catch (err) {
+        console.warn('Cloud load failed, using local data:', err);
       }
     }
 
-    function saveAssignees() {
-      if (useCloudSync) {
-        saveToGoogleSheets();
-      } else {
-        saveAssigneesToLocal();
+    async function saveToGoogleSheets() {
+      // Always persist locally first — this is the source of truth for the current session
+      saveToLocal();
+
+      if (!useCloudSync) return;
+
+      try {
+        if (!S.items || !Array.isArray(S.items)) throw new Error('Invalid items data');
+        const dataToSend = { items: S.items, savedAssignees: S.savedAssignees || [] };
+        const result = await submitToSheet({ data: JSON.stringify(dataToSend) });
+        if (!result.success) console.error('Cloud save failed:', result.error);
+      } catch (err) {
+        console.error('Google Sheets save error:', err);
       }
     }
 
-    function loadAssignees() {
-      if (useCloudSync) {
-        loadFromGoogleSheets();
-      } else {
-        loadAssigneesFromLocal();
-      }
-    }
+    function save() { useCloudSync ? saveToGoogleSheets() : saveToLocal(); }
+    function saveAssignees() { save(); }  // Always use unified save path
+    function load() { useCloudSync ? loadFromGoogleSheets() : (loadFromLocal(), render()); }
 
-    function load() {
-      if (useCloudSync) {
-        loadFromGoogleSheets();
-      } else {
-        loadFromLocal();
-      }
-    }
-
-    // ─── SEED ─────────────────────────────────────────────────────────────────────
+    // ─── SEED DATA ────────────────────────────────────────────────────────────────
     function seedDemo() {
       const today = new Date();
       const fixtures = [
@@ -2811,20 +2710,10 @@
       fixtures.forEach(f => {
         const fid = uid();
         const fdate = offsetDate(today, f.offset);
-        S.items.push({
-          id: fid, type: 'fixture', date: fmtDate(fdate),
-          opponent: f.opponent, venue: f.venue, matchType: f.matchType,
-          venueType: f.home ? 'home' : 'away', teamType: f.team || "Men's", notes: '', assignees: []
-        });
-
+        S.items.push({ id: fid, type: 'fixture', date: fmtDate(fdate), opponent: f.opponent, venue: f.venue, matchType: f.matchType, venueType: f.home ? 'home' : 'away', teamType: f.team || "Men's", notes: '', assignees: [] });
         const count = Math.floor(Math.random() * 3) + 1;
         for (let i = 0; i < count; i++) {
-          S.items.push({
-            id: uid(), type: 'activity',
-            date: fmtDate(offsetDate(fdate, -Math.floor(Math.random() * 4))),
-            title: randomActivity(), actType: ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id,
-            fixtureId: fid, notes: '', assignees: [], complete: Math.random() > 0.5
-          });
+          S.items.push({ id: uid(), type: 'activity', date: fmtDate(offsetDate(fdate, -Math.floor(Math.random() * 4))), title: randomActivity(), actType: ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id, fixtureId: fid, notes: '', assignees: [], complete: Math.random() > 0.5 });
         }
       });
 
@@ -2835,14 +2724,12 @@
 
       if (!S.savedAssignees || !S.savedAssignees.length) {
         S.savedAssignees = ['Sarah Mitchell', 'Tom Bradley', 'Jake Whitfield', 'Emma Clarke', 'Dave Sutton'];
-        saveAssignees();
       }
-
       save();
     }
 
     function randomActivity() {
-      const acts = ['Instagram Post', 'Facebook Reel', 'Press Release', 'Matchday Programme Matchup Story', 'TikTok Video Wrap', 'Twitter Thread Breakdown', 'Sponsor Video Spot'];
+      const acts = ['Instagram Post', 'Facebook Reel', 'Press Release', 'Matchday Programme', 'TikTok Video', 'Twitter Thread', 'Sponsor Video'];
       return acts[Math.floor(Math.random() * acts.length)];
     }
 
@@ -2855,62 +2742,42 @@
     function fmtDisplay(ds) { if (!ds) return ''; return new Date(ds + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' }); }
     function fmtMonth(ds) { return new Date(ds + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
 
-    // ─── COMPUTED GROUPS BUILDER ──────────────────────────────────────────────────
+    // ─── GROUPS BUILDER ───────────────────────────────────────────────────────────
     function buildGroups(items) {
       const seen = new Set();
       const groups = [];
       const fixtureActMap = {};
 
-      // Map fixture activities
       S.items.filter(i => i.type === 'activity' && i.fixtureId).forEach(a => {
         if (!fixtureActMap[a.fixtureId]) fixtureActMap[a.fixtureId] = [];
         fixtureActMap[a.fixtureId].push(a);
       });
 
-      // Group items by date
       const dateMap = {};
       items.forEach(item => {
         if (seen.has(item.id)) return;
-
         if (item.type === 'fixture') {
           seen.add(item.id);
           const linkedActs = fixtureActMap[item.id] || [];
           linkedActs.forEach(a => seen.add(a.id));
-
-          if (!dateMap[item.date]) {
-            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          }
-          dateMap[item.date].items.push({
-            type: 'fixture',
-            fixture: item,
-            activities: linkedActs.sort((a, b) => a.date.localeCompare(b.date))
-          });
+          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
+          dateMap[item.date].items.push({ type: 'fixture', fixture: item, activities: linkedActs.sort((a, b) => a.date.localeCompare(b.date)) });
         } else if (item.type === 'milestone') {
           seen.add(item.id);
-          if (!dateMap[item.date]) {
-            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          }
+          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
           dateMap[item.date].items.push({ type: 'milestone', item });
         } else if (item.type === 'note') {
           seen.add(item.id);
-          if (!dateMap[item.date]) {
-            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          }
+          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
           dateMap[item.date].items.push({ type: 'note', item });
         } else if (item.type === 'activity' && !item.fixtureId) {
           seen.add(item.id);
-          if (!dateMap[item.date]) {
-            dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          }
+          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
           dateMap[item.date].items.push({ type: 'activity', item });
         }
       });
 
-      // Convert date map to groups
-      Object.values(dateMap).forEach(dateGroup => {
-        groups.push(dateGroup);
-      });
-
+      Object.values(dateMap).forEach(dg => groups.push(dg));
       return groups.sort((a, b) => a.date.localeCompare(b.date));
     }
 
@@ -2938,9 +2805,7 @@
         });
         html += `
     <div id="past-accordion">
-      <div id="past-toggle" onclick="togglePast(event, this)">
-        show previous activity
-      </div>
+      <div id="past-toggle" onclick="togglePast(event, this)">show previous activity</div>
       <div id="past-items">${pastInner}</div>
     </div>`;
       }
@@ -2969,30 +2834,20 @@
 
     function renderGroup(g, side, isPast) {
       if (g.type === 'date-group') return renderDateGroup(g, side, isPast);
-      if (g.type === 'fixture') return renderFixtureGroup(g, side, isPast);
-      if (g.type === 'milestone') return renderMilestoneGroup(g, side, isPast);
-      if (g.type === 'note') return renderNoteGroup(g, side, isPast);
-      return renderActivityGroup(g, side, isPast);
+      return '';
     }
 
     function renderDateGroup(g, side, isPast) {
-      const items = g.items;
       let itemsHtml = '';
       let itemSide = 0;
-
-      items.forEach(item => {
-        if (item.type === 'fixture') {
-          itemsHtml += renderFixtureGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
-        } else if (item.type === 'milestone') {
-          itemsHtml += renderMilestoneGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
-        } else if (item.type === 'note') {
-          itemsHtml += renderNoteGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
-        } else if (item.type === 'activity') {
-          itemsHtml += renderActivityGroup(item, itemSide % 2 === 0 ? 'side-left' : 'side-right', isPast);
-        }
+      g.items.forEach(item => {
+        const s = itemSide % 2 === 0 ? 'side-left' : 'side-right';
+        if (item.type === 'fixture') itemsHtml += renderFixtureGroup(item, s, isPast);
+        else if (item.type === 'milestone') itemsHtml += renderMilestoneGroup(item, s, isPast);
+        else if (item.type === 'note') itemsHtml += renderNoteGroup(item, s, isPast);
+        else if (item.type === 'activity') itemsHtml += renderActivityGroup(item, s, isPast);
         itemSide++;
       });
-
       return `
   <div class="date-group">
     <div class="date-header">
@@ -3049,8 +2904,8 @@
           <div class="countdown-text ${countdownCls}">${countdownTxt}</div>
           ${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ''}
           <div class="fixture-actions">
-            <button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button>
-            <button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button>
+            <button class="activity-btn edit" title="Edit"   onclick="editFixture('${f.id}')">✎</button>
+            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${f.id}')">✕</button>
           </div>
         </div>
         ${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ''}
@@ -3060,7 +2915,7 @@
     }
 
     function renderMiniActivity(a) {
-      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[7];
+      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
       const completeCls = a.complete ? ' complete' : '';
       const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
       return `
@@ -3075,19 +2930,18 @@
     <div class="activity-btns">
       <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
       <button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button>
-      <button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button>
-      <button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button>
+      <button class="activity-btn edit" title="Edit"   onclick="editActivity('${a.id}')">✎</button>
+      <button class="activity-btn del"  title="Delete" onclick="deleteItem('${a.id}')">✕</button>
     </div>
   </div>`;
     }
 
     function renderActivityGroup(g, side, isPast) {
       const a = g.item;
-      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[7];
+      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
       const completeCls = a.complete ? ' complete' : '';
       const pastCls = isPast ? ' past' : '';
       const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
-
       return `
   <div class="tl-row ${side}" data-id="${a.id}">
     <div class="tl-spacer"></div>
@@ -3108,8 +2962,8 @@
           </div>
           <div class="activity-btns">
             <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
-            <button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button>
-            <button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button>
+            <button class="activity-btn edit" title="Edit"   onclick="editActivity('${a.id}')">✎</button>
+            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${a.id}')">✕</button>
           </div>
         </div>
       </div>
@@ -3136,8 +2990,8 @@
             <div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div>
           </div>
           <div class="activity-btns">
-            <button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button>
-            <button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button>
+            <button class="activity-btn edit" title="Edit"   onclick="editMilestone('${m.id}')">✎</button>
+            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${m.id}')">✕</button>
           </div>
         </div>
       </div>
@@ -3159,13 +3013,11 @@
         <div class="act-row">
           <div class="note-body">
             <div class="note-content">${esc(n.content)}</div>
-            <div class="note-meta">
-              <span class="subtle-date">${fmtDisplay(n.date)}</span>
-            </div>
+            <div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div>
           </div>
           <div class="activity-btns">
-            <button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button>
-            <button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button>
+            <button class="activity-btn edit" title="Edit"   onclick="editNote('${n.id}')">✎</button>
+            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${n.id}')">✕</button>
           </div>
         </div>
       </div>
@@ -3173,85 +3025,60 @@
   </div>`;
     }
 
-    // ─── INTERACTIONS & CONFIG ───────────────────────────────────────────────────
+    // ─── INTERACTIONS ─────────────────────────────────────────────────────────────
     function toggleComplete(id) {
       const item = S.items.find(i => i.id === id);
       if (!item) return;
-
-      // Track open dropdowns before render
       const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
-
       item.complete = !item.complete;
       save(); render();
-
-      // Restore open dropdowns after render
       openDropdowns.forEach(fid => {
         const cluster = document.getElementById('cluster-' + fid);
         const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-        if (cluster) {
-          cluster.style.display = '';
-          if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
-        }
+        if (cluster) { cluster.style.display = ''; if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
       });
-
       showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
     }
 
     function moveToTimeline(id) {
       const item = S.items.find(i => i.id === id);
       if (!item) return;
-      if (!item.fixtureId) {
-        showToast('Activity is already on the main timeline');
-        return;
-      }
+      if (!item.fixtureId) { showToast('Activity is already on the main timeline'); return; }
       item.fixtureId = null;
       save(); render();
       showToast('Activity moved to main timeline');
     }
 
     function togglePast(e, btn) {
-      e.preventDefault();
-      e.stopPropagation();
-
+      e.preventDefault(); e.stopPropagation();
       const isOpening = !btn.classList.contains('open');
       const todayMarker = document.getElementById('today-marker');
       const pastItems = document.getElementById('past-items');
 
       if (isOpening) {
-        // Snapshot viewport offset of Today before anything changes
         const viewportOffset = todayMarker.getBoundingClientRect().top;
-
-        // Expand instantly with no transition
         pastItems.style.cssText = 'max-height:none; opacity:1; overflow:visible; transition:none;';
         btn.classList.add('open');
         btn.textContent = 'hide previous activity';
-
-        // One rAF — layout is now settled, correct scroll
         requestAnimationFrame(() => {
           const newOffset = todayMarker.getBoundingClientRect().top;
           const shift = newOffset - viewportOffset;
           if (shift !== 0) window.scrollTo({ top: window.scrollY + shift - 200, behavior: 'instant' });
         });
-
       } else {
-        // Collapse
         pastItems.style.cssText = 'max-height:0; opacity:0; overflow:hidden; transition:none;';
         btn.classList.remove('open');
         btn.textContent = 'show previous activity';
-
-        // Scroll to today marker instantly
         todayMarker.scrollIntoView({ behavior: 'instant', block: 'center' });
       }
     }
 
     function toggleActCluster(fid) {
-      // Completely disable toggle functionality during/after drag operations
+      // BUG FIX 5: disableToggle is now actually set during drag operations (see dragstart)
       if (disableToggle) return;
-
       const cluster = document.getElementById('cluster-' + fid);
       const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
       if (!cluster) return;
-
       const hidden = cluster.style.display === 'none';
       cluster.style.display = hidden ? '' : 'none';
       if (btn) btn.textContent = (hidden ? '▾ ' : '▸ ') + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
@@ -3260,46 +3087,32 @@
     function ensureDropdownOpen(fid) {
       const cluster = document.getElementById('cluster-' + fid);
       const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-      if (cluster && btn) {
-        // Force it open immediately
-        cluster.style.display = '';
-        btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
-
-        // Keep forcing it open for 3 seconds to prevent any stray clicks from closing it
-        let attempts = 0;
-        const forceOpenInterval = setInterval(() => {
-          attempts++;
-          if (cluster.style.display === 'none') {
-            cluster.style.display = '';
-            btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
-          }
-          if (attempts >= 60) { // 60 * 50ms = 3 seconds
-            clearInterval(forceOpenInterval);
-          }
-        }, 50);
-      }
+      if (!cluster || !btn) return;
+      cluster.style.display = '';
+      btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
+      let attempts = 0;
+      const iv = setInterval(() => {
+        attempts++;
+        if (cluster.style.display === 'none') {
+          cluster.style.display = '';
+          btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
+        }
+        if (attempts >= 60) clearInterval(iv);
+      }, 50);
     }
 
-    // Prevent dropdown closing when clicking during/after drag operations
     document.addEventListener('click', function (event) {
       if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) {
         const toggleBtn = event.target.closest('.fixture-acts-toggle');
-        if (toggleBtn) {
-          event.preventDefault();
-          event.stopPropagation();
-          return false;
-        }
+        if (toggleBtn) { event.preventDefault(); event.stopPropagation(); return false; }
       }
     }, true);
 
-    // Close autocomplete dropdown when clicking outside
     document.addEventListener('click', function (event) {
       const dropdown = document.getElementById('autocomplete-dropdown');
       const input = document.getElementById('assignee-input');
-      if (dropdown && input) {
-        if (!dropdown.contains(event.target) && event.target !== input) {
-          hideAssigneeSuggestions();
-        }
+      if (dropdown && input && !dropdown.contains(event.target) && event.target !== input) {
+        hideAssigneeSuggestions();
       }
     });
 
@@ -3309,53 +3122,43 @@
         el.addEventListener('dragstart', (e) => {
           dragActivityId = el.dataset.id;
           isDraggingActivity = true;
+          disableToggle = true;  // BUG FIX 5: was never set, toggle could fire mid-drag
           e.dataTransfer.effectAllowed = 'move';
           el.classList.add('dragging');
-
-          // Temporarily disable toggle buttons during drag
           document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
             btn.dataset.originalOnclick = btn.getAttribute('onclick');
             btn.removeAttribute('onclick');
           });
         });
 
-        el.addEventListener('dragend', (e) => {
+        el.addEventListener('dragend', () => {
           el.classList.remove('dragging');
-          document.querySelectorAll('.mini-activity').forEach(item => {
-            item.classList.remove('drag-over');
-          });
+          document.querySelectorAll('.mini-activity').forEach(item => item.classList.remove('drag-over'));
           isDraggingActivity = false;
           dragEndTime = Date.now();
-
-          // Restore toggle button onclick handlers after drag
           setTimeout(() => {
+            disableToggle = false;  // BUG FIX 5: re-enable after grace period
             document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
               if (btn.dataset.originalOnclick) {
                 btn.setAttribute('onclick', btn.dataset.originalOnclick);
                 delete btn.dataset.originalOnclick;
               }
             });
-          }, 200);
+          }, 500);
         });
 
-        // Touch events for mobile drag and drop
-        let touchStartX, touchStartY, touchElement, touchClone;
-
+        // Touch drag support
+        let touchStartX, touchStartY, touchElement;
         el.addEventListener('touchstart', (e) => {
           const touch = e.touches[0];
           touchStartX = touch.clientX;
           touchStartY = touch.clientY;
           touchElement = el;
-
-          // Only start drag if touching the drag handle
-          const dragHandle = e.target.closest('.drag-handle');
-          if (!dragHandle) return;
-
+          if (!e.target.closest('.drag-handle')) return;
           dragActivityId = el.dataset.id;
           isDraggingActivity = true;
+          disableToggle = true;
           el.classList.add('dragging');
-
-          // Temporarily disable toggle buttons during drag
           document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
             btn.dataset.originalOnclick = btn.getAttribute('onclick');
             btn.removeAttribute('onclick');
@@ -3364,90 +3167,50 @@
 
         el.addEventListener('touchmove', (e) => {
           if (!isDraggingActivity || touchElement !== el) return;
-
           const touch = e.touches[0];
           const deltaX = touch.clientX - touchStartX;
           const deltaY = touch.clientY - touchStartY;
-
-          // Only allow drag if moved significantly
           if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
-
           e.preventDefault();
-
-          // Find the element under the touch point
           const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
           const cluster = touchTarget?.closest('.activity-cluster');
-
           if (cluster) {
             const afterElement = getDragAfterElement(cluster, touch.clientY);
-            if (afterElement == null) {
-              cluster.appendChild(el);
-            } else {
-              cluster.insertBefore(el, afterElement);
-            }
+            afterElement == null ? cluster.appendChild(el) : cluster.insertBefore(el, afterElement);
           }
         }, { passive: false });
 
         el.addEventListener('touchend', (e) => {
           if (!isDraggingActivity || touchElement !== el) return;
-
           el.classList.remove('dragging');
-          document.querySelectorAll('.mini-activity').forEach(item => {
-            item.classList.remove('drag-over');
-          });
+          document.querySelectorAll('.mini-activity').forEach(item => item.classList.remove('drag-over'));
           isDraggingActivity = false;
           dragEndTime = Date.now();
-
-          // Check if dropped on a fixture card
           const touch = e.changedTouches[0];
           const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
           const fixtureCard = touchTarget?.closest('.fixture-card');
-
           if (fixtureCard) {
             const act = S.items.find(i => i.id === dragActivityId);
-            if (act && act.type === 'activity') {
-              act.fixtureId = fixtureCard.dataset.fixtureId;
-              save(); render();
-              showToast('🏉 Activity linked smoothly to match!');
-            }
+            if (act && act.type === 'activity') { act.fixtureId = fixtureCard.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
           }
-
-          // Check if dropped in an activity cluster (reordering)
           const cluster = touchTarget?.closest('.activity-cluster');
           if (cluster) {
             const fixtureId = cluster.id.replace('cluster-', '');
             const clusterActivities = Array.from(cluster.querySelectorAll('.mini-activity'));
             const newOrderIds = clusterActivities.map(el => el.dataset.id);
-
-            // Update the order in the data structure
             const fixtureActivities = S.items.filter(i => i.fixtureId === fixtureId && i.type === 'activity');
-            const orderedActivities = [];
-
-            newOrderIds.forEach(id => {
-              const activity = fixtureActivities.find(a => a.id === id);
-              if (activity) orderedActivities.push(activity);
-            });
-
-            // Update the main items array to reflect new order
+            const orderedActivities = newOrderIds.map(id => fixtureActivities.find(a => a.id === id)).filter(Boolean);
             S.items = S.items.filter(i => !newOrderIds.includes(i.id));
             orderedActivities.forEach(act => S.items.push(act));
-
             save();
-
-            // Ensure the dropdown stays open after reordering
             ensureDropdownOpen(fixtureId);
           }
-
-          // Restore toggle button onclick handlers after drag
           setTimeout(() => {
+            disableToggle = false;
             document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
-              if (btn.dataset.originalOnclick) {
-                btn.setAttribute('onclick', btn.dataset.originalOnclick);
-                delete btn.dataset.originalOnclick;
-              }
+              if (btn.dataset.originalOnclick) { btn.setAttribute('onclick', btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; }
             });
-          }, 200);
-
+          }, 500);
           touchElement = null;
         });
       });
@@ -3460,92 +3223,48 @@
           e.preventDefault();
           fc.classList.remove('drop-active');
           const act = S.items.find(i => i.id === dragActivityId);
-          if (act && act.type === 'activity') {
-            act.fixtureId = fc.dataset.fixtureId;
-            save(); render();
-            showToast('🏉 Activity linked smoothly to match!');
-          }
+          if (act && act.type === 'activity') { act.fixtureId = fc.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
         });
       });
 
-      // Prevent clicks on fixture footers during/after drag operations
       document.querySelectorAll('.fixture-footer').forEach(footer => {
         footer.addEventListener('click', (e) => {
-          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) {
-            e.stopPropagation();
-            e.preventDefault();
-            return false;
-          }
-        }, true); // Use capture phase to catch clicks early
+          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) { e.stopPropagation(); e.preventDefault(); }
+        }, true);
       });
 
-      // Prevent clicks on toggle buttons during/after drag operations
       document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) {
-            e.stopPropagation();
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            return false;
-          }
-        }, true); // Use capture phase to catch clicks early
+          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) { e.stopPropagation(); e.preventDefault(); e.stopImmediatePropagation(); }
+        }, true);
       });
 
-      // Add drag-and-drop for reordering within activity clusters
       document.querySelectorAll('.activity-cluster').forEach(cluster => {
         cluster.addEventListener('dragover', (e) => {
           e.preventDefault();
           const dragging = document.querySelector('.dragging');
           if (!dragging) return;
-
           const afterElement = getDragAfterElement(cluster, e.clientY);
-          if (afterElement == null) {
-            cluster.appendChild(dragging);
-          } else {
-            cluster.insertBefore(dragging, afterElement);
-          }
+          afterElement == null ? cluster.appendChild(dragging) : cluster.insertBefore(dragging, afterElement);
         });
 
         cluster.addEventListener('drop', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
+          e.preventDefault(); e.stopPropagation();
           const fixtureId = cluster.id.replace('cluster-', '');
           const clusterActivities = Array.from(cluster.querySelectorAll('.mini-activity'));
           const newOrderIds = clusterActivities.map(el => el.dataset.id);
-
-          // Update the order in the data structure
           const fixtureActivities = S.items.filter(i => i.fixtureId === fixtureId && i.type === 'activity');
-          const orderedActivities = [];
-
-          newOrderIds.forEach(id => {
-            const activity = fixtureActivities.find(a => a.id === id);
-            if (activity) orderedActivities.push(activity);
-          });
-
-          // Update the main items array to reflect new order
-          // Remove the reordered activities from main array
+          const orderedActivities = newOrderIds.map(id => fixtureActivities.find(a => a.id === id)).filter(Boolean);
           S.items = S.items.filter(i => !newOrderIds.includes(i.id));
-          // Add them back in new order
           orderedActivities.forEach(act => S.items.push(act));
-
-          // Save without re-rendering - the DOM is already in the correct order
           save();
-
-          // Temporarily disable the toggle button to prevent it from closing the dropdown
           const btn = document.querySelector(`[onclick="toggleActCluster('${fixtureId}')"]`);
           if (btn) {
-            const originalOnClick = btn.getAttribute('onclick');
+            const orig = btn.getAttribute('onclick');
             btn.removeAttribute('onclick');
             btn.style.pointerEvents = 'none';
-
-            setTimeout(() => {
-              btn.setAttribute('onclick', originalOnClick);
-              btn.style.pointerEvents = '';
-            }, 500);
+            setTimeout(() => { btn.setAttribute('onclick', orig); btn.style.pointerEvents = ''; }, 500);
           }
-
-          // Ensure the dropdown stays open after reordering
           ensureDropdownOpen(fixtureId);
         });
       });
@@ -3553,15 +3272,10 @@
 
     function getDragAfterElement(container, y) {
       const draggableElements = [...container.querySelectorAll('.mini-activity:not(.dragging)')];
-
       return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-          return { offset: offset, element: child };
-        } else {
-          return closest;
-        }
+        return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
       }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
@@ -3575,19 +3289,14 @@
 
     function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentModal = null; }
 
-    function toggleMobileDropdown() {
-      const dropdown = document.getElementById('mobile-dropdown');
-      dropdown.classList.toggle('show');
-    }
+    function toggleMobileDropdown() { document.getElementById('mobile-dropdown').classList.toggle('show'); }
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', function (event) {
       const wrapper = document.querySelector('.mobile-add-wrapper');
       const dropdown = document.getElementById('mobile-dropdown');
-      if (wrapper && dropdown && !wrapper.contains(event.target)) {
-        dropdown.classList.remove('show');
-      }
+      if (wrapper && dropdown && !wrapper.contains(event.target)) dropdown.classList.remove('show');
     });
+
     function editFixture(id) { openModal('fixture', id); }
     function editActivity(id) { openModal('activity', id); }
     function editMilestone(id) { openModal('milestone', id); }
@@ -3598,20 +3307,11 @@
       const isEdit = !!editId;
       document.getElementById('modal-title').textContent = isEdit ? `Edit ${type.toUpperCase()}` : `Add ${type.toUpperCase()}`;
       const body = document.getElementById('modal-body');
-
-      // Hide delete button for milestones
-      const deleteBtn = document.getElementById('modal-delete');
-      deleteBtn.style.display = 'none';
+      document.getElementById('modal-delete').style.display = 'none';
 
       const assigneeSection = () => {
-        const chips = (currentModal.assignees || []).map((p, i) =>
-          `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`
-        ).join('');
-        const quickPills = S.savedAssignees
-          .filter(n => !(currentModal.assignees || []).includes(n))
-          .slice(0, 8)
-          .map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`)
-          .join('');
+        const chips = (currentModal.assignees || []).map((p, i) => `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
+        const quickPills = S.savedAssignees.filter(n => !(currentModal.assignees || []).includes(n)).slice(0, 8).map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
         return `
     <div class="form-group">
       <div class="quick-add-row" id="quick-add-row">
@@ -3628,141 +3328,56 @@
       if (type === 'fixture') {
         const f = data || {};
         body.innerHTML = `
-      <div class="form-group">
-        <label class="form-label">Opponent *</label>
-        <input class="form-input" id="f-opponent" value="${esc(f.opponent || '')}">
-      </div>
+      <div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent || '')}"></div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Date *</label>
-          <input class="form-input" id="f-date" type="date" value="${f.date || todayStr()}">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Match Type</label>
-          <select class="form-select" id="f-type">
-            ${['League', 'Cup', 'Playoff', 'Friendly'].map(t => `<option ${f.matchType === t ? 'selected' : ''}>${t}</option>`).join('')}
-          </select>
-        </div>
+        <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date || todayStr()}"></div>
+        <div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League', 'Cup', 'Playoff', 'Friendly'].map(t => `<option ${f.matchType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Team Type</label>
+      <div class="form-group"><label class="form-label">Team Type</label>
         <div class="team-selector" id="f-teamtype">
-          <div class="team-opt ${f.teamType === "Men's" || !f.teamType ? 'selected' : ''}" data-value="Men's">Men's</div>
-          <div class="team-opt ${f.teamType === "Women's" ? 'selected' : ''}" data-value="Women's">Women's</div>
-          <div class="team-opt ${f.teamType === 'Reserves' ? 'selected' : ''}" data-value="Reserves">Reserves</div>
-          <div class="team-opt ${f.teamType === 'Academy' ? 'selected' : ''}" data-value="Academy">Academy</div>
-          <div class="team-opt ${f.teamType === 'Scholarship' ? 'selected' : ''}" data-value="Scholarship">Scholarship</div>
-          <div class="team-opt ${f.teamType === 'Wheelchair' ? 'selected' : ''}" data-value="Wheelchair">Wheelchair</div>
-          <div class="team-opt ${f.teamType === 'PD/LDRL' ? 'selected' : ''}" data-value="PD/LDRL">PD/LDRL</div>
+          ${TEAM_TYPES.map(t => `<div class="team-opt ${f.teamType === t || (!f.teamType && t === "Men's") ? 'selected' : ''}" data-value="${t}">${t}</div>`).join('')}
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Venue</label>
-        <input class="form-input" id="f-venue" value="${esc(f.venue || '')}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Venue Type</label>
+      <div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue || '')}"></div>
+      <div class="form-group"><label class="form-label">Venue Type</label>
         <div class="venue-selector" id="f-vtype">
-          <div class="venue-opt home ${f.venueType === 'home' ? 'selected' : ''}" data-value="home">Home</div>
-          <div class="venue-opt away ${f.venueType === 'away' ? 'selected' : ''}" data-value="away">Away</div>
+          <div class="venue-opt home    ${f.venueType === 'home' ? 'selected' : ''}" data-value="home">Home</div>
+          <div class="venue-opt away    ${f.venueType === 'away' ? 'selected' : ''}" data-value="away">Away</div>
           <div class="venue-opt neutral ${f.venueType === 'neutral' ? 'selected' : ''}" data-value="neutral">Neutral</div>
         </div>
       </div>`;
-
-        // Add click handlers for venue selector
-        const venueOpts = document.querySelectorAll('#f-vtype .venue-opt');
-        venueOpts.forEach(opt => {
-          opt.addEventListener('click', function () {
-            venueOpts.forEach(o => o.classList.remove('selected'));
-            this.classList.add('selected');
-          });
-        });
-
-        // Add click handlers for team selector
-        const teamOpts = document.querySelectorAll('#f-teamtype .team-opt');
-        teamOpts.forEach(opt => {
-          opt.addEventListener('click', function () {
-            teamOpts.forEach(o => o.classList.remove('selected'));
-            this.classList.add('selected');
-          });
-        });
+        document.querySelectorAll('#f-vtype .venue-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#f-vtype .venue-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
+        document.querySelectorAll('#f-teamtype .team-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#f-teamtype .team-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
       } else if (type === 'activity') {
         const a = data || {};
         body.innerHTML = `
-      <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input class="form-input" id="a-title" value="${esc(a.title || '')}">
-      </div>
+      <div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || '')}"></div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Date *</label>
-          <input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Type</label>
-          <select class="form-select" id="a-type">
-            ${ACTIVITY_TYPES.map(t => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === 'other') ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}
-          </select>
-        </div>
+        <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div>
+        <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map(t => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === 'other') ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}</select></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || '')}</textarea>
-      </div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || '')}</textarea></div>
       ${assigneeSection()}`;
       } else if (type === 'milestone') {
         const m = data || {};
         body.innerHTML = `
-      <div class="form-group">
-        <label class="form-label">Title *</label>
-        <input class="form-input" id="m-title" value="${esc(m.title || '')}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Date *</label>
-        <input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Style Color</label>
+      <div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title || '')}"></div>
+      <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}"></div>
+      <div class="form-group"><label class="form-label">Style Color</label>
         <div class="style-selector" id="m-style">
-          <div class="style-opt red ${m.style === 'red' ? 'selected' : ''}" data-value="red" title="Red"></div>
-          <div class="style-opt gold ${m.style === 'gold' ? 'selected' : ''}" data-value="gold" title="Gold"></div>
+          <div class="style-opt red     ${m.style === 'red' ? 'selected' : ''}" data-value="red"     title="Red"></div>
+          <div class="style-opt gold    ${m.style === 'gold' ? 'selected' : ''}" data-value="gold"    title="Gold"></div>
           <div class="style-opt neutral ${m.style === 'neutral' ? 'selected' : ''}" data-value="neutral" title="Neutral"></div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || '')}</textarea>
-      </div>`;
-
-        // Add click handlers for style selector
-        const styleOpts = document.querySelectorAll('#m-style .style-opt');
-        styleOpts.forEach(opt => {
-          opt.addEventListener('click', function () {
-            styleOpts.forEach(o => o.classList.remove('selected'));
-            this.classList.add('selected');
-          });
-        });
+      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || '')}</textarea></div>`;
+        document.querySelectorAll('#m-style .style-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#m-style .style-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
       } else if (type === 'note') {
         const n = data || {};
         body.innerHTML = `
-      <div class="form-group">
-        <label class="form-label">Date *</label>
-        <input class="form-input" id="n-date" type="date" value="${n.date || todayStr()}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Content *</label>
-        <textarea class="form-input" id="n-content" rows="5">${esc(n.content || '')}</textarea>
-      </div>`;
+      <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="n-date" type="date" value="${n.date || todayStr()}"></div>
+      <div class="form-group"><label class="form-label">Content *</label><textarea class="form-input" id="n-content" rows="5">${esc(n.content || '')}</textarea></div>`;
       }
-
-      // Add click handlers for venue selector
-      const venueOpts = document.querySelectorAll('#f-vtype .venue-opt');
-      venueOpts.forEach(opt => {
-        opt.addEventListener('click', function () {
-          venueOpts.forEach(o => o.classList.remove('selected'));
-          this.classList.add('selected');
-        });
-      });
     }
 
     function quickAddAssignee(name) {
@@ -3784,10 +3399,7 @@
       const name = (inp.value || '').trim();
       if (!name) return;
       if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
-      if (!S.savedAssignees.includes(name)) {
-        S.savedAssignees.push(name);
-        saveAssignees();
-      }
+      if (!S.savedAssignees.includes(name)) { S.savedAssignees.push(name); saveAssignees(); }
       inp.value = '';
       hideAssigneeSuggestions();
       refreshAssigneeUI();
@@ -3798,40 +3410,18 @@
       if (list) list.innerHTML = currentModal.assignees.map((p, i) => `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
       const quickRow = document.getElementById('quick-add-row');
       if (quickRow) {
-        const pills = S.savedAssignees
-          .filter(n => !currentModal.assignees.includes(n))
-          .slice(0, 8)
-          .map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`)
-          .join('');
-        if (pills) {
-          quickRow.style.display = '';
-          quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}`;
-        } else {
-          quickRow.style.display = 'none';
-        }
+        const pills = S.savedAssignees.filter(n => !currentModal.assignees.includes(n)).slice(0, 8).map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
+        quickRow.style.display = pills ? '' : 'none';
+        if (pills) quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}`;
       }
     }
 
     function showAssigneeSuggestions(query) {
       const dropdown = document.getElementById('autocomplete-dropdown');
-      if (!query || query.trim() === '') {
-        hideAssigneeSuggestions();
-        return;
-      }
-
-      const matches = S.savedAssignees.filter(name =>
-        name.toLowerCase().includes(query.toLowerCase()) &&
-        !currentModal.assignees.includes(name)
-      );
-
-      if (matches.length === 0) {
-        hideAssigneeSuggestions();
-        return;
-      }
-
-      dropdown.innerHTML = matches.map(name =>
-        `<div class="autocomplete-item" onclick="selectAssignee('${esc(name)}')">${esc(name)}</div>`
-      ).join('');
+      if (!query || !query.trim()) { hideAssigneeSuggestions(); return; }
+      const matches = S.savedAssignees.filter(name => name.toLowerCase().includes(query.toLowerCase()) && !currentModal.assignees.includes(name));
+      if (!matches.length) { hideAssigneeSuggestions(); return; }
+      dropdown.innerHTML = matches.map(name => `<div class="autocomplete-item" onclick="selectAssignee('${esc(name)}')">${esc(name)}</div>`).join('');
       dropdown.style.display = 'block';
     }
 
@@ -3840,264 +3430,158 @@
       if (dropdown) dropdown.style.display = 'none';
     }
 
-    function selectAssignee(name) {
-      const inp = document.getElementById('assignee-input');
-      inp.value = name;
-      addAssignee();
-    }
+    function selectAssignee(name) { const inp = document.getElementById('assignee-input'); inp.value = name; addAssignee(); }
 
     function handleAssigneeKeydown(event) {
       const dropdown = document.getElementById('autocomplete-dropdown');
       if (event.key === 'Enter') {
         event.preventDefault();
-        if (dropdown.style.display === 'block' && dropdown.querySelector('.autocomplete-item')) {
-          const firstItem = dropdown.querySelector('.autocomplete-item');
-          firstItem.click();
-        } else {
-          addAssignee();
-        }
-      } else if (event.key === 'Escape') {
-        hideAssigneeSuggestions();
-      }
+        if (dropdown.style.display === 'block' && dropdown.querySelector('.autocomplete-item')) dropdown.querySelector('.autocomplete-item').click();
+        else addAssignee();
+      } else if (event.key === 'Escape') hideAssigneeSuggestions();
     }
 
-    function removeAssignee(idx) {
-      currentModal.assignees.splice(idx, 1);
-      refreshAssigneeUI();
-    }
+    function removeAssignee(idx) { currentModal.assignees.splice(idx, 1); refreshAssigneeUI(); }
 
     function saveModal() {
       const { type, editId } = currentModal;
       if (type === 'fixture') {
         const opponent = document.getElementById('f-opponent').value.trim();
         const date = document.getElementById('f-date').value;
-        if (!opponent || !date) return alert('Missing Requirements');
-        const selectedVenueType = document.querySelector('#f-vtype .venue-opt.selected')?.dataset.value || 'home';
-        const selectedTeamType = document.querySelector('#f-teamtype .team-opt.selected')?.dataset.value || "Men's";
-        const obj = { id: editId || uid(), type: 'fixture', date, opponent, venue: document.getElementById('f-venue').value, matchType: document.getElementById('f-type').value, venueType: selectedVenueType, teamType: selectedTeamType, assignees: [] };
-        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+        if (!opponent || !date) return alert('Opponent and date are required');
+        const venueType = document.querySelector('#f-vtype .venue-opt.selected')?.dataset.value || 'home';
+        const teamType = document.querySelector('#f-teamtype .team-opt.selected')?.dataset.value || "Men's";
+        const obj = { id: editId || uid(), type: 'fixture', date, opponent, venue: document.getElementById('f-venue').value, matchType: document.getElementById('f-type').value, venueType, teamType, assignees: [] };
+        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
       } else if (type === 'activity') {
         const title = document.getElementById('a-title').value.trim();
         const date = document.getElementById('a-date').value;
         const notes = document.getElementById('a-notes').value.trim();
-        if (!title || !date) return alert('Missing Fields');
-        const existingItem = editId ? S.items.find(i => i.id === editId) : null;
-        const obj = { id: editId || uid(), type: 'activity', date, title, actType: document.getElementById('a-type').value, assignees: currentModal.assignees, notes, complete: existingItem ? existingItem.complete : false, fixtureId: existingItem ? existingItem.fixtureId : null };
-        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+        if (!title || !date) return alert('Title and date are required');
+        const existing = editId ? S.items.find(i => i.id === editId) : null;
+        const obj = { id: editId || uid(), type: 'activity', date, title, actType: document.getElementById('a-type').value, assignees: currentModal.assignees, notes, complete: existing ? existing.complete : false, fixtureId: existing ? existing.fixtureId : null };
+        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
       } else if (type === 'milestone') {
         const title = document.getElementById('m-title').value.trim();
         const date = document.getElementById('m-date').value;
         const notes = document.getElementById('m-notes').value.trim();
-        const selectedStyle = document.querySelector('#m-style .style-opt.selected')?.dataset.value || 'neutral';
-        if (!title || !date) return alert('Missing Requirements');
-        const obj = { id: editId || uid(), type: 'milestone', date, title, style: selectedStyle, notes, assignees: [] };
-        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+        const style = document.querySelector('#m-style .style-opt.selected')?.dataset.value || 'neutral';
+        if (!title || !date) return alert('Title and date are required');
+        const obj = { id: editId || uid(), type: 'milestone', date, title, style, notes, assignees: [] };
+        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
       } else if (type === 'note') {
         const date = document.getElementById('n-date').value;
         const content = document.getElementById('n-content').value.trim();
-        if (!date || !content) return alert('Missing Requirements');
+        if (!date || !content) return alert('Date and content are required');
         const obj = { id: editId || uid(), type: 'note', date, content, assignees: [] };
-        if (editId) { const idx = S.items.findIndex(i => i.id === editId); S.items[idx] = obj; } else S.items.push(obj);
+        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
       }
-      // Track open dropdowns before render
+
       const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
-
       save(); closeModal(); render();
-
-      // Restore open dropdowns after render
       openDropdowns.forEach(fid => {
         const cluster = document.getElementById('cluster-' + fid);
         const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-        if (cluster) {
-          cluster.style.display = '';
-          if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
-        }
+        if (cluster) { cluster.style.display = ''; if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
       });
-
-      showToast('Item changes committed successfully.');
+      showToast('Changes saved.');
     }
 
     let pendingDeleteId = null;
 
     function showDeleteConfirm(id) {
       pendingDeleteId = id;
-      const overlay = document.getElementById('delete-confirm-overlay');
-      overlay.style.display = 'flex';
-
-      // Set up the confirm button to execute the deletion
-      const confirmBtn = document.getElementById('confirm-delete-btn');
-      confirmBtn.onclick = function () {
+      document.getElementById('delete-confirm-overlay').style.display = 'flex';
+      document.getElementById('confirm-delete-btn').onclick = function () {
         if (pendingDeleteId) {
           S.items = S.items.filter(i => i.id !== pendingDeleteId && i.fixtureId !== pendingDeleteId);
           save(); render();
-          showToast('Item deleted successfully.');
+          showToast('Item deleted.');
           closeDeleteConfirm();
           pendingDeleteId = null;
         }
       };
     }
 
-    function closeDeleteConfirm() {
-      const overlay = document.getElementById('delete-confirm-overlay');
-      overlay.style.display = 'none';
-      pendingDeleteId = null;
-    }
+    function closeDeleteConfirm() { document.getElementById('delete-confirm-overlay').style.display = 'none'; pendingDeleteId = null; }
+    function deleteItem(id) { showDeleteConfirm(id); }
+    function deleteModalItem() { if (!currentModal.editId) return; closeModal(); showDeleteConfirm(currentModal.editId); }
 
-    function deleteItem(id) {
-      showDeleteConfirm(id);
-    }
-
-    function deleteModalItem() {
-      if (!currentModal.editId) return;
-      closeModal();
-      showDeleteConfirm(currentModal.editId);
-    }
-
-    // ─── DATE POPUP FUNCTIONS ───────────────────────────────────────────────────────────
+    // ─── DATE POPUP ──────────────────────────────────────────────────────────────
     let currentPopupDate = null;
 
     function copyDateLink(dateStr) {
-      // Find and scroll to the date group with date just below top of screen
-      const dateLabels = document.querySelectorAll('.date-label');
-
-      dateLabels.forEach(label => {
-        const labelDate = label.dataset.date;
-        if (labelDate === dateStr) {
-          const dateGroup = label.closest('.date-group');
-          if (dateGroup) {
-            // Calculate position to scroll date to just below top
-            const rect = dateGroup.getBoundingClientRect();
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const offsetPosition = scrollTop + rect.top - 80; // 80px offset from top
-
-            window.scrollTo({
-              top: offsetPosition,
-              behavior: 'smooth'
-            });
-          }
-        }
+      document.querySelectorAll('.date-label').forEach(label => {
+        if (label.dataset.date !== dateStr) return;
+        const dg = label.closest('.date-group');
+        if (!dg) return;
+        const rect = dg.getBoundingClientRect();
+        window.scrollTo({ top: window.pageYOffset + rect.top - 80, behavior: 'smooth' });
       });
     }
 
     function showDatePopup(dateStr) {
       currentPopupDate = dateStr;
-      const overlay = document.getElementById('date-popup-overlay');
-      const currentDateDisplay = document.getElementById('popup-current-date');
-      const dateInput = document.getElementById('popup-date-input');
-
-      currentDateDisplay.textContent = fmtDisplay(dateStr);
-      dateInput.value = dateStr;
-
-      overlay.style.display = 'flex';
+      document.getElementById('popup-current-date').textContent = fmtDisplay(dateStr);
+      document.getElementById('popup-date-input').value = dateStr;
+      document.getElementById('date-popup-overlay').style.display = 'flex';
     }
 
-    function closeDatePopup() {
-      const overlay = document.getElementById('date-popup-overlay');
-      overlay.style.display = 'none';
-      currentPopupDate = null;
-    }
+    function closeDatePopup() { document.getElementById('date-popup-overlay').style.display = 'none'; currentPopupDate = null; }
 
     function goToDate() {
-      const dateInput = document.getElementById('popup-date-input');
-      const newDate = dateInput.value;
-
-      if (!newDate) {
-        alert('Please select a date');
-        return;
-      }
-
-      // Find and scroll to the date group
-      const dateLabels = document.querySelectorAll('.date-label');
-      let found = false;
-      let nearestDate = null;
-      let nearestDistance = Infinity;
-
-      dateLabels.forEach(label => {
-        const labelDate = label.dataset.date;
-        const distance = Math.abs(new Date(newDate) - new Date(labelDate));
-
-        if (labelDate === newDate) {
-          const dateGroup = label.closest('.date-group');
-          if (dateGroup) {
-            // Calculate position to scroll date to just below top
-            const rect = dateGroup.getBoundingClientRect();
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const offsetPosition = scrollTop + rect.top - 80; // 80px offset from top
-
-            window.scrollTo({
-              top: offsetPosition,
-              behavior: 'smooth'
-            });
-            found = true;
-          }
-        } else if (distance < nearestDistance) {
-          nearestDistance = distance;
-          nearestDate = label;
-        }
+      const newDate = document.getElementById('popup-date-input').value;
+      if (!newDate) { alert('Please select a date'); return; }
+      let nearest = null, nearestDist = Infinity;
+      document.querySelectorAll('.date-label').forEach(label => {
+        const dist = Math.abs(new Date(newDate) - new Date(label.dataset.date));
+        if (label.dataset.date === newDate) {
+          const dg = label.closest('.date-group');
+          if (dg) window.scrollTo({ top: window.pageYOffset + dg.getBoundingClientRect().top - 80, behavior: 'smooth' });
+        } else if (dist < nearestDist) { nearestDist = dist; nearest = label; }
       });
-
-      if (!found && nearestDate) {
-        const dateGroup = nearestDate.closest('.date-group');
-        if (dateGroup) {
-          // Calculate position to scroll date to just below top
-          const rect = dateGroup.getBoundingClientRect();
-          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-          const offsetPosition = scrollTop + rect.top - 80; // 80px offset from top
-
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-          });
-          showToast(`Navigated to nearest date: ${fmtDisplay(nearestDate.dataset.date)}`);
-        }
-      } else if (!found) {
-        alert('No dates found in timeline');
+      if (nearest) {
+        const dg = nearest.closest('.date-group');
+        if (dg) { window.scrollTo({ top: window.pageYOffset + dg.getBoundingClientRect().top - 80, behavior: 'smooth' }); showToast(`Nearest date: ${fmtDisplay(nearest.dataset.date)}`); }
       }
-
       closeDatePopup();
     }
 
-    // Close date popup when clicking outside the modal
-    document.getElementById('date-popup-overlay').addEventListener('click', function (e) {
-      if (e.target === this) {
-        closeDatePopup();
-      }
-    });
+    document.getElementById('date-popup-overlay').addEventListener('click', function (e) { if (e.target === this) closeDatePopup(); });
 
-    // ─── SETTINGS MODAL FUNCTIONS ───────────────────────────────────────────────────────────
+    // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
     function openSettingsModal() {
       document.getElementById('settings-overlay').style.display = 'flex';
       document.getElementById('settings-name-input').value = '';
-
-      // Set cloud sync toggle state
       document.getElementById('cloud-sync-toggle').checked = useCloudSync;
-      updateSyncStatus();
-
-      // Initialize assignee names functionality
+      // Disable the toggle if the token hasn't been configured
+      const toggle = document.getElementById('cloud-sync-toggle');
+      toggle.disabled = !CLOUD_SYNC_CONFIGURED;
+      if (!CLOUD_SYNC_CONFIGURED) {
+        document.getElementById('sync-status').textContent = '⚠ Configure SHEET_TOKEN in the HTML before enabling cloud sync.';
+        document.getElementById('sync-status').style.color = 'var(--orange)';
+      } else {
+        updateSyncStatus();
+      }
       renderSettingsNames();
     }
 
     function renderSettingsNames() {
       const list = document.getElementById('settings-names-list');
       if (!list) return;
-
       list.innerHTML = S.savedAssignees.map((name, idx) => `
         <div class="settings-name-item">
           <span class="settings-name-text">${esc(name)}</span>
-          <span class="settings-name-edit" onclick="editSettingsName(${idx})" title="Edit">✎</span>
+          <span class="settings-name-edit"   onclick="editSettingsName(${idx})"   title="Edit">✎</span>
           <span class="settings-name-delete" onclick="deleteSettingsName(${idx})" title="Delete">✕</span>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
     function addName() {
       const inp = document.getElementById('settings-name-input');
       const name = (inp.value || '').trim();
       if (!name) return;
-      if (S.savedAssignees.includes(name)) {
-        showToast('Name already exists');
-        return;
-      }
+      if (S.savedAssignees.includes(name)) { showToast('Name already exists'); return; }
       S.savedAssignees.push(name);
       saveAssignees();
       inp.value = '';
@@ -4106,7 +3590,6 @@
     }
 
     function deleteSettingsName(idx) {
-      const name = S.savedAssignees[idx];
       S.savedAssignees.splice(idx, 1);
       saveAssignees();
       renderSettingsNames();
@@ -4118,107 +3601,61 @@
       const inp = document.getElementById('settings-name-input');
       inp.value = name;
       inp.focus();
-
-      // Remove the current name from the list temporarily
       S.savedAssignees.splice(idx, 1);
       renderSettingsNames();
-
-      // Change the add button to update the existing name
       const addBtn = document.querySelector('.settings-input-row .btn-primary');
-      const originalOnClick = addBtn.onclick;
+      const origCb = addBtn.onclick;
       addBtn.textContent = 'Update';
       addBtn.onclick = function () {
         const newName = (inp.value || '').trim();
-        if (!newName) {
-          S.savedAssignees.splice(idx, 0, name); // Restore original
-          renderSettingsNames();
-          resetSettingsAddButton(addBtn, originalOnClick);
-          return;
-        }
-        if (S.savedAssignees.includes(newName)) {
-          S.savedAssignees.splice(idx, 0, name); // Restore original
-          renderSettingsNames();
-          resetSettingsAddButton(addBtn, originalOnClick);
-          showToast('Name already exists');
-          return;
-        }
-
-        // Update all items that have the old name to use the new name
-        S.items.forEach(item => {
-          if (item.assignees && item.assignees.includes(name)) {
-            const assigneeIdx = item.assignees.indexOf(name);
-            if (assigneeIdx !== -1) {
-              item.assignees[assigneeIdx] = newName;
-            }
-          }
-        });
-
-        S.savedAssignees.splice(idx, 0, newName); // Insert at original position
+        if (!newName || S.savedAssignees.includes(newName)) { S.savedAssignees.splice(idx, 0, name); renderSettingsNames(); resetSettingsAddButton(addBtn, origCb); if (!newName) return; showToast('Name already exists'); return; }
+        S.items.forEach(item => { if (item.assignees) { const i = item.assignees.indexOf(name); if (i !== -1) item.assignees[i] = newName; } });
+        S.savedAssignees.splice(idx, 0, newName);
         S.savedAssignees.sort((a, b) => a.localeCompare(b));
-        saveAssignees();
-        save(); // Save the updated items
-        render(); // Re-render to show updated names on cards
+        saveAssignees(); save(); render();
         inp.value = '';
         renderSettingsNames();
-        resetSettingsAddButton(addBtn, originalOnClick);
+        resetSettingsAddButton(addBtn, origCb);
         showToast('Name updated');
       };
     }
 
-    function resetSettingsAddButton(btn, originalOnClick) {
-      btn.textContent = 'Add';
-      btn.onclick = originalOnClick;
-    }
+    function resetSettingsAddButton(btn, origCb) { btn.textContent = 'Add'; btn.onclick = origCb; }
 
-    // Handle Enter key in settings name input
     document.addEventListener('keydown', function (e) {
       const settingsOverlay = document.getElementById('settings-overlay');
-      if (settingsOverlay && settingsOverlay.style.display === 'flex' && e.key === 'Enter') {
+      if (settingsOverlay?.style.display === 'flex' && e.key === 'Enter') {
         const inp = document.getElementById('settings-name-input');
-        if (document.activeElement === inp) {
-          const addBtn = document.querySelector('.settings-input-row .btn-primary');
-          if (addBtn && addBtn.textContent === 'Add') {
-            addName();
-          } else if (addBtn && addBtn.textContent === 'Update') {
-            addBtn.click();
-          }
-        }
+        const addBtn = document.querySelector('.settings-input-row .btn-primary');
+        if (document.activeElement === inp) addBtn?.click();
       }
     });
 
-    function closeSettingsModal() {
-      document.getElementById('settings-overlay').style.display = 'none';
-    }
+    function closeSettingsModal() { document.getElementById('settings-overlay').style.display = 'none'; }
 
+    // BUG FIX 6: stopPolling() now called when cloud sync is disabled.
     function toggleCloudSyncSetting() {
       const checkbox = document.getElementById('cloud-sync-toggle');
       const newState = checkbox.checked;
       const currentState = useCloudSync;
-
-      // If state hasn't actually changed, do nothing
-      if (newState === currentState) {
-        return;
-      }
+      if (newState === currentState) return;
 
       const message = newState
-        ? '⚠️ Are you sure you want to enable cloud sync?\n\nThis will allow your timeline data to be synced with Google Sheets.'
-        : '⚠️ Are you sure you want to disable cloud sync?\n\nYour timeline data will no longer be synced with Google Sheets. Local changes will not be saved to the cloud.';
+        ? '⚠️ Enable cloud sync? Data will sync with Google Sheets.'
+        : '⚠️ Disable cloud sync? Changes will only be saved locally.';
 
       if (confirm(message)) {
         useCloudSync = newState;
-        localStorage.setItem('bbUseCloudSync', newState);
-
-        // Update sync status
+        localStorage.setItem('bbUseCloudSync', String(newState));
         updateSyncStatus();
-
-        // Reload data if cloud sync was enabled
         if (newState) {
-          load();
+          loadFromGoogleSheets();
+          startPolling(pollCallback);
+        } else {
+          stopPolling();  // Was missing — polling continued after the user disabled sync
         }
-
         showToast(newState ? 'Cloud sync enabled' : 'Cloud sync disabled');
       } else {
-        // Revert checkbox to original state
         checkbox.checked = currentState;
       }
     }
@@ -4226,22 +3663,20 @@
     function updateSyncStatus() {
       const statusEl = document.getElementById('sync-status');
       if (!statusEl) return;
-
       if (useCloudSync) {
-        statusEl.textContent = '✓ Cloud sync is active - data will be saved to Google Sheets';
+        statusEl.textContent = '✓ Cloud sync active — saving to Google Sheets';
         statusEl.style.color = 'var(--green)';
-        statusEl.style.background = 'rgba(46, 125, 50, 0.1)';
+        statusEl.style.background = 'rgba(46,125,50,0.1)';
         statusEl.style.borderColor = 'var(--green)';
       } else {
-        statusEl.textContent = 'Cloud sync is disabled - using local storage only';
+        statusEl.textContent = 'Cloud sync disabled — using local storage';
         statusEl.style.color = 'var(--ink-mid)';
-        statusEl.style.background = 'rgba(247, 245, 242, 0.5)';
+        statusEl.style.background = 'rgba(247,245,242,0.5)';
         statusEl.style.borderColor = 'var(--line)';
       }
     }
 
-
-    // ─── TOASTS ──────────────────────────────────────────────────────────────────
+    // ─── TOASTS ───────────────────────────────────────────────────────────────────
     function showToast(msg) {
       const c = document.getElementById('toast-container');
       const el = document.createElement('div');
@@ -4251,139 +3686,82 @@
       setTimeout(() => el.remove(), 4000);
     }
 
-    // ─── BOOTSTRAP ───────────────────────────────────────────────────────────────
-    document.addEventListener('keydown', e => {
-      // Allow undo/redo shortcuts to pass through
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
-        return;
-      }
-      if (e.key === 'Escape') closeModal();
-    });
-    load();
-    render();
-
-    // Start polling for real-time updates if cloud sync is enabled
-    if (useCloudSync) {
-      console.log('Starting polling for real-time sync...');
-      startPolling(async () => {
-        try {
-          console.log('Polling Google Sheets for updates...');
-          const result = await getSheetData();
-
-          console.log('Poll result:', result);
-
-          if (result && result.rows && result.rows.length > 0) {
-            console.log('Found', result.rows.length, 'rows in sheet');
-            const latestRow = result.rows[result.rows.length - 1];
-            console.log('Latest row:', latestRow);
-
-            if (latestRow && latestRow.data) {
-              try {
-                const data = JSON.parse(latestRow.data);
-                console.log('Parsed data:', data);
-
-                // Validate data
-                if (data.items && Array.isArray(data.items)) {
-                  console.log('Current items count:', S.items.length, 'New items count:', data.items.length);
-
-                  // Only update if data has changed
-                  if (JSON.stringify(data.items) !== JSON.stringify(S.items)) {
-                    console.log('Data changed, updating UI...');
-                    S.items = data.items;
-                    S.savedAssignees = data.savedAssignees || [];
-                    render();
-                    console.log('✓ Auto-synced from Google Sheets');
-                  } else {
-                    console.log('Data unchanged, no update needed');
-                  }
-                } else {
-                  console.error('Invalid data format - no items array');
-                }
-              } catch (parseError) {
-                console.error('Failed to parse synced data:', parseError);
-              }
-            } else {
-              console.log('No data field in latest row');
-            }
-          } else {
-            console.log('No rows found in Google Sheets');
-          }
-        } catch (error) {
-          console.error('Polling sync error:', error);
-        }
-      });
-    }
-
-    // Click logo to scroll to today
-    document.getElementById('brand-logo-wrap').addEventListener('click', () => {
-      const todayMarker = document.getElementById('today-marker');
-      if (todayMarker) {
-        todayMarker.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-
-    // ─── DOT HOVER ANIMATIONS ───────────────────────────────────────────────────────────
-    // Add hover functionality for left-side cards (CSS handles right-side)
+    // ─── DOT HOVER ANIMATIONS ────────────────────────────────────────────────────
     function setupDotHoverAnimations() {
-      const leftSideDots = document.querySelectorAll('.tl-row.side-left .node-dot');
-
-      leftSideDots.forEach(dot => {
+      document.querySelectorAll('.tl-row.side-left .node-dot').forEach(dot => {
         const row = dot.closest('.tl-row.side-left');
-        const cardWrap = row.querySelector('.tl-card-wrap');
-        // Target all card types: fixture, activity, milestone, note
-        const cards = cardWrap?.querySelectorAll('.fixture-card, .activity-card, .milestone-card, .note-card');
-
-        cards.forEach(card => {
+        const cardWrap = row?.querySelector('.tl-card-wrap');
+        if (!cardWrap) return;
+        cardWrap.querySelectorAll('.fixture-card, .activity-card, .milestone-card, .note-card').forEach(card => {
           dot.addEventListener('mouseenter', () => {
-            // Add base highlight class
             card.classList.add('card-highlight');
-
-            // Add color-specific highlight class based on dot type
-            if (dot.classList.contains('fixture-dot')) {
-              card.classList.add('highlight-red');
-            } else if (dot.classList.contains('milestone-dot')) {
-              card.classList.add('highlight-gold');
-            } else if (dot.classList.contains('past-dot')) {
-              card.classList.add('highlight-past');
-            } else if (dot.classList.contains('complete-dot')) {
-              card.classList.add('highlight-complete');
-            }
+            if (dot.classList.contains('fixture-dot')) card.classList.add('highlight-red');
+            else if (dot.classList.contains('milestone-dot')) card.classList.add('highlight-gold');
+            else if (dot.classList.contains('past-dot')) card.classList.add('highlight-past');
+            else if (dot.classList.contains('complete-dot')) card.classList.add('highlight-complete');
           });
-
           dot.addEventListener('mouseleave', () => {
-            // Remove all highlight classes
             card.classList.remove('card-highlight', 'highlight-red', 'highlight-gold', 'highlight-past', 'highlight-complete');
           });
         });
       });
     }
 
-    // Setup dot hover animations after initial render
-    setTimeout(setupDotHoverAnimations, 200);
+    // ─── POLLING CALLBACK ─────────────────────────────────────────────────────────
+    async function pollCallback() {
+      if (!useCloudSync) return;
+      try {
+        const result = await getSheetData();
+        if (!result?.rows?.length) return;
+        const latestRow = result.rows[result.rows.length - 1];
+        if (!latestRow?.data) return;
+        const data = JSON.parse(latestRow.data);
+        if (!data.items || !Array.isArray(data.items)) return;
 
-    // Also call it after render() completes
-    const originalRender = window.render;
-    if (typeof originalRender === 'function') {
-      window.render = function () {
-        originalRender.apply(this, arguments);
-        setTimeout(setupDotHoverAnimations, 100);
-      };
+        // BUG FIX 7: Order-insensitive comparison — prevents identical data in a different
+        // insertion order from being treated as new and triggering a spurious re-render.
+        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
+        const localHash = S.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
+
+        if (remoteHash !== localHash) {
+          S.items = data.items;
+          S.savedAssignees = data.savedAssignees || [];
+          saveToLocal();
+          render();
+          console.log('✓ Auto-synced from Google Sheets');
+        }
+      } catch (error) {
+        console.error('Polling sync error:', error);
+      }
     }
-  </script>
 
-  <script>
-    // Google Apps Script Configuration (Current approach)
-    // Note: The SHEET_API and SHEET_TOKEN constants and related functions are now defined
-    // in the main script tag above to avoid scope issues.
-    //
-    // Alternative: Direct Google Sheets API Configuration (for Direct API approach)
-    // Uncomment and configure these if using the Direct API approach instead of Google Apps Script
-    // const GCP_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE'; // Replace with your Google Client ID
-    // const GCP_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE'; // Replace with your Google API Key
-    //
-    // Alternative: Backend Proxy Configuration (for Backend Proxy approach)
-    // Uncomment and configure this if using the Backend Proxy approach instead of Google Apps Script
-    // const PROXY_API_KEY = 'your-secret-key-here'; // Replace with your PROXY_SECRET_KEY from simple-server.js
+    // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // BUG FIX 8: render() is now properly wrapped AFTER it is defined.
+    // Previously window.render was referenced but render() is a function declaration, not
+    // a window property — so originalRender was always undefined and animations never re-attached.
+    const _baseRender = render;
+    render = function () {
+      _baseRender.apply(this, arguments);
+      setTimeout(setupDotHoverAnimations, 100);
+    };
+
+    // BUG FIX 9: load() calls render() internally — no separate render() call needed here.
+    // The previous code called render() immediately after load(), which painted a blank/seed
+    // state before the (async) cloud load had a chance to complete.
+    load();
+
+    // Click logo to scroll to today
+    document.getElementById('brand-logo-wrap').addEventListener('click', () => {
+      document.getElementById('today-marker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Start polling only if cloud sync is both configured and enabled
+    if (useCloudSync) {
+      console.log('Starting cloud sync polling…');
+      startPolling(pollCallback);
+    }
   </script>
 </body>
 
