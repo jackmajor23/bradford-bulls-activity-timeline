@@ -3,6 +3,9 @@
 .env.local
 .env.production
 
+# Config files with credentials
+config.js
+
 # Google Service Account Key
 google-service-account-key.json
 *-service-account*.json

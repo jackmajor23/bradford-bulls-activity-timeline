@@ -1,162 +1,101 @@
-# Simple Setup Guide - All-in-One Server
+# Simple Setup Guide - Supabase Cloud Sync
 
-This is the simplified approach with everything in one file. No complex configuration needed!
+This is the simplified approach with Supabase. No server required - everything runs in the browser!
 
-## 🚀 Quick Setup (5 minutes)
+## 🚀 Quick Setup (2 minutes)
 
-### Step 1: Install Dependencies
+### Step 1: Create Config File
+
+Copy the example config file:
 ```bash
-npm install
+cp config.example.js config.js
 ```
 
-### Step 2: Get Your Google Service Account Key
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or use existing one
-3. Enable Google Sheets API
-4. Create Service Account:
-   - Go to Credentials → Create Credentials → Service Account
-   - Name it: Bradford Bulls Timeline Service
-5. Create and Download Key:
-   - Click on the service account → Keys tab → Add Key → Create new key
-   - Select JSON and download the file
-6. Open the downloaded JSON file and copy the contents
-
-### Step 3: Add Your Credentials to simple-server.js
-
-Open `simple-server.js` and paste your Google service account JSON key where it says:
-
+The example already has your Supabase credentials pre-filled:
 ```javascript
-const GOOGLE_SERVICE_ACCOUNT_KEY = `PASTE_YOUR_JSON_HERE`;
+const SUPABASE_CONFIG = {
+  URL: 'https://iqenyprolzxzwnbubuar.supabase.co',
+  ANON_KEY: 'sb_publishable_s7P_E83Hu701PzDJoBE8aw_lDr5ruqS'
+};
 ```
 
-Replace everything between the backticks with your actual JSON key content.
+### Step 2: Open in Browser
 
-### Step 4: Change the Security Key
+Simply open `index.html` in your browser.
 
-In `simple-server.js`, change this line to something random:
+### Step 3: Start Using
 
-```javascript
-const PROXY_SECRET_KEY = "bradford-bulls-secure-proxy-key-change-this";
-```
-
-Generate a random key:
-```bash
-node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
-```
-
-### Step 5: Update Your HTML File
-
-In `index.html`, update this line to match your secret key:
-
-```javascript
-const PROXY_API_KEY = 'your-secret-key-here';
-```
-
-### Step 6: Share Your Google Sheet
-
-1. Create a Google Sheet at sheets.google.com
-2. Click "Share" and add your service account email (find it in your JSON key under `client_email`)
-3. Give it "Editor" permissions
-
-### Step 7: Start the Server
-
-```bash
-node simple-server.js
-```
-
-You should see:
-```
-=================================
-BRADFORD BULLS TIMELINE SERVER
-=================================
-✅ Server running on port 3000
-🔧 Proxy URL: http://localhost:3000/api
-🔐 Secret Key: your-secret-key
-=================================
-```
-
-### Step 8: Test and Use
-
-1. Open `index.html` in your browser
-2. Click Settings → Enable Cloud Sync
-3. Enter your Google Sheet ID
-4. Click "🔗 Test Connection"
-5. Click "📊 Setup Sheet" 
-6. Click "💾 Save Configuration"
+Cloud sync is automatically enabled! Your data will:
+- ✅ Sync to Supabase automatically
+- ✅ Update in real-time across devices
+- ✅ Work offline with local storage fallback
 
 ## ✅ That's It!
 
 Your timeline now has secure cloud sync with:
-- ✅ API credentials hidden in server (not in HTML)
-- ✅ Simple one-file configuration
-- ✅ Secure proxy authentication
+- ✅ No server required (browser-only)
+- ✅ Credentials in gitignored config file
+- ✅ Real-time PostgreSQL subscriptions
 - ✅ Cross-device sync
 - ✅ Team collaboration
+- ✅ Offline support
 
 ## 📁 Files You Need
 
-- `simple-server.js` - All-in-one server (edit this file)
-- `index.html` - Your timeline (edit this file)
-- `package.json` - Dependencies (already exists)
+- `index.html` - Your timeline (no changes needed)
+- `config.js` - Supabase credentials (create from config.example.js)
+- `config.example.js` - Template with your credentials pre-filled
+
+## 🔐 Security
+
+- `config.js` is in `.gitignore` - your credentials won't be committed
+- Uses Supabase anon key (safe for browser use)
+- Row Level Security enabled on database
+- No service role keys exposed
 
 ## 🛠️ Common Issues
 
-**"Google Sheets authentication not configured"**
-- Make sure you pasted the JSON key correctly in simple-server.js
-- Check that the JSON is valid (no extra commas, proper formatting)
+**"Supabase not initialized"**
+- Make sure `config.js` exists in the project root
+- Check that the credentials match your Supabase project
+- Verify the file is named exactly `config.js` (not `config.example.js`)
 
-**"Permission denied"**
-- Make sure you shared the Google Sheet with the service account email
-- The service account email is in your JSON key under `client_email`
+**"Cloud sync not working"**
+- Check browser console for errors (F12)
+- Verify your Supabase project is active
+- Ensure you have internet connection
 
-**"Unauthorized" error**
-- Make sure the PROXY_SECRET_KEY matches between simple-server.js and HTML file
-- Check that the header is being sent correctly
-
-**Server won't start**
-- Make sure you ran `npm install` first
-- Check that port 3000 is not already in use
-
-## 🔧 Quick Reference
-
-**Server commands:**
-```bash
-# Install dependencies
-npm install
-
-# Start server
-node simple-server.js
-
-# Test server is running
-curl http://localhost:3000/api/health
-```
-
-**Google Sheet ID:**
-From URL: `https://docs.google.com/spreadsheets/d/SHEET_ID/edit`
-Copy the part between `/d/` and `/edit`
-
-**Service Account Email:**
-Found in your JSON key under `client_email` field
+**"Data not syncing across devices"**
+- Both devices must use the same Supabase credentials
+- Check real-time subscriptions are active in console
+- Verify Supabase project allows connections
 
 ## 📝 Configuration Checklist
 
-- [ ] Install dependencies: `npm install`
-- [ ] Get Google Service Account key from Google Cloud Console
-- [ ] Paste JSON key into `simple-server.js`
-- [ ] Change `PROXY_SECRET_KEY` in both files
-- [ ] Share Google Sheet with service account email
-- [ ] Start server: `node simple-server.js`
-- [ ] Test connection in timeline Settings
-- [ ] Setup Google Sheet structure
-- [ ] Save configuration and start using!
+- [ ] Copy `config.example.js` to `config.js`
+- [ ] Verify credentials in `config.js` are correct
+- [ ] Open `index.html` in browser
+- [ ] Check browser console for "✓ Supabase initialized"
+- [ ] Start adding items - they'll sync automatically!
 
 ## 🚀 Next Steps
 
-- **For development**: Keep running `node simple-server.js`
-- **For deployment**: Upload `simple-server.js` to a hosting service like Render or Railway
-- **For team sharing**: Share your Google Sheet with team members
+- **For development**: Just open `index.html` in browser
+- **For deployment**: Upload to any static hosting (GitHub Pages, Netlify, etc.)
+- **For team sharing**: Share the Supabase project with team members
+
+## 🔧 Advanced: Using Environment Variables
+
+If you're using a build tool like Vite:
+
+1. Copy `.env.example` to `.env`
+2. Add your credentials:
+```
+VITE_SUPABASE_URL=https://iqenyprolzxzwnbubuar.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_s7P_E83Hu701PzDJoBE8aw_lDr5ruqS
+```
+3. Uncomment the environment variable code in `config.example.js`
 
 ---
 
-**That's the entire setup! Just one file to configure and you're ready to go.**
+**That's the entire setup! Just copy the config file and you're ready to go.**

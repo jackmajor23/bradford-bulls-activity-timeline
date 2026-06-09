@@ -11,6 +11,8 @@
     rel="stylesheet">
   <link rel="icon"
     href="https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <style>
     :root {
       --bg: #F7F5F2;
@@ -2394,15 +2396,15 @@
         </div>
 
         <div class="settings-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line);">
-          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Cloud Sync (Google
-            Sheets)</h3>
+          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Cloud Sync (Supabase)
+          </h3>
           <p style="color: var(--ink-mid); font-size: 12px; margin-bottom: 16px; line-height: 1.5;">
-            Your timeline data is automatically synced to Google Sheets for sharing across devices and with others.
+            Your timeline data is automatically synced to Supabase for sharing across devices and with others.
           </p>
 
           <div id="sync-status"
             style="font-size: 12px; color: var(--green); margin-bottom: 12px; padding: 8px 12px; background: rgba(46,125,50,0.1); border-radius: 6px; border: 1px solid var(--green);">
-            ✓ Cloud sync active — saving to Google Sheets
+            ✓ Cloud sync active — saving to Supabase
           </div>
 
           <div
@@ -2411,9 +2413,8 @@
               style="font-size: 11px; font-weight: 600; color: var(--blue); margin: 0 0 8px 0; text-transform: uppercase;">
               How it works</h4>
             <p style="font-size: 11px; color: var(--ink-mid); margin: 0; line-height: 1.6;">
-              This app uses a Google Apps Script API for real-time sync. Data is automatically saved to Google Sheets
-              when you make changes,
-              and the app polls for updates every 10 seconds to sync changes from other devices.
+              This app uses Supabase for real-time sync. Data is automatically saved to Supabase when you make changes,
+              and the app uses real-time subscriptions to sync changes from other devices instantly.
             </p>
           </div>
         </div>
@@ -2431,14 +2432,24 @@
     const STORAGE_KEY = 'bbTimeline_v5';
     const ASSIGNEE_KEY = 'bbAssignees';
 
-    // ─── GOOGLE SHEETS CONFIGURATION ─────────────────────────────────────────────
-    const SHEET_API = 'https://script.google.com/macros/s/AKfycbzulfmkA_bw8YmlUXYXKNd3CaxeclryhC1si7AyWc1DpdDqCxmzB_y4M9guP750aQod/exec';
-    const SHEET_TOKEN = 'gnjvsuhg48gh8rwn';
+    // ─── SUPABASE CONFIGURATION ─────────────────────────────────────────────────
+    // Credentials loaded from config.js
+    const SUPABASE_URL = typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.URL : 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.ANON_KEY : 'YOUR_SUPABASE_ANON_KEY';
 
-    // Cloud sync is always enabled
-    const CLOUD_SYNC_CONFIGURED = true;
-    let useCloudSync = true;
-    console.log('🚀 Cloud Sync Initialization:', { CLOUD_SYNC_CONFIGURED, useCloudSync, SHEET_TOKEN });
+    let supabase = null;
+    let useCloudSync = false; // Set to true after configuring Supabase
+
+    // Initialize Supabase client when credentials are provided
+    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+      try {
+        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        useCloudSync = true;
+        console.log('✓ Supabase initialized');
+      } catch (e) {
+        console.error('Supabase initialization failed:', e);
+      }
+    }
 
     const ACTIVITY_TYPES = [{ id: 'social', label: 'Social', icon: '📱', cls: 'type-social' }, { id: 'email', label: 'Email', icon: '📧', cls: 'type-email' }, { id: 'pr', label: 'PR', icon: '📰', cls: 'type-pr' }, { id: 'matchday', label: 'Matchday', icon: '🏉', cls: 'type-matchday' }, { id: 'digital', label: 'Digital', icon: '💻', cls: 'type-digital' }, { id: 'print', label: 'Print', icon: '🖨️', cls: 'type-print' }, { id: 'event', label: 'Event', icon: '🎟️', cls: 'type-event' }, { id: 'photo', label: 'Photography', icon: '📷', cls: 'type-photo' }, { id: 'interview', label: 'Interview', icon: '🎙️', cls: 'type-interview' }, { id: 'website', label: 'Website', icon: '💻', cls: 'type-website' }, { id: 'other', label: 'Other', icon: '📌', cls: 'type-other' }];
 
@@ -2457,55 +2468,160 @@
       return null;
     }
 
-    // ─── GOOGLE SHEETS HELPERS ────────────────────────────────────────────────────
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1000;
-
-    async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES) {
+    // ─── SUPABASE HELPERS ─────────────────────────────────────────────────────────
+    async function loadFromSupabase() {
+      if (!supabase || !useCloudSync) return null;
       try {
-        const response = await fetch(url, options);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
-      } catch (error) {
-        if (retries > 0) { await new Promise(resolve => setTimeout(resolve, RETRY_DELAY)); return fetchWithRetry(url, options, retries - 1); }
-        throw error;
+        // Load all data from structured tables
+        const [fixturesData, activitiesData, milestonesData, notesData] = await Promise.all([
+          supabase.from('fixtures').select('*').order('date', { ascending: true }),
+          supabase.from('activities').select('*').order('date', { ascending: true }),
+          supabase.from('milestones').select('*').order('date', { ascending: true }),
+          supabase.from('notes').select('*').order('date', { ascending: true })
+        ]);
+
+        if (fixturesData.error) throw fixturesData.error;
+        if (activitiesData.error) throw activitiesData.error;
+        if (milestonesData.error) throw milestonesData.error;
+        if (notesData.error) throw notesData.error;
+
+        // Transform Supabase data to app format
+        const items = [];
+
+        // Convert fixtures
+        fixturesData.data.forEach(f => {
+          items.push({
+            id: f.id,
+            type: 'fixture',
+            date: f.date.split('T')[0],
+            opponent: f.opponent,
+            venue: f.venue || '',
+            venueType: f.venue,
+            matchType: 'League',
+            teamType: "Men's",
+            assignees: []
+          });
+        });
+
+        // Convert activities
+        activitiesData.data.forEach(a => {
+          items.push({
+            id: a.id,
+            type: 'activity',
+            date: a.date.split('T')[0],
+            title: a.title,
+            actType: a.type || 'other',
+            assignees: a.assignees || [],
+            notes: '',
+            complete: a.completed || false,
+            fixtureId: a.fixture_id
+          });
+        });
+
+        // Convert milestones
+        milestonesData.data.forEach(m => {
+          items.push({
+            id: m.id,
+            type: 'milestone',
+            date: m.date.split('T')[0],
+            title: m.title,
+            style: m.color || 'red',
+            notes: '',
+            assignees: []
+          });
+        });
+
+        // Convert notes
+        notesData.data.forEach(n => {
+          items.push({
+            id: n.id,
+            type: 'note',
+            date: n.date.split('T')[0],
+            content: n.content || '',
+            assignees: []
+          });
+        });
+
+        return { items, savedAssignees: [] };
+      } catch (e) {
+        console.warn('Supabase load failed:', e);
+        return null;
       }
     }
 
-    async function getSheetData() {
+    async function saveToSupabase() {
+      if (!supabase || !useCloudSync) return;
       try {
-        console.log('🔍 Fetching from Google Apps Script:', `${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
-        const data = await fetchWithRetry(`${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
-        console.log('📥 API Response:', data);
-        if (data.success) return data;
-        console.error('❌ Read failed:', data.error);
-        return null;
-      } catch (error) { console.error('❌ Fetch error:', error); return null; }
+        // Separate items by type
+        const fixtures = S.items.filter(i => i.type === 'fixture');
+        const activities = S.items.filter(i => i.type === 'activity');
+        const milestones = S.items.filter(i => i.type === 'milestone');
+        const notes = S.items.filter(i => i.type === 'note');
+
+        // Delete all existing data (simple approach for now)
+        await Promise.all([
+          supabase.from('fixtures').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+          supabase.from('activities').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+          supabase.from('milestones').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+          supabase.from('notes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+        ]);
+
+        // Insert fixtures
+        if (fixtures.length > 0) {
+          const fixturesToInsert = fixtures.map(f => ({
+            id: f.id,
+            opponent: f.opponent,
+            venue: f.venueType,
+            date: new Date(f.date).toISOString()
+          }));
+          const { error: fError } = await supabase.from('fixtures').insert(fixturesToInsert);
+          if (fError) throw fError;
+        }
+
+        // Insert activities
+        if (activities.length > 0) {
+          const activitiesToInsert = activities.map(a => ({
+            id: a.id,
+            title: a.title,
+            type: a.actType,
+            date: new Date(a.date).toISOString(),
+            completed: a.complete || false,
+            assignees: a.assignees || [],
+            fixture_id: a.fixtureId
+          }));
+          const { error: aError } = await supabase.from('activities').insert(activitiesToInsert);
+          if (aError) throw aError;
+        }
+
+        // Insert milestones
+        if (milestones.length > 0) {
+          const milestonesToInsert = milestones.map(m => ({
+            id: m.id,
+            title: m.title,
+            color: m.style,
+            date: new Date(m.date).toISOString()
+          }));
+          const { error: mError } = await supabase.from('milestones').insert(milestonesToInsert);
+          if (mError) throw mError;
+        }
+
+        // Insert notes
+        if (notes.length > 0) {
+          const notesToInsert = notes.map(n => ({
+            id: n.id,
+            title: 'Note',
+            content: n.content,
+            date: new Date(n.date).toISOString()
+          }));
+          const { error: nError } = await supabase.from('notes').insert(notesToInsert);
+          if (nError) throw nError;
+        }
+
+        console.log('✓ Saved to Supabase');
+      } catch (e) {
+        console.error('Supabase save failed:', e);
+      }
     }
-
-    async function submitToSheet(formData) {
-      const identifier = sessionStorage.getItem('uid') || Math.random().toString(36).slice(2);
-      sessionStorage.setItem('uid', identifier);
-      const params = new URLSearchParams({ action: 'write', token: SHEET_TOKEN, identifier, ...formData });
-      try {
-        console.log('📤 Submitting to Google Apps Script:', `${SHEET_API}?${params}`);
-        const data = await fetchWithRetry(`${SHEET_API}?${params}`);
-        console.log('📥 Write API Response:', data);
-        if (!data.success) console.error('❌ Write failed:', data.error);
-        return data;
-      } catch (error) { console.error('❌ Fetch error:', error); return { success: false, error: error.message }; }
-    }
-
-    let pollingInterval = null;
-
-    function startPolling(callback, intervalMs = 10000) {
-      if (pollingInterval) clearInterval(pollingInterval);
-      callback();
-      pollingInterval = setInterval(async () => { try { await callback(); } catch (error) { console.error('Polling error:', error); } }, intervalMs);
-      return pollingInterval;
-    }
-
-    function stopPolling() { if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; } }
 
     // ─── STATE ────────────────────────────────────────────────────────────────────
     let S = { items: [], savedAssignees: [] };
@@ -2549,42 +2665,32 @@
       if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
     }
 
-    // BUG FIX 4: Load local first (instant UI), then overlay cloud data if available.
-    // Previously called loadFromLocal() only as a fallback after a failed cloud fetch,
-    // meaning a failed network call could leave the UI blank or seed-reset.
-    async function loadFromGoogleSheets() {
+    // Load local first (instant UI), then overlay cloud data if available
+    async function loadFromCloud() {
       if (!useCloudSync) { loadFromLocal(); return; }
       loadFromLocal();
       render();
       try {
-        const result = await getSheetData();
-        if (!result || !result.rows || result.rows.length === 0) { console.log('No cloud data found, keeping local state'); return; }
-        const latestRow = result.rows[result.rows.length - 1];
-        if (!latestRow || !latestRow.data) return;
-        const data = JSON.parse(latestRow.data);
-        if (!data.items || !Array.isArray(data.items)) { console.warn('Invalid cloud data format, keeping local state'); return; }
-        S.items = data.items;
-        S.savedAssignees = data.savedAssignees || [];
-        saveToLocal();
-        render();
-        showToast('✓ Synced from cloud');
+        const data = await loadFromSupabase();
+        if (data && data.items && Array.isArray(data.items)) {
+          S.items = data.items;
+          S.savedAssignees = data.savedAssignees || [];
+          saveToLocal();
+          render();
+          showToast('✓ Synced from cloud');
+        }
       } catch (err) { console.warn('Cloud load failed, using local data:', err); }
     }
 
-    async function saveToGoogleSheets() {
+    async function saveToCloud() {
       saveToLocal();
       if (!useCloudSync) return;
-      try {
-        if (!S.items || !Array.isArray(S.items)) throw new Error('Invalid items data');
-        const dataToSend = { items: S.items, savedAssignees: S.savedAssignees || [] };
-        const result = await submitToSheet({ data: JSON.stringify(dataToSend) });
-        if (!result.success) console.error('Cloud save failed:', result.error);
-      } catch (err) { console.error('Google Sheets save error:', err); }
+      await saveToSupabase();
     }
 
-    function save() { useCloudSync ? saveToGoogleSheets() : saveToLocal(); }
-    function saveAssignees() { save(); }  // Always use unified save path
-    function load() { useCloudSync ? loadFromGoogleSheets() : (loadFromLocal(), render()); }
+    function save() { useCloudSync ? saveToCloud() : saveToLocal(); }
+    function saveAssignees() { save(); }
+    function load() { useCloudSync ? loadFromCloud() : (loadFromLocal(), render()); }
 
     // ─── SEED DATA ────────────────────────────────────────────────────────────────
     function seedDemo() {
@@ -3199,9 +3305,9 @@
       document.getElementById('settings-name-input').value = '';
       document.getElementById('cloud-sync-toggle').checked = useCloudSync;
       const toggle = document.getElementById('cloud-sync-toggle');
-      toggle.disabled = !CLOUD_SYNC_CONFIGURED;
-      if (!CLOUD_SYNC_CONFIGURED) {
-        document.getElementById('sync-status').textContent = '⚠ Configure SHEET_TOKEN in the HTML before enabling cloud sync.';
+      toggle.disabled = !supabase;
+      if (!supabase) {
+        document.getElementById('sync-status').textContent = '⚠ Configure SUPABASE_URL and SUPABASE_ANON_KEY in the HTML before enabling cloud sync.';
         document.getElementById('sync-status').style.color = 'var(--orange)';
       } else {
         updateSyncStatus();
@@ -3275,166 +3381,23 @@
 
     function closeSettingsModal() { document.getElementById('settings-overlay').style.display = 'none'; }
 
-    // Manual test function for debugging cloud sync
-    window.testCloudSync = async function () {
-      console.log('🧪 Testing Cloud Sync Connection...');
-      console.log('📋 Configuration:', { SHEET_API, SHEET_TOKEN, CLOUD_SYNC_CONFIGURED, useCloudSync });
-
-      try {
-        const response = await fetch(`${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
-        const text = await response.text();
-        console.log('📥 Raw Response:', text);
-
-        try {
-          const data = JSON.parse(text);
-          console.log('📊 Parsed Data:', data);
-
-          if (data.success) {
-            console.log('✅ API Connection Successful!');
-            console.log('📝 Rows:', data.rows);
-            return data;
-          } else {
-            console.error('❌ API Error:', data.error);
-            return data;
-          }
-        } catch (e) {
-          console.error('❌ JSON Parse Error:', e);
-          console.log('Raw response was:', text);
-          return null;
-        }
-      } catch (error) {
-        console.error('❌ Network Error:', error);
-        return null;
-      }
-    };
-
-    // ─── CLOUD SYNC ───────────────────────────────────────────────────
-    // FIX #23: AbortController with timeout wrapper
-    async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-      try {
-        const r = await fetch(url, { ...options, signal: ctrl.signal });
-        clearTimeout(timer);
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return await r.json();
-      } catch (e) {
-        clearTimeout(timer);
-        throw e;
-      }
+    // Real-time sync with Supabase
+    if (supabase && useCloudSync) {
+      supabase.channel('timeline_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
+          loadFromCloud();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, () => {
+          loadFromCloud();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'milestones' }, () => {
+          loadFromCloud();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => {
+          loadFromCloud();
+        })
+        .subscribe();
     }
-
-    // FIX #22: added Content-Type and proper headers
-    async function getSheetData() {
-      try {
-        return await fetchWithTimeout(`${SHEET_API}?action=read&token=${encodeURIComponent(SHEET_TOKEN)}`);
-      } catch (e) { console.warn('Sheet read error:', e); return null; }
-    }
-
-    // FIX #20: submitToSheet uses POST to avoid URL length limits and duplicate rows
-    // Each write is idempotent — Apps Script should overwrite the last row by identifier
-    async function submitToSheet(jsonData) {
-      let uid_val;
-      try { uid_val = sessionStorage.getItem('uid') || Math.random().toString(36).slice(2); sessionStorage.setItem('uid', uid_val); } catch (e) { uid_val = Math.random().toString(36).slice(2); }
-      try {
-        return await fetchWithTimeout(SHEET_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'write', token: SHEET_TOKEN, identifier: uid_val, data: JSON.stringify(jsonData) })
-        });
-      } catch (e) { console.warn('Sheet write error:', e); return { success: false, error: String(e) }; }
-    }
-
-    // FIX #15: mutex-guarded save — queues if a save is in flight
-    async function saveToGoogleSheets() {
-      saveToLocal();
-      if (!useCloudSync) return;
-      if (_isSaving) { _saveQueued = true; return; }
-      _isSaving = true;
-      try {
-        const r = await submitToSheet({ items: S.items, savedAssignees: S.savedAssignees || [] });
-        if (!r || !r.success) console.warn('Cloud save failed:', r && r.error);
-      } catch (e) { console.warn('Cloud save exception:', e); }
-      finally {
-        _isSaving = false;
-        if (_saveQueued) { _saveQueued = false; saveToGoogleSheets(); }
-      }
-    }
-
-    function save() { useCloudSync ? saveToGoogleSheets() : saveToLocal(); }
-    function saveAssignees() { save(); }
-
-    // FIX #4/#21: load local first (instant UI), then overlay cloud
-    async function loadFromGoogleSheets() {
-      loadFromLocal();
-      render();
-      if (!useCloudSync) return;
-      try {
-        const result = await getSheetData();
-        if (!result || !result.rows || result.rows.length === 0) { console.log('No cloud data, keeping local'); return; }
-        const latestRow = result.rows[result.rows.length - 1];
-        if (!latestRow || !latestRow.data) return;
-        let data;
-        try { data = JSON.parse(latestRow.data); } catch (e) { console.warn('Malformed cloud data, keeping local'); return; }
-        if (!data || !Array.isArray(data.items)) return;
-        S.items = data.items;
-        S.savedAssignees = data.savedAssignees || [];
-        saveToLocal();
-        render();
-        showToast('✓ Synced from cloud');
-      } catch (e) { console.warn('Cloud load failed, using local data:', e); showToast('⚠ Could not reach cloud — using local data', 'warn'); }
-    }
-
-    function load() { useCloudSync ? loadFromGoogleSheets() : (loadFromLocal(), render()); }
-
-    // FIX #16/#17: polling with exponential backoff + page visibility pause
-    async function pollCallback() {
-      if (!useCloudSync) return;
-      if (document.hidden) return;
-      try {
-        const result = await getSheetData();
-        if (!result || !result.rows || result.rows.length === 0) { _pollFailCount = 0; return; }
-        const latestRow = result.rows[result.rows.length - 1];
-        if (!latestRow || !latestRow.data) { _pollFailCount = 0; return; }
-        let data;
-        try { data = JSON.parse(latestRow.data); } catch (e) { _pollFailCount++; return; }
-        if (!data || !Array.isArray(data.items)) { _pollFailCount++; return; }
-        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)} `).sort().join('|');
-        const localHash = S.items.map(i => `${i.id}:${i.date}:${String(i.complete)} `).sort().join('|');
-        if (remoteHash !== localHash) {
-          S.items = data.items;
-          S.savedAssignees = data.savedAssignees || [];
-          saveToLocal();
-          render();
-          console.log('✓ Auto-synced from cloud');
-        }
-        _pollFailCount = 0;
-      } catch (e) {
-        _pollFailCount++;
-        console.warn('Poll error (fail #' + _pollFailCount + '):', e);
-        // FIX #17: stop polling after 5 consecutive failures
-        if (_pollFailCount >= 5) {
-          stopPolling();
-          showToast('⚠ Cloud sync paused — check connection', 'warn');
-        }
-      }
-    }
-
-    function startPolling(cb, intervalMs = 15000) {
-      stopPolling();
-      cb();
-      pollingInterval = setInterval(() => { try { cb(); } catch (e) { console.warn('Poll error', e); } }, intervalMs);
-    }
-    function stopPolling() {
-      if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
-    }
-
-    // Pause polling when tab hidden, resume on visibility
-    document.addEventListener('visibilitychange', () => {
-      if (!useCloudSync) return;
-      if (document.hidden) { stopPolling(); }
-      else { _pollFailCount = 0; startPolling(pollCallback); }
-    });
     // ─── TOASTS ───────────────────────────────────────────────────────────────────
     function showToast(msg) {
       const c = document.getElementById('toast-container');
@@ -3466,30 +3429,6 @@
       });
     }
 
-    // ─── POLLING CALLBACK ─────────────────────────────────────────────────────────
-    async function pollCallback() {
-      if (!useCloudSync) return;
-      try {
-        const result = await getSheetData();
-        if (!result?.rows?.length) return;
-        const latestRow = result.rows[result.rows.length - 1];
-        if (!latestRow?.data) return;
-        const data = JSON.parse(latestRow.data);
-        if (!data.items || !Array.isArray(data.items)) return;
-        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)} `).sort().join('|');
-        const localHash = S.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
-        if (remoteHash !== localHash) {
-          S.items = data.items;
-          S.savedAssignees = data.savedAssignees || [];
-          saveToLocal();
-          render();
-          console.log('✓ Auto-synced from Google Sheets');
-        }
-      } catch (error) {
-        console.error('Polling sync error:', error);
-      }
-    }
-
     // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
@@ -3502,10 +3441,6 @@
     document.getElementById('brand-logo-wrap').addEventListener('click', () => {
       document.getElementById('today-marker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-    if (useCloudSync) {
-      console.log('Starting cloud sync polling…');
-      startPolling(pollCallback);
-    }
   </script>
 </body>
 

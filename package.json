@@ -1,16 +1,18 @@
 {
   "name": "bradford-bulls-timeline",
   "version": "1.0.0",
-  "description": "Bradford Bulls Activity Timeline with Google Sheets cloud sync",
+  "description": "Bradford Bulls Activity Timeline with Supabase cloud sync",
   "main": "index.html",
   "scripts": {},
   "keywords": [
     "timeline",
-    "google-sheets",
+    "supabase",
     "activity-tracker"
   ],
   "author": "",
   "license": "ISC",
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.1"
+  }
 }
