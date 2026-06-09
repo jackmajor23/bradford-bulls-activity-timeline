@@ -1758,7 +1758,8 @@
     }
 
     /* ─── DELETE CONFIRM MODAL ─── */
-    #delete-confirm-overlay {
+    #delete-confirm-overlay,
+    #complete-confirm-overlay {
       position: fixed;
       top: 0;
       left: 0;
@@ -2219,6 +2220,28 @@
       .mobile-add-wrapper {
         position: relative;
       }
+
+      /* Mobile drag improvements */
+      .drag-handle {
+        opacity: 0.8 !important;
+        padding: 0 12px !important;
+        font-size: 20px !important;
+      }
+
+      .mini-activity {
+        touch-action: none;
+      }
+
+      .mini-activity.dragging {
+        opacity: 0.7;
+        transform: scale(1.02);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      }
+
+      .mini-activity.drag-over {
+        border: 2px dashed var(--blue);
+        background: rgba(26, 79, 139, 0.08);
+      }
     }
   </style>
 </head>
@@ -2352,6 +2375,22 @@
       <div class="delete-confirm-footer">
         <button class="btn btn-outline" onclick="closeDeleteConfirm()">Cancel</button>
         <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="complete-confirm-overlay" style="display:none;">
+    <div class="delete-confirm-modal">
+      <div class="delete-confirm-header">
+        <div class="delete-confirm-icon">✓</div>
+        <div class="delete-confirm-title">Mark Complete</div>
+      </div>
+      <div class="delete-confirm-body">
+        <p>Are you sure you want to mark this activity as complete?</p>
+      </div>
+      <div class="delete-confirm-footer">
+        <button class="btn btn-outline" onclick="closeCompleteConfirm()">Cancel</button>
+        <button class="btn btn-primary" id="confirm-complete-btn">Mark Complete</button>
       </div>
     </div>
   </div>
@@ -2854,9 +2893,21 @@
     }
 
     // ─── INTERACTIONS ─────────────────────────────────────────────────────────────
+    function isMobile() {
+      return window.innerWidth <= 768 || ('ontouchstart' in window);
+    }
+
     function toggleComplete(id) {
       const item = S.items.find(i => i.id === id);
       if (!item) return;
+
+      // On mobile, show confirmation dialog
+      if (isMobile()) {
+        showCompleteConfirm(id);
+        return;
+      }
+
+      // On desktop, toggle immediately
       const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
       item.complete = !item.complete;
       save(); render();
@@ -2964,7 +3015,9 @@
           touchStartX = touch.clientX;
           touchStartY = touch.clientY;
           touchElement = el;
-          if (!e.target.closest('.drag-handle')) return;
+          // On mobile, allow drag from anywhere on the card, not just the handle
+          const isMobile = window.innerWidth <= 700;
+          if (!isMobile && !e.target.closest('.drag-handle')) return;
           dragActivityId = el.dataset.id;
           isDraggingActivity = true;
           disableToggle = true;
@@ -3259,6 +3312,33 @@
     function closeDeleteConfirm() { document.getElementById('delete-confirm-overlay').style.display = 'none'; pendingDeleteId = null; }
     function deleteItem(id) { showDeleteConfirm(id); }
     function deleteModalItem() { if (!currentModal.editId) return; closeModal(); showDeleteConfirm(currentModal.editId); }
+
+    let pendingCompleteId = null;
+
+    function showCompleteConfirm(id) {
+      pendingCompleteId = id;
+      document.getElementById('complete-confirm-overlay').style.display = 'flex';
+      document.getElementById('confirm-complete-btn').onclick = function () {
+        if (pendingCompleteId) {
+          const item = S.items.find(i => i.id === pendingCompleteId);
+          if (item) {
+            const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
+            item.complete = !item.complete;
+            save(); render();
+            openDropdowns.forEach(fid => {
+              const cluster = document.getElementById('cluster-' + fid);
+              const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+              if (cluster) { cluster.style.display = ''; if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
+            });
+            showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
+          }
+          closeCompleteConfirm();
+          pendingCompleteId = null;
+        }
+      };
+    }
+
+    function closeCompleteConfirm() { document.getElementById('complete-confirm-overlay').style.display = 'none'; pendingCompleteId = null; }
 
     // ─── DATE POPUP ──────────────────────────────────────────────────────────────
     let currentPopupDate = null;
