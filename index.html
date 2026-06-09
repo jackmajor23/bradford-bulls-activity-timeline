@@ -383,7 +383,8 @@
       width: 100%;
     }
 
-    .tl-row.side-left .tl-node {
+    .tl-row.side-left .tl-node,
+    .tl-row.side-right .tl-node {
       grid-column: 2;
       grid-row: 1;
       display: flex;
@@ -402,17 +403,6 @@
     .tl-row.side-right .tl-spacer {
       grid-column: 1;
       grid-row: 1;
-    }
-
-    .tl-row.side-right .tl-node {
-      grid-column: 2;
-      grid-row: 1;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding-top: 20px;
-      position: relative;
-      z-index: 4;
     }
 
     .tl-row.side-right .tl-card-wrap {
@@ -553,12 +543,7 @@
       border: 1px solid var(--line);
     }
 
-    .tl-row.side-left .node-date-label {
-      left: 50%;
-      transform: translateX(-50%);
-      top: 18px;
-    }
-
+    .tl-row.side-left .node-date-label,
     .tl-row.side-right .node-date-label {
       left: 50%;
       transform: translateX(-50%);
@@ -631,14 +616,8 @@
       margin-top: 2px;
     }
 
-    .badge-home {
-      color: var(--ink);
-    }
-
-    .badge-away {
-      color: var(--ink);
-    }
-
+    .badge-home,
+    .badge-away,
     .badge-neutral {
       color: var(--ink);
     }
@@ -2418,20 +2397,12 @@
           <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Cloud Sync (Google
             Sheets)</h3>
           <p style="color: var(--ink-mid); font-size: 12px; margin-bottom: 16px; line-height: 1.5;">
-            Store your timeline data in Google Sheets for sharing across devices and with others.
-            <strong>Requires the Google Apps Script URL and token to be configured.</strong>
+            Your timeline data is automatically synced to Google Sheets for sharing across devices and with others.
           </p>
 
-          <div class="settings-toggle-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-            <input type="checkbox" id="cloud-sync-toggle" onchange="toggleCloudSyncSetting()"
-              style="width: 16px; height: 16px; cursor: pointer;">
-            <label for="cloud-sync-toggle" style="font-size: 13px; color: var(--ink); cursor: pointer;">Enable cloud
-              sync</label>
-          </div>
-
           <div id="sync-status"
-            style="font-size: 12px; color: var(--ink-mid); margin-bottom: 12px; padding: 8px 12px; background: rgba(247,245,242,0.5); border-radius: 6px; border: 1px solid var(--line);">
-            Sync status will appear here
+            style="font-size: 12px; color: var(--green); margin-bottom: 12px; padding: 8px 12px; background: rgba(46,125,50,0.1); border-radius: 6px; border: 1px solid var(--green);">
+            ✓ Cloud sync active — saving to Google Sheets
           </div>
 
           <div
@@ -2464,23 +2435,12 @@
     const SHEET_API = 'https://script.google.com/macros/s/AKfycbzulfmkA_bw8YmlUXYXKNd3CaxeclryhC1si7AyWc1DpdDqCxmzB_y4M9guP750aQod/exec';
     const SHEET_TOKEN = 'gnjvsuhg48gh8rwn';
 
-    // Cloud sync is configured with the token
+    // Cloud sync is always enabled
     const CLOUD_SYNC_CONFIGURED = true;
-    let useCloudSync = CLOUD_SYNC_CONFIGURED && localStorage.getItem('bbUseCloudSync') === 'true';
+    let useCloudSync = true;
+    console.log('🚀 Cloud Sync Initialization:', { CLOUD_SYNC_CONFIGURED, useCloudSync, SHEET_TOKEN });
 
-    const ACTIVITY_TYPES = [
-      { id: 'social', label: 'Social', icon: '📱', cls: 'type-social' },
-      { id: 'email', label: 'Email', icon: '📧', cls: 'type-email' },
-      { id: 'pr', label: 'PR', icon: '📰', cls: 'type-pr' },
-      { id: 'matchday', label: 'Matchday', icon: '🏉', cls: 'type-matchday' },
-      { id: 'digital', label: 'Digital', icon: '💻', cls: 'type-digital' },
-      { id: 'print', label: 'Print', icon: '🖨️', cls: 'type-print' },
-      { id: 'event', label: 'Event', icon: '🎟️', cls: 'type-event' },
-      { id: 'photo', label: 'Photography', icon: '📷', cls: 'type-photo' },
-      { id: 'interview', label: 'Interview', icon: '🎙️', cls: 'type-interview' },
-      { id: 'website', label: 'Website', icon: '💻', cls: 'type-website' },
-      { id: 'other', label: 'Other', icon: '📌', cls: 'type-other' }
-    ];
+    const ACTIVITY_TYPES = [{ id: 'social', label: 'Social', icon: '📱', cls: 'type-social' }, { id: 'email', label: 'Email', icon: '📧', cls: 'type-email' }, { id: 'pr', label: 'PR', icon: '📰', cls: 'type-pr' }, { id: 'matchday', label: 'Matchday', icon: '🏉', cls: 'type-matchday' }, { id: 'digital', label: 'Digital', icon: '💻', cls: 'type-digital' }, { id: 'print', label: 'Print', icon: '🖨️', cls: 'type-print' }, { id: 'event', label: 'Event', icon: '🎟️', cls: 'type-event' }, { id: 'photo', label: 'Photography', icon: '📷', cls: 'type-photo' }, { id: 'interview', label: 'Interview', icon: '🎙️', cls: 'type-interview' }, { id: 'website', label: 'Website', icon: '💻', cls: 'type-website' }, { id: 'other', label: 'Other', icon: '📌', cls: 'type-other' }];
 
     const TEAM_TYPES = ["Men's", "Women's", 'Reserves', 'Academy', 'Scholarship', 'Wheelchair', 'PD/LDRL'];
 
@@ -2491,30 +2451,9 @@
 
     function getTeamLogo(name) {
       if (!name) return null;
-      const teamLogos = {
-        'Halifax Panthers': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png',
-        'Featherstone Rovers': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png',
-        'York Knights': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png',
-        'Toulouse Olympique': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png',
-        'Sheffield Eagles': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png',
-        'Leigh Leopards': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Leigh_Leopards_logo.svg/200px-Leigh_Leopards_logo.svg.png',
-        'London Broncos': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png',
-        'Wakefield Trinity': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png',
-        'Castleford Tigers': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png',
-        'Huddersfield Giants': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png',
-        'Warrington Wolves': 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png',
-        'Wigan Warriors': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png',
-        'St Helens': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png',
-        'Leeds Rhinos': 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png',
-        'Hull KR': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png',
-        'Hull FC': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png',
-        'Catalans Dragons': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png',
-        'Salford Red Devils': 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png'
-      };
+      const teamLogos = { 'Halifax Panthers': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png', 'Featherstone Rovers': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png', 'York Knights': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png', 'Toulouse Olympique': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png', 'Sheffield Eagles': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png', 'Leigh Leopards': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Leigh_Leopards_logo.svg/200px-Leigh_Leopards_logo.svg.png', 'London Broncos': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png', 'Wakefield Trinity': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png', 'Castleford Tigers': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png', 'Huddersfield Giants': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png', 'Warrington Wolves': 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png', 'Wigan Warriors': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png', 'St Helens': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png', 'Leeds Rhinos': 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png', 'Hull KR': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png', 'Hull FC': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png', 'Catalans Dragons': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png', 'Salford Red Devils': 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png' };
       const lowerName = name.toLowerCase();
-      for (const [team, logo] of Object.entries(teamLogos)) {
-        if (team.toLowerCase() === lowerName) return logo;
-      }
+      for (const [team, logo] of Object.entries(teamLogos)) { if (team.toLowerCase() === lowerName) return logo; }
       return null;
     }
 
@@ -2528,24 +2467,20 @@
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
       } catch (error) {
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-          return fetchWithRetry(url, options, retries - 1);
-        }
+        if (retries > 0) { await new Promise(resolve => setTimeout(resolve, RETRY_DELAY)); return fetchWithRetry(url, options, retries - 1); }
         throw error;
       }
     }
 
     async function getSheetData() {
       try {
+        console.log('🔍 Fetching from Google Apps Script:', `${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
         const data = await fetchWithRetry(`${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
+        console.log('📥 API Response:', data);
         if (data.success) return data;
-        console.error('Read failed:', data.error);
+        console.error('❌ Read failed:', data.error);
         return null;
-      } catch (error) {
-        console.error('Fetch error:', error);
-        return null;
-      }
+      } catch (error) { console.error('❌ Fetch error:', error); return null; }
     }
 
     async function submitToSheet(formData) {
@@ -2553,13 +2488,12 @@
       sessionStorage.setItem('uid', identifier);
       const params = new URLSearchParams({ action: 'write', token: SHEET_TOKEN, identifier, ...formData });
       try {
+        console.log('📤 Submitting to Google Apps Script:', `${SHEET_API}?${params}`);
         const data = await fetchWithRetry(`${SHEET_API}?${params}`);
-        if (!data.success) console.error('Write failed:', data.error);
+        console.log('📥 Write API Response:', data);
+        if (!data.success) console.error('❌ Write failed:', data.error);
         return data;
-      } catch (error) {
-        console.error('Fetch error:', error);
-        return { success: false, error: error.message };
-      }
+      } catch (error) { console.error('❌ Fetch error:', error); return { success: false, error: error.message }; }
     }
 
     let pollingInterval = null;
@@ -2567,18 +2501,11 @@
     function startPolling(callback, intervalMs = 10000) {
       if (pollingInterval) clearInterval(pollingInterval);
       callback();
-      pollingInterval = setInterval(async () => {
-        try { await callback(); } catch (error) { console.error('Polling error:', error); }
-      }, intervalMs);
+      pollingInterval = setInterval(async () => { try { await callback(); } catch (error) { console.error('Polling error:', error); } }, intervalMs);
       return pollingInterval;
     }
 
-    function stopPolling() {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-      }
-    }
+    function stopPolling() { if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; } }
 
     // ─── STATE ────────────────────────────────────────────────────────────────────
     let S = { items: [], savedAssignees: [] };
@@ -2596,9 +2523,7 @@
       try {
         const state = { items: S.items, savedAssignees: S.savedAssignees || [] };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) {
-        console.warn('Failed to save to localStorage:', e);
-      }
+      } catch (e) { console.warn('Failed to save to localStorage:', e); }
     }
 
     // BUG FIX 2: loadFromLocal now validates the parsed object before using it,
@@ -2616,19 +2541,11 @@
         console.warn('localStorage parse failed, starting fresh:', e);
       }
 
-      if (!S.items || !Array.isArray(S.items) || S.items.length === 0) {
-        seedDemo();
-      }
+      if (!S.items || !Array.isArray(S.items) || S.items.length === 0) { seedDemo(); }
 
       S.items.forEach(i => { if (!i.assignees) i.assignees = []; });
 
-      // Only load from separate assignee key if none came from main state blob
-      if (!S.savedAssignees || !S.savedAssignees.length) {
-        try {
-          const a = localStorage.getItem(ASSIGNEE_KEY);
-          if (a) S.savedAssignees = JSON.parse(a);
-        } catch (e) { }
-      }
+      if (!S.savedAssignees || !S.savedAssignees.length) { try { const a = localStorage.getItem(ASSIGNEE_KEY); if (a) S.savedAssignees = JSON.parse(a); } catch (e) { } }
       if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
     }
 
@@ -2636,56 +2553,33 @@
     // Previously called loadFromLocal() only as a fallback after a failed cloud fetch,
     // meaning a failed network call could leave the UI blank or seed-reset.
     async function loadFromGoogleSheets() {
-      if (!useCloudSync) {
-        loadFromLocal();
-        return;
-      }
-
-      // Always populate from local storage first — UI is never blank
+      if (!useCloudSync) { loadFromLocal(); return; }
       loadFromLocal();
       render();
-
       try {
         const result = await getSheetData();
-        if (!result || !result.rows || result.rows.length === 0) {
-          console.log('No cloud data found, keeping local state');
-          return;
-        }
-
+        if (!result || !result.rows || result.rows.length === 0) { console.log('No cloud data found, keeping local state'); return; }
         const latestRow = result.rows[result.rows.length - 1];
         if (!latestRow || !latestRow.data) return;
-
         const data = JSON.parse(latestRow.data);
-        if (!data.items || !Array.isArray(data.items)) {
-          console.warn('Invalid cloud data format, keeping local state');
-          return;
-        }
-
+        if (!data.items || !Array.isArray(data.items)) { console.warn('Invalid cloud data format, keeping local state'); return; }
         S.items = data.items;
         S.savedAssignees = data.savedAssignees || [];
-        // Cache cloud data locally so next load is instant even offline
         saveToLocal();
         render();
         showToast('✓ Synced from cloud');
-      } catch (err) {
-        console.warn('Cloud load failed, using local data:', err);
-      }
+      } catch (err) { console.warn('Cloud load failed, using local data:', err); }
     }
 
     async function saveToGoogleSheets() {
-      // Always persist locally first — this is the source of truth for the current session
       saveToLocal();
-
       if (!useCloudSync) return;
-
       try {
         if (!S.items || !Array.isArray(S.items)) throw new Error('Invalid items data');
         const dataToSend = { items: S.items, savedAssignees: S.savedAssignees || [] };
         const result = await submitToSheet({ data: JSON.stringify(dataToSend) });
         if (!result.success) console.error('Cloud save failed:', result.error);
-      } catch (err) {
-        console.error('Google Sheets save error:', err);
-      }
+      } catch (err) { console.error('Google Sheets save error:', err); }
     }
 
     function save() { useCloudSync ? saveToGoogleSheets() : saveToLocal(); }
@@ -2695,39 +2589,23 @@
     // ─── SEED DATA ────────────────────────────────────────────────────────────────
     function seedDemo() {
       const today = new Date();
-      const fixtures = [
-        { opponent: 'Halifax Panthers', offset: -15, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" },
-        { opponent: 'Featherstone Rovers', offset: -5, venue: 'Millenium Stadium', matchType: 'League', home: false, team: "Men's" },
-        { opponent: 'York Knights', offset: 4, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" },
-        { opponent: 'Toulouse Olympique', offset: 14, venue: 'Stade Ernest-Wallon', matchType: 'League', home: false, team: "Men's" },
-        { opponent: 'Sheffield Eagles', offset: 25, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }
-      ];
-
+      const fixtures = [{ opponent: 'Halifax Panthers', offset: -15, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }, { opponent: 'Featherstone Rovers', offset: -5, venue: 'Millenium Stadium', matchType: 'League', home: false, team: "Men's" }, { opponent: 'York Knights', offset: 4, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }, { opponent: 'Toulouse Olympique', offset: 14, venue: 'Stade Ernest-Wallon', matchType: 'League', home: false, team: "Men's" }, { opponent: 'Sheffield Eagles', offset: 25, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }];
       fixtures.forEach(f => {
         const fid = uid();
         const fdate = offsetDate(today, f.offset);
         S.items.push({ id: fid, type: 'fixture', date: fmtDate(fdate), opponent: f.opponent, venue: f.venue, matchType: f.matchType, venueType: f.home ? 'home' : 'away', teamType: f.team || "Men's", notes: '', assignees: [] });
         const count = Math.floor(Math.random() * 3) + 1;
-        for (let i = 0; i < count; i++) {
-          S.items.push({ id: uid(), type: 'activity', date: fmtDate(offsetDate(fdate, -Math.floor(Math.random() * 4))), title: randomActivity(), actType: ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id, fixtureId: fid, notes: '', assignees: [], complete: Math.random() > 0.5 });
-        }
+        for (let i = 0; i < count; i++) { S.items.push({ id: uid(), type: 'activity', date: fmtDate(offsetDate(fdate, -Math.floor(Math.random() * 4))), title: randomActivity(), actType: ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id, fixtureId: fid, notes: '', assignees: [], complete: Math.random() > 0.5 }); }
       });
-
       S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offsetDate(today, -20)), title: 'Mid-Season Launch', style: 'gold', notes: 'Media Day Arena Reveal', assignees: [] });
       S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offsetDate(today, 30)), title: 'Playoffs Kick-off', style: 'red', notes: 'Championship Bracket Matchup', assignees: [] });
       S.items.push({ id: uid(), type: 'note', date: fmtDate(offsetDate(today, 7)), content: 'Key sponsor wants increased signage on east stand. Follow up by end of week with deck.', assignees: [] });
       S.items.push({ id: uid(), type: 'note', date: fmtDate(offsetDate(today, -3)), content: 'Season ticket sales ahead of target. Digital reach up 18% YoY. Action: produce mid-season report.', assignees: [] });
-
-      if (!S.savedAssignees || !S.savedAssignees.length) {
-        S.savedAssignees = ['Sarah Mitchell', 'Tom Bradley', 'Jake Whitfield', 'Emma Clarke', 'Dave Sutton'];
-      }
+      if (!S.savedAssignees || !S.savedAssignees.length) { S.savedAssignees = ['Sarah Mitchell', 'Tom Bradley', 'Jake Whitfield', 'Emma Clarke', 'Dave Sutton']; }
       save();
     }
 
-    function randomActivity() {
-      const acts = ['Instagram Post', 'Facebook Reel', 'Press Release', 'Matchday Programme', 'TikTok Video', 'Twitter Thread', 'Sponsor Video'];
-      return acts[Math.floor(Math.random() * acts.length)];
-    }
+    function randomActivity() { const acts = ['Instagram Post', 'Facebook Reel', 'Press Release', 'Matchday Programme', 'TikTok Video', 'Twitter Thread', 'Sponsor Video']; return acts[Math.floor(Math.random() * acts.length)]; }
 
     function offsetDate(d, days) { const r = new Date(d); r.setDate(r.getDate() + days); return r; }
     function fmtDate(d) { return d.toISOString().split('T')[0]; }
@@ -2743,12 +2621,7 @@
       const seen = new Set();
       const groups = [];
       const fixtureActMap = {};
-
-      S.items.filter(i => i.type === 'activity' && i.fixtureId).forEach(a => {
-        if (!fixtureActMap[a.fixtureId]) fixtureActMap[a.fixtureId] = [];
-        fixtureActMap[a.fixtureId].push(a);
-      });
-
+      S.items.filter(i => i.type === 'activity' && i.fixtureId).forEach(a => { if (!fixtureActMap[a.fixtureId]) fixtureActMap[a.fixtureId] = []; fixtureActMap[a.fixtureId].push(a); });
       const dateMap = {};
       items.forEach(item => {
         if (seen.has(item.id)) return;
@@ -2781,15 +2654,11 @@
     function render() {
       const content = document.getElementById('timeline-content');
       const today = todayStr();
-
       const pastItems = S.items.filter(i => i.date < today);
       const activeItems = S.items.filter(i => i.date >= today);
-
       const pastGroups = buildGroups(pastItems);
       const activeGroups = buildGroups(activeItems);
-
       let html = '';
-
       if (pastGroups.length > 0) {
         let pastInner = '';
         let side = 0, lastMonth = '';
@@ -2799,19 +2668,9 @@
           pastInner += renderGroup(g, side % 2 === 0 ? 'side-left' : 'side-right', true);
           side++;
         });
-        html += `
-    <div id="past-accordion">
-      <div id="past-toggle" onclick="togglePast(event, this)">show previous activity</div>
-      <div id="past-items">${pastInner}</div>
-    </div>`;
+        html += `<div id="past-accordion"><div id="past-toggle" onclick="togglePast(event, this)">show previous activity</div><div id="past-items">${pastInner}</div></div>`;
       }
-
-      html += `<div id="today-marker">
-    <div class="today-line"></div>
-    <div class="today-badge">Today — ${fmtDisplay(today)}</div>
-    <div class="today-line"></div>
-  </div>`;
-
+      html += `<div id="today-marker"><div class="today-line"></div><div class="today-badge">Today — ${fmtDisplay(today)}</div><div class="today-line"></div></div>`;
       let side = 0, lastMonth = '';
       activeGroups.forEach(g => {
         const month = g.date.slice(0, 7);
@@ -2819,19 +2678,12 @@
         html += renderGroup(g, side % 2 === 0 ? 'side-left' : 'side-right', false);
         side++;
       });
-
-      if (activeGroups.length === 0 && pastGroups.length === 0) {
-        html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
-      }
-
+      if (activeGroups.length === 0 && pastGroups.length === 0) { html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`; }
       content.innerHTML = html;
       attachEvents();
     }
 
-    function renderGroup(g, side, isPast) {
-      if (g.type === 'date-group') return renderDateGroup(g, side, isPast);
-      return '';
-    }
+    function renderGroup(g, side, isPast) { if (g.type === 'date-group') return renderDateGroup(g, side, isPast); return ''; }
 
     function renderDateGroup(g, side, isPast) {
       let itemsHtml = '';
@@ -2844,92 +2696,33 @@
         else if (item.type === 'activity') itemsHtml += renderActivityGroup(item, s, isPast);
         itemSide++;
       });
-      return `
-  <div class="date-group">
-    <div class="date-header">
-      <div class="date-label" data-date="${g.date}" onclick="copyDateLink('${g.date}')" ondblclick="showDatePopup('${g.date}')">${fmtDisplay(g.date)}</div>
-    </div>
-    ${itemsHtml}
-  </div>`;
+      return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="copyDateLink('${g.date}')" ondblclick="showDatePopup('${g.date}')">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
     }
 
     function renderFixtureGroup(g, side, isPast) {
       const f = g.fixture;
       const acts = g.activities;
       const days = daysUntil(f.date);
-
       const venueClass = f.venueType === 'home' ? 'home' : f.venueType === 'away' ? 'away' : 'neutral';
       const venueLabel = f.venueType === 'home' ? 'H' : f.venueType === 'away' ? 'A' : 'N';
-
       let countdownTxt, countdownCls;
       if (isPast || days < 0) { countdownTxt = `${Math.abs(days)}d ago`; countdownCls = 'past'; }
       else if (days === 0) { countdownTxt = 'MATCHDAY'; countdownCls = 'imminent'; }
       else if (days === 1) { countdownTxt = 'Tomorrow'; countdownCls = 'imminent'; }
       else if (days <= 7) { countdownTxt = `${days} Days To Go`; countdownCls = 'imminent'; }
       else { countdownTxt = `${days} Days`; countdownCls = 'far'; }
-
       const teamLogo = getTeamLogo(f.opponent);
-      const logoHtml = teamLogo
-        ? `<img src="${teamLogo}" alt="${esc(f.opponent)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="fixture-logo-initials" style="display:none">${esc(teamInitials(f.opponent))}</div>`
-        : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
+      const logoHtml = teamLogo ? `<img src="${teamLogo}" alt="${esc(f.opponent)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="fixture-logo-initials" style="display:none">${esc(teamInitials(f.opponent))}</div>` : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
       const teamBadge = f.teamType ? `<span class="team-badge">${esc(f.teamType)}</span>` : '';
       const actsHtml = acts.map(a => renderMiniActivity(a)).join('');
-
-      return `
-  <div class="tl-row ${side}" data-id="${f.id}">
-    <div class="tl-spacer"></div>
-    <div class="tl-node">
-      <div class="node-dot fixture-dot${isPast ? ' past-dot' : ''}"></div>
-    </div>
-    <div class="tl-card-wrap">
-      <div class="fixture-card${isPast ? ' past' : ''}" id="fc-${f.id}" data-fixture-id="${f.id}">
-        <div class="fixture-header">
-          <div class="fixture-logo-wrap">${logoHtml}</div>
-          <div class="fixture-meta">
-            <div class="fixture-opponent">${esc(f.opponent)}</div>
-            <div class="fixture-sub">
-              <span class="subtle-date">${fmtDisplay(f.date)}</span>
-              ${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ''}
-              <span>🏉 ${esc(f.matchType || '')}</span>
-              ${teamBadge}
-            </div>
-          </div>
-          <div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div>
-        </div>
-        <div class="fixture-footer">
-          <div class="countdown-text ${countdownCls}">${countdownTxt}</div>
-          ${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ''}
-          <div class="fixture-actions">
-            <button class="activity-btn edit" title="Edit"   onclick="editFixture('${f.id}')">✎</button>
-            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${f.id}')">✕</button>
-          </div>
-        </div>
-        ${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ''}
-      </div>
-    </div>
-  </div>`;
+      return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? ' past-dot' : ''}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? ' past' : ''}" id="fc-${f.id}" data-fixture-id="${f.id}"><div class="fixture-header"><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ''}<span>🏉 ${esc(f.matchType || '')}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ''}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ''}</div></div></div>`;
     }
 
     function renderMiniActivity(a) {
       const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
       const completeCls = a.complete ? ' complete' : '';
       const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
-      return `
-  <div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true">
-    <div class="drag-handle">⠿</div>
-    <div class="activity-icon ${aType.cls}">${aType.icon}</div>
-    <div class="activity-body">
-      <div class="activity-title">${esc(a.title)}</div>
-      <div class="activity-meta${a.complete ? ' complete-meta' : ''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}</div>
-      ${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}
-    </div>
-    <div class="activity-btns">
-      <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
-      <button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button>
-      <button class="activity-btn edit" title="Edit"   onclick="editActivity('${a.id}')">✎</button>
-      <button class="activity-btn del"  title="Delete" onclick="deleteItem('${a.id}')">✕</button>
-    </div>
-  </div>`;
+      return `<div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? ' complete-meta' : ''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div>`;
     }
 
     function renderActivityGroup(g, side, isPast) {
@@ -2938,87 +2731,20 @@
       const completeCls = a.complete ? ' complete' : '';
       const pastCls = isPast ? ' past' : '';
       const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
-      return `
-  <div class="tl-row ${side}" data-id="${a.id}">
-    <div class="tl-spacer"></div>
-    <div class="tl-node">
-      <div class="node-dot${a.complete ? ' complete-dot' : ''}${isPast && !a.complete ? ' past-dot' : ''}"></div>
-    </div>
-    <div class="tl-card-wrap">
-      <div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}">
-        <div class="act-row" draggable="true">
-          <div class="drag-handle">⠿</div>
-          <div class="activity-icon ${aType.cls}">${aType.icon}</div>
-          <div class="activity-body">
-            <div class="activity-title">${esc(a.title)}</div>
-            <div class="activity-meta${a.complete ? ' complete-meta' : ''}">
-              <span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}
-            </div>
-            ${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}
-          </div>
-          <div class="activity-btns">
-            <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
-            <button class="activity-btn edit" title="Edit"   onclick="editActivity('${a.id}')">✎</button>
-            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${a.id}')">✕</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>`;
+      return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? ' complete-dot' : ''}${isPast && !a.complete ? ' past-dot' : ''}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}"><div class="act-row" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? ' complete-meta' : ''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
     }
 
     function renderMilestoneGroup(g, side, isPast) {
       const m = g.item;
       const style = m.style || 'red';
       const pastCls = isPast ? ' past' : '';
-      return `
-  <div class="tl-row ${side}" data-id="${m.id}">
-    <div class="tl-spacer"></div>
-    <div class="tl-node">
-      <div class="node-dot milestone-dot${isPast ? ' past-dot' : ''}"></div>
-    </div>
-    <div class="tl-card-wrap">
-      <div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}">
-        <div class="act-row">
-          <div class="milestone-body">
-            <div class="milestone-label">⚑ Milestone</div>
-            <div class="milestone-title">${esc(m.title)}</div>
-            <div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div>
-          </div>
-          <div class="activity-btns">
-            <button class="activity-btn edit" title="Edit"   onclick="editMilestone('${m.id}')">✎</button>
-            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${m.id}')">✕</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>`;
+      return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast ? ' past-dot' : ''}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}"><div class="act-row"><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
     }
 
     function renderNoteGroup(g, side, isPast) {
       const n = g.item;
       const pastCls = isPast ? ' past' : '';
-      return `
-  <div class="tl-row ${side}" data-id="${n.id}">
-    <div class="tl-spacer"></div>
-    <div class="tl-node">
-      <div class="node-dot ${isPast ? 'past-dot' : ''}" style="background: var(--ink-mid); box-shadow: 0 0 0 2px var(--ink-mid);"></div>
-    </div>
-    <div class="tl-card-wrap">
-      <div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}">
-        <div class="act-row">
-          <div class="note-body">
-            <div class="note-content">${esc(n.content)}</div>
-            <div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div>
-          </div>
-          <div class="activity-btns">
-            <button class="activity-btn edit" title="Edit"   onclick="editNote('${n.id}')">✎</button>
-            <button class="activity-btn del"  title="Delete" onclick="deleteItem('${n.id}')">✕</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>`;
+      return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot ${isPast ? 'past-dot' : ''}" style="background: var(--ink-mid); box-shadow: 0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}"><div class="act-row"><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
     }
 
     // ─── INTERACTIONS ─────────────────────────────────────────────────────────────
@@ -3050,7 +2776,6 @@
       const isOpening = !btn.classList.contains('open');
       const todayMarker = document.getElementById('today-marker');
       const pastItems = document.getElementById('past-items');
-
       if (isOpening) {
         const viewportOffset = todayMarker.getBoundingClientRect().top;
         pastItems.style.cssText = 'max-height:none; opacity:1; overflow:visible; transition:none;';
@@ -3070,7 +2795,6 @@
     }
 
     function toggleActCluster(fid) {
-      // BUG FIX 5: disableToggle is now actually set during drag operations (see dragstart)
       if (disableToggle) return;
       const cluster = document.getElementById('cluster-' + fid);
       const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
@@ -3089,10 +2813,7 @@
       let attempts = 0;
       const iv = setInterval(() => {
         attempts++;
-        if (cluster.style.display === 'none') {
-          cluster.style.display = '';
-          btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
-        }
+        if (cluster.style.display === 'none') { cluster.style.display = ''; btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
         if (attempts >= 60) clearInterval(iv);
       }, 50);
     }
@@ -3103,13 +2824,10 @@
         if (toggleBtn) { event.preventDefault(); event.stopPropagation(); return false; }
       }
     }, true);
-
     document.addEventListener('click', function (event) {
       const dropdown = document.getElementById('autocomplete-dropdown');
       const input = document.getElementById('assignee-input');
-      if (dropdown && input && !dropdown.contains(event.target) && event.target !== input) {
-        hideAssigneeSuggestions();
-      }
+      if (dropdown && input && !dropdown.contains(event.target) && event.target !== input) { hideAssigneeSuggestions(); }
     });
 
     // ─── DRAG & DROP ─────────────────────────────────────────────────────────────
@@ -3118,32 +2836,22 @@
         el.addEventListener('dragstart', (e) => {
           dragActivityId = el.dataset.id;
           isDraggingActivity = true;
-          disableToggle = true;  // BUG FIX 5: was never set, toggle could fire mid-drag
+          disableToggle = true;
           e.dataTransfer.effectAllowed = 'move';
           el.classList.add('dragging');
-          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
-            btn.dataset.originalOnclick = btn.getAttribute('onclick');
-            btn.removeAttribute('onclick');
-          });
+          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => { btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick'); });
         });
-
         el.addEventListener('dragend', () => {
           el.classList.remove('dragging');
           document.querySelectorAll('.mini-activity').forEach(item => item.classList.remove('drag-over'));
           isDraggingActivity = false;
           dragEndTime = Date.now();
           setTimeout(() => {
-            disableToggle = false;  // BUG FIX 5: re-enable after grace period
-            document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
-              if (btn.dataset.originalOnclick) {
-                btn.setAttribute('onclick', btn.dataset.originalOnclick);
-                delete btn.dataset.originalOnclick;
-              }
-            });
+            disableToggle = false;
+            document.querySelectorAll('.fixture-acts-toggle').forEach(btn => { if (btn.dataset.originalOnclick) { btn.setAttribute('onclick', btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; } });
           }, 500);
         });
 
-        // Touch drag support
         let touchStartX, touchStartY, touchElement;
         el.addEventListener('touchstart', (e) => {
           const touch = e.touches[0];
@@ -3155,12 +2863,8 @@
           isDraggingActivity = true;
           disableToggle = true;
           el.classList.add('dragging');
-          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
-            btn.dataset.originalOnclick = btn.getAttribute('onclick');
-            btn.removeAttribute('onclick');
-          });
+          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => { btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick'); });
         }, { passive: true });
-
         el.addEventListener('touchmove', (e) => {
           if (!isDraggingActivity || touchElement !== el) return;
           const touch = e.touches[0];
@@ -3175,7 +2879,6 @@
             afterElement == null ? cluster.appendChild(el) : cluster.insertBefore(el, afterElement);
           }
         }, { passive: false });
-
         el.addEventListener('touchend', (e) => {
           if (!isDraggingActivity || touchElement !== el) return;
           el.classList.remove('dragging');
@@ -3222,13 +2925,11 @@
           if (act && act.type === 'activity') { act.fixtureId = fc.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
         });
       });
-
       document.querySelectorAll('.fixture-footer').forEach(footer => {
         footer.addEventListener('click', (e) => {
           if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) { e.stopPropagation(); e.preventDefault(); }
         }, true);
       });
-
       document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
         btn.addEventListener('click', (e) => {
           if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) { e.stopPropagation(); e.preventDefault(); e.stopImmediatePropagation(); }
@@ -3243,7 +2944,6 @@
           const afterElement = getDragAfterElement(cluster, e.clientY);
           afterElement == null ? cluster.appendChild(dragging) : cluster.insertBefore(dragging, afterElement);
         });
-
         cluster.addEventListener('drop', (e) => {
           e.preventDefault(); e.stopPropagation();
           const fixtureId = cluster.id.replace('cluster-', '');
@@ -3265,7 +2965,6 @@
         });
       });
     }
-
     function getDragAfterElement(container, y) {
       const draggableElements = [...container.querySelectorAll('.mini-activity:not(.dragging)')];
       return draggableElements.reduce((closest, child) => {
@@ -3301,78 +3000,31 @@
     function renderModal() {
       const { type, editId, data } = currentModal;
       const isEdit = !!editId;
-      document.getElementById('modal-title').textContent = isEdit ? `Edit ${type.toUpperCase()}` : `Add ${type.toUpperCase()}`;
+      document.getElementById('modal-title').textContent = isEdit ? `Edit ${type.toUpperCase()} ` : `Add ${type.toUpperCase()} `;
       const body = document.getElementById('modal-body');
       document.getElementById('modal-delete').style.display = 'none';
 
       const assigneeSection = () => {
         const chips = (currentModal.assignees || []).map((p, i) => `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
         const quickPills = S.savedAssignees.filter(n => !(currentModal.assignees || []).includes(n)).slice(0, 8).map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
-        return `
-    <div class="form-group">
-      <div class="quick-add-row" id="quick-add-row">
-        <span class="quick-add-label">Quick Add:</span>${quickPills}
-      </div>
-      <div class="custom-assignee-row">
-        <input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()">
-        <button class="btn btn-outline" onclick="addCustomAssignee()">Add</button>
-      </div>
-      <div class="assignee-list" id="assignee-list">${chips}</div>
-    </div>`;
+        return `<div class="form-group"><div class="quick-add-row" id="quick-add-row"><span class="quick-add-label">Quick Add:</span>${quickPills}</div><div class="custom-assignee-row"><input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()"><button class="btn btn-outline" onclick="addCustomAssignee()">Add</button></div><div class="assignee-list" id="assignee-list">${chips}</div></div>`;
       };
 
       if (type === 'fixture') {
         const f = data || {};
-        body.innerHTML = `
-      <div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent || '')}"></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date || todayStr()}"></div>
-        <div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League', 'Cup', 'Playoff', 'Friendly'].map(t => `<option ${f.matchType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-      </div>
-      <div class="form-group"><label class="form-label">Team Type</label>
-        <div class="team-selector" id="f-teamtype">
-          ${TEAM_TYPES.map(t => `<div class="team-opt ${f.teamType === t || (!f.teamType && t === "Men's") ? 'selected' : ''}" data-value="${t}">${t}</div>`).join('')}
-        </div>
-      </div>
-      <div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue || '')}"></div>
-      <div class="form-group"><label class="form-label">Venue Type</label>
-        <div class="venue-selector" id="f-vtype">
-          <div class="venue-opt home    ${f.venueType === 'home' ? 'selected' : ''}" data-value="home">Home</div>
-          <div class="venue-opt away    ${f.venueType === 'away' ? 'selected' : ''}" data-value="away">Away</div>
-          <div class="venue-opt neutral ${f.venueType === 'neutral' ? 'selected' : ''}" data-value="neutral">Neutral</div>
-        </div>
-      </div>`;
+        body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent || '')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date || todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League', 'Cup', 'Playoff', 'Friendly'].map(t => `<option ${f.matchType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map(t => `<div class="team-opt ${f.teamType === t || (!f.teamType && t === "Men's") ? 'selected' : ''}" data-value="${t}">${t}</div>`).join('')}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue || '')}"></div><div class="form-group"><label class="form-label">Venue Type</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType === 'home' ? 'selected' : ''}" data-value="home">Home</div><div class="venue-opt away ${f.venueType === 'away' ? 'selected' : ''}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType === 'neutral' ? 'selected' : ''}" data-value="neutral">Neutral</div></div></div>`;
         document.querySelectorAll('#f-vtype .venue-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#f-vtype .venue-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
         document.querySelectorAll('#f-teamtype .team-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#f-teamtype .team-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
       } else if (type === 'activity') {
         const a = data || {};
-        body.innerHTML = `
-      <div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || '')}"></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div>
-        <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map(t => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === 'other') ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}</select></div>
-      </div>
-      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || '')}</textarea></div>
-      ${assigneeSection()}`;
+        body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || '')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map(t => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === 'other') ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || '')}</textarea></div>${assigneeSection()}`;
       } else if (type === 'milestone') {
         const m = data || {};
-        body.innerHTML = `
-      <div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title || '')}"></div>
-      <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}"></div>
-      <div class="form-group"><label class="form-label">Style Color</label>
-        <div class="style-selector" id="m-style">
-          <div class="style-opt red     ${m.style === 'red' ? 'selected' : ''}" data-value="red"     title="Red"></div>
-          <div class="style-opt gold    ${m.style === 'gold' ? 'selected' : ''}" data-value="gold"    title="Gold"></div>
-          <div class="style-opt neutral ${m.style === 'neutral' ? 'selected' : ''}" data-value="neutral" title="Neutral"></div>
-        </div>
-      </div>
-      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || '')}</textarea></div>`;
+        body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title || '')}"></div><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}"></div><div class="form-group"><label class="form-label">Style Color</label><div class="style-selector" id="m-style"><div class="style-opt red ${m.style === 'red' ? 'selected' : ''}" data-value="red" title="Red"></div><div class="style-opt gold ${m.style === 'gold' ? 'selected' : ''}" data-value="gold" title="Gold"></div><div class="style-opt neutral ${m.style === 'neutral' ? 'selected' : ''}" data-value="neutral" title="Neutral"></div></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || '')}</textarea></div>`;
         document.querySelectorAll('#m-style .style-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#m-style .style-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
       } else if (type === 'note') {
         const n = data || {};
-        body.innerHTML = `
-      <div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="n-date" type="date" value="${n.date || todayStr()}"></div>
-      <div class="form-group"><label class="form-label">Content *</label><textarea class="form-input" id="n-content" rows="5">${esc(n.content || '')}</textarea></div>`;
+        body.innerHTML = `<div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="n-date" type="date" value="${n.date || todayStr()}"></div><div class="form-group"><label class="form-label">Content *</label><textarea class="form-input" id="n-content" rows="5">${esc(n.content || '')}</textarea></div>`;
       }
     }
 
@@ -3411,7 +3063,6 @@
         if (pills) quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}`;
       }
     }
-
     function showAssigneeSuggestions(query) {
       const dropdown = document.getElementById('autocomplete-dropdown');
       if (!query || !query.trim()) { hideAssigneeSuggestions(); return; }
@@ -3515,16 +3166,13 @@
         window.scrollTo({ top: window.pageYOffset + rect.top - 80, behavior: 'smooth' });
       });
     }
-
     function showDatePopup(dateStr) {
       currentPopupDate = dateStr;
       document.getElementById('popup-current-date').textContent = fmtDisplay(dateStr);
       document.getElementById('popup-date-input').value = dateStr;
       document.getElementById('date-popup-overlay').style.display = 'flex';
     }
-
     function closeDatePopup() { document.getElementById('date-popup-overlay').style.display = 'none'; currentPopupDate = null; }
-
     function goToDate() {
       const newDate = document.getElementById('popup-date-input').value;
       if (!newDate) { alert('Please select a date'); return; }
@@ -3550,7 +3198,6 @@
       document.getElementById('settings-overlay').style.display = 'flex';
       document.getElementById('settings-name-input').value = '';
       document.getElementById('cloud-sync-toggle').checked = useCloudSync;
-      // Disable the toggle if the token hasn't been configured
       const toggle = document.getElementById('cloud-sync-toggle');
       toggle.disabled = !CLOUD_SYNC_CONFIGURED;
       if (!CLOUD_SYNC_CONFIGURED) {
@@ -3566,11 +3213,11 @@
       const list = document.getElementById('settings-names-list');
       if (!list) return;
       list.innerHTML = S.savedAssignees.map((name, idx) => `
-        <div class="settings-name-item">
+        < div class="settings-name-item" >
           <span class="settings-name-text">${esc(name)}</span>
           <span class="settings-name-edit"   onclick="editSettingsName(${idx})"   title="Edit">✎</span>
           <span class="settings-name-delete" onclick="deleteSettingsName(${idx})" title="Delete">✕</span>
-        </div>`).join('');
+        </div > `).join('');
     }
 
     function addName() {
@@ -3615,7 +3262,6 @@
         showToast('Name updated');
       };
     }
-
     function resetSettingsAddButton(btn, origCb) { btn.textContent = 'Add'; btn.onclick = origCb; }
 
     document.addEventListener('keydown', function (e) {
@@ -3629,49 +3275,40 @@
 
     function closeSettingsModal() { document.getElementById('settings-overlay').style.display = 'none'; }
 
-    // BUG FIX 6: stopPolling() now called when cloud sync is disabled.
-    function toggleCloudSyncSetting() {
-      const checkbox = document.getElementById('cloud-sync-toggle');
-      const newState = checkbox.checked;
-      const currentState = useCloudSync;
-      if (newState === currentState) return;
+    // Manual test function for debugging cloud sync
+    window.testCloudSync = async function () {
+      console.log('🧪 Testing Cloud Sync Connection...');
+      console.log('📋 Configuration:', { SHEET_API, SHEET_TOKEN, CLOUD_SYNC_CONFIGURED, useCloudSync });
 
-      const message = newState
-        ? '⚠️ Enable cloud sync? Data will sync with Google Sheets.'
-        : '⚠️ Disable cloud sync? Changes will only be saved locally.';
+      try {
+        const response = await fetch(`${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
+        const text = await response.text();
+        console.log('📥 Raw Response:', text);
 
-      if (confirm(message)) {
-        useCloudSync = newState;
-        localStorage.setItem('bbUseCloudSync', String(newState));
-        updateSyncStatus();
-        if (newState) {
-          loadFromGoogleSheets();
-          startPolling(pollCallback);
-        } else {
-          stopPolling();  // Was missing — polling continued after the user disabled sync
+        try {
+          const data = JSON.parse(text);
+          console.log('📊 Parsed Data:', data);
+
+          if (data.success) {
+            console.log('✅ API Connection Successful!');
+            console.log('📝 Rows:', data.rows);
+            return data;
+          } else {
+            console.error('❌ API Error:', data.error);
+            return data;
+          }
+        } catch (e) {
+          console.error('❌ JSON Parse Error:', e);
+          console.log('Raw response was:', text);
+          return null;
         }
-        showToast(newState ? 'Cloud sync enabled' : 'Cloud sync disabled');
-      } else {
-        checkbox.checked = currentState;
+      } catch (error) {
+        console.error('❌ Network Error:', error);
+        return null;
       }
-    }
+    };
 
-    function updateSyncStatus() {
-      const statusEl = document.getElementById('sync-status');
-      if (!statusEl) return;
-      if (useCloudSync) {
-        statusEl.textContent = '✓ Cloud sync active — saving to Google Sheets';
-        statusEl.style.color = 'var(--green)';
-        statusEl.style.background = 'rgba(46,125,50,0.1)';
-        statusEl.style.borderColor = 'var(--green)';
-      } else {
-        statusEl.textContent = 'Cloud sync disabled — using local storage';
-        statusEl.style.color = 'var(--ink-mid)';
-        statusEl.style.background = 'rgba(247,245,242,0.5)';
-        statusEl.style.borderColor = 'var(--line)';
-      }
-    }
-// ─── CLOUD SYNC ───────────────────────────────────────────────────
+    // ─── CLOUD SYNC ───────────────────────────────────────────────────
     // FIX #23: AbortController with timeout wrapper
     async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
       const ctrl = new AbortController();
@@ -3710,7 +3347,7 @@
 
     // FIX #15: mutex-guarded save — queues if a save is in flight
     async function saveToGoogleSheets() {
-      saveToLocal(); // always persist locally first
+      saveToLocal();
       if (!useCloudSync) return;
       if (_isSaving) { _saveQueued = true; return; }
       _isSaving = true;
@@ -3737,7 +3374,6 @@
         if (!result || !result.rows || result.rows.length === 0) { console.log('No cloud data, keeping local'); return; }
         const latestRow = result.rows[result.rows.length - 1];
         if (!latestRow || !latestRow.data) return;
-        // FIX #18: safe parse
         let data;
         try { data = JSON.parse(latestRow.data); } catch (e) { console.warn('Malformed cloud data, keeping local'); return; }
         if (!data || !Array.isArray(data.items)) return;
@@ -3754,7 +3390,7 @@
     // FIX #16/#17: polling with exponential backoff + page visibility pause
     async function pollCallback() {
       if (!useCloudSync) return;
-      if (document.hidden) return; // FIX #16: don't poll when tab hidden
+      if (document.hidden) return;
       try {
         const result = await getSheetData();
         if (!result || !result.rows || result.rows.length === 0) { _pollFailCount = 0; return; }
@@ -3763,9 +3399,8 @@
         let data;
         try { data = JSON.parse(latestRow.data); } catch (e) { _pollFailCount++; return; }
         if (!data || !Array.isArray(data.items)) { _pollFailCount++; return; }
-        // FIX #7 (original): order-insensitive hash comparison
-        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
-        const localHash = S.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
+        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)} `).sort().join('|');
+        const localHash = S.items.map(i => `${i.id}:${i.date}:${String(i.complete)} `).sort().join('|');
         if (remoteHash !== localHash) {
           S.items = data.items;
           S.savedAssignees = data.savedAssignees || [];
@@ -3841,12 +3476,8 @@
         if (!latestRow?.data) return;
         const data = JSON.parse(latestRow.data);
         if (!data.items || !Array.isArray(data.items)) return;
-
-        // BUG FIX 7: Order-insensitive comparison — prevents identical data in a different
-        // insertion order from being treated as new and triggering a spurious re-render.
-        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
+        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)} `).sort().join('|');
         const localHash = S.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
-
         if (remoteHash !== localHash) {
           S.items = data.items;
           S.savedAssignees = data.savedAssignees || [];
@@ -3862,26 +3493,15 @@
     // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    // BUG FIX 8: render() is now properly wrapped AFTER it is defined.
-    // Previously window.render was referenced but render() is a function declaration, not
-    // a window property — so originalRender was always undefined and animations never re-attached.
     const _baseRender = render;
     render = function () {
       _baseRender.apply(this, arguments);
       setTimeout(setupDotHoverAnimations, 100);
     };
-
-    // BUG FIX 9: load() calls render() internally — no separate render() call needed here.
-    // The previous code called render() immediately after load(), which painted a blank/seed
-    // state before the (async) cloud load had a chance to complete.
     load();
-
-    // Click logo to scroll to today
     document.getElementById('brand-logo-wrap').addEventListener('click', () => {
       document.getElementById('today-marker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-
-    // Start polling only if cloud sync is both configured and enabled
     if (useCloudSync) {
       console.log('Starting cloud sync polling…');
       startPolling(pollCallback);
