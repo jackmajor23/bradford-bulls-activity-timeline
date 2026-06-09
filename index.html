@@ -12,7 +12,6 @@
   <link rel="icon"
     href="https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
   <style>
     :root {
       --bg: #F7F5F2;
@@ -2472,22 +2471,20 @@
     const ASSIGNEE_KEY = 'bbAssignees';
 
     // ─── SUPABASE CONFIGURATION ─────────────────────────────────────────────────
-    // Credentials loaded from config.js
-    const SUPABASE_URL = typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.URL : 'YOUR_SUPABASE_URL';
-    const SUPABASE_ANON_KEY = typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.ANON_KEY : 'YOUR_SUPABASE_ANON_KEY';
+    // Supabase credentials (anon key is safe for public use)
+    const SUPABASE_URL = 'https://iqenyprolzxzwnbubuar.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_s7P_E83Hu701PzDJoBE8aw_lDr5ruqS';
 
     let supabaseClient = null;
-    let useCloudSync = false; // Set to true after configuring Supabase
+    let useCloudSync = true; // Cloud sync enabled with hardcoded credentials
 
-    // Initialize Supabase client when credentials are provided
-    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
-      try {
-        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        useCloudSync = true;
-        console.log('✓ Supabase initialized');
-      } catch (e) {
-        console.error('Supabase initialization failed:', e);
-      }
+    // Initialize Supabase client
+    try {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('✓ Supabase initialized');
+    } catch (e) {
+      console.error('Supabase initialization failed:', e);
+      useCloudSync = false;
     }
 
     const ACTIVITY_TYPES = [{ id: 'social', label: 'Social', icon: '📱', cls: 'type-social' }, { id: 'email', label: 'Email', icon: '📧', cls: 'type-email' }, { id: 'pr', label: 'PR', icon: '📰', cls: 'type-pr' }, { id: 'matchday', label: 'Matchday', icon: '🏉', cls: 'type-matchday' }, { id: 'digital', label: 'Digital', icon: '💻', cls: 'type-digital' }, { id: 'print', label: 'Print', icon: '🖨️', cls: 'type-print' }, { id: 'event', label: 'Event', icon: '🎟️', cls: 'type-event' }, { id: 'photo', label: 'Photography', icon: '📷', cls: 'type-photo' }, { id: 'interview', label: 'Interview', icon: '🎙️', cls: 'type-interview' }, { id: 'website', label: 'Website', icon: '💻', cls: 'type-website' }, { id: 'other', label: 'Other', icon: '📌', cls: 'type-other' }];
@@ -2513,7 +2510,7 @@
       try {
         // Load all data from structured tables
         const [fixturesData, activitiesData, milestonesData, notesData] = await Promise.all([
-          supabaseClient.from('fixtures').select('*').order('date', { ascending: true }),
+          supabaseClient.from('fixtures').select('*').order('kickoff_at', { ascending: true, nullsFirst: false }),
           supabaseClient.from('activities').select('*').order('date', { ascending: true }),
           supabaseClient.from('milestones').select('*').order('date', { ascending: true }),
           supabaseClient.from('notes').select('*').order('date', { ascending: true })
@@ -2532,11 +2529,11 @@
           items.push({
             id: f.id,
             type: 'fixture',
-            date: f.date.split('T')[0],
-            opponent: f.opponent,
+            date: (f.date || f.kickoff_at || '').split('T')[0],
+            opponent: f.opponent || f.away_team || '',
             venue: f.venue || '',
-            venueType: f.venue,
-            matchType: 'League',
+            venueType: f.match_venue || 'home',
+            matchType: f.competition || 'League',
             teamType: "Men's",
             assignees: []
           });
@@ -2609,8 +2606,13 @@
         if (fixtures.length > 0) {
           const fixturesToInsert = fixtures.map(f => ({
             id: f.id,
+            season_id: '41a37344-c2f9-48c5-b201-fb2a89d003f8',
+            away_team: f.opponent,
+            competition: f.matchType || 'League',
+            venue: f.venue || 'Odsal Stadium',
+            kickoff_at: new Date(f.date).toISOString(),
+            match_venue: f.venueType || 'home',
             opponent: f.opponent,
-            venue: f.venueType,
             date: new Date(f.date).toISOString()
           }));
           const { error: fError } = await supabaseClient.from('fixtures').insert(fixturesToInsert);
@@ -2754,7 +2756,17 @@
 
     function offsetDate(d, days) { const r = new Date(d); r.setDate(r.getDate() + days); return r; }
     function fmtDate(d) { return d.toISOString().split('T')[0]; }
-    function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+    function uid() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      // Fallback UUID v4 generator
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
     function todayStr() { return new Date().toISOString().split('T')[0]; }
     function daysUntil(ds) { return Math.round((new Date(ds + 'T12:00:00') - new Date(todayStr() + 'T12:00:00')) / 86400000); }
     function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
