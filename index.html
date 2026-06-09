@@ -2462,14 +2462,14 @@
 
     // ─── GOOGLE SHEETS CONFIGURATION ─────────────────────────────────────────────
     // Replace SHEET_TOKEN with your actual token once the Apps Script is deployed.
-    const SHEET_API = 'https://script.google.com/macros/s/AKfycbwNVr4u5fu9kq36MqXKULfaKiQ9992mhHhfG_gSIZA5FKAAEYnXhW5hInI6KCFXXCFp/exec';
-    const SHEET_TOKEN = 'YOUR_SECURE_TOKEN_HERE';
+    const SHEET_API = 'https://script.google.com/macros/s/AKfycbzulfmkA_bw8YmlUXYXKNd3CaxeclryhC1si7AyWc1DpdDqCxmzB_y4M9guP750aQod/exec';
+    const SHEET_TOKEN = 'gnjvsuhg48gh8rwn';
 
     // ─── BUG FIX 1: Cloud sync defaults OFF until a real token is configured.
     // Previously defaulted to true, causing every page load to attempt a failing
     // network request, then fall through to loadFromLocal() which called seedDemo()
     // and wiped existing data.
-    const CLOUD_SYNC_CONFIGURED = SHEET_TOKEN !== 'YOUR_SECURE_TOKEN_HERE';
+    const CLOUD_SYNC_CONFIGURED = SHEET_TOKEN !== 'gnjvsuhg48gh8rwn';
     let useCloudSync = CLOUD_SYNC_CONFIGURED && localStorage.getItem('bbUseCloudSync') === 'true';
 
     const ACTIVITY_TYPES = [
