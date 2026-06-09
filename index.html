@@ -2466,1074 +2466,1185 @@
   <div id="toast-container"></div>
 
   <script>
-    // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-    const STORAGE_KEY = 'bbTimeline_v5';
-    const ASSIGNEE_KEY = 'bbAssignees';
+  // ─── CONSTANTS ─────────────────────────────────────────────────
+  const STORAGE_KEY  = 'bbTimeline_v5';
+  const ASSIGNEE_KEY = 'bbAssignees';
 
-    // ─── SUPABASE CONFIGURATION ─────────────────────────────────────────────────
-    // Supabase credentials (anon key is safe for public use)
-    const SUPABASE_URL = 'https://iqenyprolzxzwnbubuar.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_s7P_E83Hu701PzDJoBE8aw_lDr5ruqS';
+  // ─── SUPABASE CONFIGURATION ────────────────────────────────────
+  // The anon key is intentionally public — it is the credential for the
+  // shared team workspace.  It is NOT a secret.  The service role key
+  // must never appear here; it lives only in server-side code.
+  const SUPABASE_URL      = 'https://iqenyprolzxzwnbubuar.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_s7P_E83Hu701PzDJoBE8aw_lDr5ruqS';
 
-    let supabaseClient = null;
-    let useCloudSync = true; // Cloud sync enabled with hardcoded credentials
+  let supabaseClient = null;
+  let useCloudSync   = true;
 
-    // Initialize Supabase client
+  try {
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✓ Supabase initialized');
+  } catch (e) {
+    console.error('Supabase init failed:', e);
+    useCloudSync = false;
+  }
+
+  // ─── SYNC STATE ────────────────────────────────────────────────
+  // FIX: Track the timestamp of the last local write so realtime can
+  // suppress events that originated from this client (preventing loops).
+  let lastWriteTime    = 0;
+  let saveDebounceTimer = null;
+  // FIX: Track deletes explicitly so upsert-only saves don't orphan rows.
+  let pendingDeleteOps  = []; // [{id, type}]
+
+  // ─── ACTIVITY / TEAM DEFINITIONS ───────────────────────────────
+  const ACTIVITY_TYPES = [
+    { id: 'social',    label: 'Social',       icon: '📱', cls: 'type-social'    },
+    { id: 'email',     label: 'Email',         icon: '📧', cls: 'type-email'     },
+    { id: 'pr',        label: 'PR',            icon: '📰', cls: 'type-pr'        },
+    { id: 'matchday',  label: 'Matchday',      icon: '🏉', cls: 'type-matchday'  },
+    { id: 'digital',   label: 'Digital',       icon: '💻', cls: 'type-digital'   },
+    { id: 'print',     label: 'Print',         icon: '🖨️', cls: 'type-print'     },
+    { id: 'event',     label: 'Event',         icon: '🎟️', cls: 'type-event'     },
+    { id: 'photo',     label: 'Photography',   icon: '📷', cls: 'type-photo'     },
+    { id: 'interview', label: 'Interview',     icon: '🎙️', cls: 'type-interview' },
+    { id: 'website',   label: 'Website',       icon: '💻', cls: 'type-website'   },
+    { id: 'other',     label: 'Other',         icon: '📌', cls: 'type-other'     },
+  ];
+
+  const TEAM_TYPES = ["Men's","Women's",'Reserves','Academy','Scholarship','Wheelchair','PD/LDRL'];
+
+  function teamInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(w => w[0]).join('').slice(0,3).toUpperCase();
+  }
+
+  function getTeamLogo(name) {
+    if (!name) return null;
+    const teamLogos = {
+      'Halifax Panthers':     'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png',
+      'Featherstone Rovers':  'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png',
+      'York Knights':         'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png',
+      'Toulouse Olympique':   'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png',
+      'Sheffield Eagles':     'https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png',
+      'Leigh Leopards':       'https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Leigh_Leopards_logo.svg/200px-Leigh_Leopards_logo.svg.png',
+      'London Broncos':       'https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png',
+      'Wakefield Trinity':    'https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png',
+      'Castleford Tigers':    'https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png',
+      'Huddersfield Giants':  'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png',
+      'Warrington Wolves':    'https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png',
+      'Wigan Warriors':       'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png',
+      'St Helens':            'https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png',
+      'Leeds Rhinos':         'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png',
+      'Hull KR':              'https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png',
+      'Hull FC':              'https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png',
+      'Catalans Dragons':     'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png',
+      'Salford Red Devils':   'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png',
+    };
+    const lower = name.toLowerCase();
+    for (const [team, logo] of Object.entries(teamLogos)) {
+      if (team.toLowerCase() === lower) return logo;
+    }
+    return null;
+  }
+
+  // ─── SUPABASE RECORD CONVERTER ─────────────────────────────────
+  // FIX: Centralised converter used by both loadFromSupabase and the
+  // realtime handler, ensuring consistent mapping in both code paths.
+  function convertSupabaseRecord(record, itemType) {
+    if (!record) return null;
     try {
-      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('✓ Supabase initialized');
+      switch (itemType) {
+        case 'fixture':
+          return {
+            id:        record.id,
+            type:      'fixture',
+            // FIX: Support both `date` (new) and `kickoff_at` (legacy column).
+            date:      (record.date || record.kickoff_at || '').split('T')[0],
+            opponent:  record.opponent || record.away_team || '',
+            venue:     record.venue || '',
+            venueType: record.match_venue || 'home',
+            matchType: record.competition || 'League',
+            // FIX: Was hardcoded "Men's" regardless of stored value.
+            teamType:  record.team_type || "Men's",
+            assignees: [],
+          };
+        case 'activity':
+          return {
+            id:        record.id,
+            type:      'activity',
+            date:      (record.date || '').split('T')[0],
+            title:     record.title || '',
+            actType:   record.type || 'other',
+            assignees: Array.isArray(record.assignees) ? record.assignees : [],
+            notes:     record.notes || '',
+            complete:  record.completed || false,
+            fixtureId: record.fixture_id || null,
+          };
+        case 'milestone':
+          return {
+            id:        record.id,
+            type:      'milestone',
+            date:      (record.date || '').split('T')[0],
+            title:     record.title || '',
+            style:     record.color || 'red',
+            notes:     '',
+            assignees: [],
+          };
+        case 'note':
+          return {
+            id:        record.id,
+            type:      'note',
+            date:      (record.date || '').split('T')[0],
+            content:   record.content || '',
+            assignees: [],
+          };
+        default:
+          return null;
+      }
     } catch (e) {
-      console.error('Supabase initialization failed:', e);
-      useCloudSync = false;
-    }
-
-    const ACTIVITY_TYPES = [{ id: 'social', label: 'Social', icon: '📱', cls: 'type-social' }, { id: 'email', label: 'Email', icon: '📧', cls: 'type-email' }, { id: 'pr', label: 'PR', icon: '📰', cls: 'type-pr' }, { id: 'matchday', label: 'Matchday', icon: '🏉', cls: 'type-matchday' }, { id: 'digital', label: 'Digital', icon: '💻', cls: 'type-digital' }, { id: 'print', label: 'Print', icon: '🖨️', cls: 'type-print' }, { id: 'event', label: 'Event', icon: '🎟️', cls: 'type-event' }, { id: 'photo', label: 'Photography', icon: '📷', cls: 'type-photo' }, { id: 'interview', label: 'Interview', icon: '🎙️', cls: 'type-interview' }, { id: 'website', label: 'Website', icon: '💻', cls: 'type-website' }, { id: 'other', label: 'Other', icon: '📌', cls: 'type-other' }];
-
-    const TEAM_TYPES = ["Men's", "Women's", 'Reserves', 'Academy', 'Scholarship', 'Wheelchair', 'PD/LDRL'];
-
-    function teamInitials(name) {
-      if (!name) return '?';
-      return name.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
-    }
-
-    function getTeamLogo(name) {
-      if (!name) return null;
-      const teamLogos = { 'Halifax Panthers': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png', 'Featherstone Rovers': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png', 'York Knights': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png', 'Toulouse Olympique': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png', 'Sheffield Eagles': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png', 'Leigh Leopards': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Leigh_Leopards_logo.svg/200px-Leigh_Leopards_logo.svg.png', 'London Broncos': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png', 'Wakefield Trinity': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png', 'Castleford Tigers': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png', 'Huddersfield Giants': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png', 'Warrington Wolves': 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png', 'Wigan Warriors': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png', 'St Helens': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png', 'Leeds Rhinos': 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png', 'Hull KR': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png', 'Hull FC': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png', 'Catalans Dragons': 'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png', 'Salford Red Devils': 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png' };
-      const lowerName = name.toLowerCase();
-      for (const [team, logo] of Object.entries(teamLogos)) { if (team.toLowerCase() === lowerName) return logo; }
+      console.error('convertSupabaseRecord error:', e);
       return null;
     }
+  }
 
-    // ─── SUPABASE HELPERS ─────────────────────────────────────────────────────────
-    async function loadFromSupabase() {
-      if (!supabaseClient || !useCloudSync) return null;
-      try {
-        // Load all data from structured tables
-        const [fixturesData, activitiesData, milestonesData, notesData] = await Promise.all([
-          supabaseClient.from('fixtures').select('*').order('kickoff_at', { ascending: true, nullsFirst: false }),
-          supabaseClient.from('activities').select('*').order('date', { ascending: true }),
-          supabaseClient.from('milestones').select('*').order('date', { ascending: true }),
-          supabaseClient.from('notes').select('*').order('date', { ascending: true })
-        ]);
+  // ─── LOAD FROM SUPABASE ────────────────────────────────────────
+  // FIX: Now orders by `date` (the canonical column) instead of
+  // `kickoff_at` which may not exist on all installs.
+  async function loadFromSupabase() {
+    if (!supabaseClient || !useCloudSync) return null;
+    try {
+      const [fixturesRes, activitiesRes, milestonesRes, notesRes] = await Promise.all([
+        supabaseClient.from('fixtures')  .select('*').order('date',  { ascending: true }),
+        supabaseClient.from('activities').select('*').order('date',  { ascending: true }),
+        supabaseClient.from('milestones').select('*').order('date',  { ascending: true }),
+        supabaseClient.from('notes')     .select('*').order('date',  { ascending: true }),
+      ]);
 
-        if (fixturesData.error) throw fixturesData.error;
-        if (activitiesData.error) throw activitiesData.error;
-        if (milestonesData.error) throw milestonesData.error;
-        if (notesData.error) throw notesData.error;
+      if (fixturesRes.error)   throw fixturesRes.error;
+      if (activitiesRes.error) throw activitiesRes.error;
+      if (milestonesRes.error) throw milestonesRes.error;
+      if (notesRes.error)      throw notesRes.error;
 
-        // Transform Supabase data to app format
-        const items = [];
+      const items = [
+        ...(fixturesRes.data   || []).map(r => convertSupabaseRecord(r, 'fixture')),
+        ...(activitiesRes.data || []).map(r => convertSupabaseRecord(r, 'activity')),
+        ...(milestonesRes.data || []).map(r => convertSupabaseRecord(r, 'milestone')),
+        ...(notesRes.data      || []).map(r => convertSupabaseRecord(r, 'note')),
+      ].filter(Boolean);
 
-        // Convert fixtures
-        fixturesData.data.forEach(f => {
-          items.push({
-            id: f.id,
-            type: 'fixture',
-            date: (f.date || f.kickoff_at || '').split('T')[0],
-            opponent: f.opponent || f.away_team || '',
-            venue: f.venue || '',
-            venueType: f.match_venue || 'home',
-            matchType: f.competition || 'League',
-            teamType: "Men's",
-            assignees: []
-          });
-        });
+      return { items, savedAssignees: [] };
+    } catch (e) {
+      console.warn('Supabase load failed:', e);
+      return null;
+    }
+  }
 
-        // Convert activities
-        activitiesData.data.forEach(a => {
-          items.push({
-            id: a.id,
-            type: 'activity',
-            date: a.date.split('T')[0],
-            title: a.title,
-            actType: a.type || 'other',
-            assignees: a.assignees || [],
-            notes: '',
-            complete: a.completed || false,
-            fixtureId: a.fixture_id
-          });
-        });
+  // ─── SAVE TO SUPABASE ──────────────────────────────────────────
+  // FIX: Replaced delete-all + re-insert with upsert + explicit deletes.
+  //   - No more `season_id` FK injection.
+  //   - `lastWriteTime` stamp prevents the realtime handler from echoing
+  //     our own saves back as remote changes (self-event suppression).
+  //   - Pending deletes are processed first to respect FK ordering.
+  async function saveToSupabase() {
+    if (!supabaseClient || !useCloudSync) return;
 
-        // Convert milestones
-        milestonesData.data.forEach(m => {
-          items.push({
-            id: m.id,
-            type: 'milestone',
-            date: m.date.split('T')[0],
-            title: m.title,
-            style: m.color || 'red',
-            notes: '',
-            assignees: []
-          });
-        });
+    lastWriteTime = Date.now();
 
-        // Convert notes
-        notesData.data.forEach(n => {
-          items.push({
-            id: n.id,
-            type: 'note',
-            date: n.date.split('T')[0],
+    try {
+      // Process explicit deletes first (FK order: activities before fixtures)
+      const actDeletes  = pendingDeleteOps.filter(d => d.type === 'activity');
+      const fixDeletes  = pendingDeleteOps.filter(d => d.type === 'fixture');
+      const milDeletes  = pendingDeleteOps.filter(d => d.type === 'milestone');
+      const noteDeletes = pendingDeleteOps.filter(d => d.type === 'note');
+
+      for (const d of [...actDeletes, ...fixDeletes, ...milDeletes, ...noteDeletes]) {
+        const table = d.type === 'fixture'   ? 'fixtures'
+                    : d.type === 'activity'  ? 'activities'
+                    : d.type === 'milestone' ? 'milestones'
+                    :                          'notes';
+        const { error } = await supabaseClient.from(table).delete().eq('id', d.id);
+        if (error) console.warn(`Delete ${table} ${d.id} failed:`, error);
+      }
+      pendingDeleteOps = [];
+
+      // Upsert all surviving items by type
+      const fixtures   = S.items.filter(i => i.type === 'fixture');
+      const activities = S.items.filter(i => i.type === 'activity');
+      const milestones = S.items.filter(i => i.type === 'milestone');
+      const notes      = S.items.filter(i => i.type === 'note');
+
+      if (fixtures.length) {
+        const { error } = await supabaseClient.from('fixtures').upsert(
+          fixtures.map(f => ({
+            id:          f.id,
+            opponent:    f.opponent    || '',
+            venue:       f.venue       || '',
+            match_venue: f.venueType   || 'home',
+            competition: f.matchType   || 'League',
+            team_type:   f.teamType    || "Men's",
+            date:        f.date,
+          })),
+          { onConflict: 'id' }
+        );
+        if (error) throw error;
+      }
+
+      if (activities.length) {
+        const { error } = await supabaseClient.from('activities').upsert(
+          activities.map(a => ({
+            id:         a.id,
+            title:      a.title      || '',
+            type:       a.actType    || 'other',
+            date:       a.date,
+            completed:  a.complete   || false,
+            assignees:  a.assignees  || [],
+            notes:      a.notes      || '',
+            fixture_id: a.fixtureId  || null,
+          })),
+          { onConflict: 'id' }
+        );
+        if (error) throw error;
+      }
+
+      if (milestones.length) {
+        const { error } = await supabaseClient.from('milestones').upsert(
+          milestones.map(m => ({
+            id:    m.id,
+            title: m.title || '',
+            color: m.style || 'red',
+            date:  m.date,
+          })),
+          { onConflict: 'id' }
+        );
+        if (error) throw error;
+      }
+
+      if (notes.length) {
+        const { error } = await supabaseClient.from('notes').upsert(
+          notes.map(n => ({
+            id:      n.id,
             content: n.content || '',
-            assignees: []
-          });
-        });
-
-        return { items, savedAssignees: [] };
-      } catch (e) {
-        console.warn('Supabase load failed:', e);
-        return null;
+            date:    n.date,
+          })),
+          { onConflict: 'id' }
+        );
+        if (error) throw error;
       }
+
+      console.log('✓ Saved to Supabase');
+      updateSyncStatus();
+    } catch (e) {
+      console.error('Supabase save failed:', e);
+      showToast('⚠ Cloud save failed — data kept locally');
+    }
+  }
+
+  // ─── REALTIME ─────────────────────────────────────────────────
+  // FIX: Extracted to a named function so it can be called once at
+  // bootstrap and easily cleaned up. Incremental state merge instead
+  // of full reload. Self-event suppression via lastWriteTime.
+  let realtimeChannel = null;
+
+  function setupRealtime() {
+    if (!supabaseClient || !useCloudSync) return;
+
+    realtimeChannel = supabaseClient
+      .channel('timeline_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures'   }, p => handleRealtimeEvent(p, 'fixture'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, p => handleRealtimeEvent(p, 'activity'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'milestones' }, p => handleRealtimeEvent(p, 'milestone'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes'      }, p => handleRealtimeEvent(p, 'note'))
+      .subscribe(status => {
+        console.log('Realtime status:', status);
+        updateSyncStatus();
+      });
+  }
+
+  // FIX: Incremental state merge on realtime events.
+  // Self-events (within 3 s of a local write) are discarded to prevent
+  // the save → realtime → reload → save loop.
+  function handleRealtimeEvent(payload, itemType) {
+    // Suppress events that we ourselves triggered
+    if (Date.now() - lastWriteTime < 3000) return;
+
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+
+    if (eventType === 'DELETE') {
+      const deletedId = oldRecord && oldRecord.id;
+      if (deletedId) {
+        S.items = S.items.filter(i => i.id !== deletedId);
+        saveToLocal();
+        render();
+        showToast('🔄 Remote: item removed');
+      }
+      return;
     }
 
-    async function saveToSupabase() {
-      if (!supabaseClient || !useCloudSync) return;
+    // INSERT or UPDATE
+    const converted = convertSupabaseRecord(newRecord, itemType);
+    if (!converted) return;
+
+    const idx = S.items.findIndex(i => i.id === converted.id);
+    if (idx >= 0) S.items[idx] = converted;
+    else          S.items.push(converted);
+
+    saveToLocal();
+    render();
+    showToast('🔄 Synced from another device');
+  }
+
+  // ─── STATE ─────────────────────────────────────────────────────
+  let S = { items: [], savedAssignees: [] };
+  let currentModal       = null;
+  let dragActivityId     = null;
+  let isDraggingActivity = false;
+  let dragEndTime        = 0;
+  let disableToggle      = false;
+
+  // ─── PERSISTENCE ──────────────────────────────────────────────
+  function saveToLocal() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        items:          S.items,
+        savedAssignees: S.savedAssignees || [],
+      }));
+    } catch (e) { console.warn('localStorage write failed:', e); }
+  }
+
+  function loadFromLocal() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.items)) {
+          S = parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('localStorage parse failed, starting fresh:', e);
+    }
+
+    if (!Array.isArray(S.items) || S.items.length === 0) {
+      seedDemo();
+    }
+
+    // Ensure all items have assignees array
+    S.items.forEach(i => { if (!i.assignees) i.assignees = []; });
+
+    // Migrate from old separate assignee key
+    if (!Array.isArray(S.savedAssignees) || S.savedAssignees.length === 0) {
       try {
-        // Separate items by type
-        const fixtures = S.items.filter(i => i.type === 'fixture');
-        const activities = S.items.filter(i => i.type === 'activity');
-        const milestones = S.items.filter(i => i.type === 'milestone');
-        const notes = S.items.filter(i => i.type === 'note');
-
-        // Delete all existing data (simple approach for now)
-        await Promise.all([
-          supabaseClient.from('fixtures').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-          supabaseClient.from('activities').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-          supabaseClient.from('milestones').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-          supabaseClient.from('notes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-        ]);
-
-        // Insert fixtures
-        if (fixtures.length > 0) {
-          const fixturesToInsert = fixtures.map(f => ({
-            id: f.id,
-            season_id: '41a37344-c2f9-48c5-b201-fb2a89d003f8',
-            away_team: f.opponent,
-            competition: f.matchType || 'League',
-            venue: f.venue || 'Odsal Stadium',
-            kickoff_at: new Date(f.date).toISOString(),
-            match_venue: f.venueType || 'home',
-            opponent: f.opponent,
-            date: new Date(f.date).toISOString()
-          }));
-          const { error: fError } = await supabaseClient.from('fixtures').insert(fixturesToInsert);
-          if (fError) throw fError;
-        }
-
-        // Insert activities
-        if (activities.length > 0) {
-          const activitiesToInsert = activities.map(a => ({
-            id: a.id,
-            title: a.title,
-            type: a.actType,
-            date: new Date(a.date).toISOString(),
-            completed: a.complete || false,
-            assignees: a.assignees || [],
-            fixture_id: a.fixtureId
-          }));
-          const { error: aError } = await supabaseClient.from('activities').insert(activitiesToInsert);
-          if (aError) throw aError;
-        }
-
-        // Insert milestones
-        if (milestones.length > 0) {
-          const milestonesToInsert = milestones.map(m => ({
-            id: m.id,
-            title: m.title,
-            color: m.style,
-            date: new Date(m.date).toISOString()
-          }));
-          const { error: mError } = await supabaseClient.from('milestones').insert(milestonesToInsert);
-          if (mError) throw mError;
-        }
-
-        // Insert notes
-        if (notes.length > 0) {
-          const notesToInsert = notes.map(n => ({
-            id: n.id,
-            title: 'Note',
-            content: n.content,
-            date: new Date(n.date).toISOString()
-          }));
-          const { error: nError } = await supabaseClient.from('notes').insert(notesToInsert);
-          if (nError) throw nError;
-        }
-
-        console.log('✓ Saved to Supabase');
-      } catch (e) {
-        console.error('Supabase save failed:', e);
-      }
+        const a = localStorage.getItem(ASSIGNEE_KEY);
+        if (a) S.savedAssignees = JSON.parse(a);
+      } catch (e) { /* ignore */ }
     }
+    if (!Array.isArray(S.savedAssignees)) S.savedAssignees = [];
+  }
 
-    // ─── STATE ────────────────────────────────────────────────────────────────────
-    let S = { items: [], savedAssignees: [] };
-    let currentModal = null;
-    let dragActivityId = null;
-    let isDraggingActivity = false;
-    let dragEndTime = 0;
-    let disableToggle = false;
+  // FIX: loadFromCloud now:
+  //   1. Cancels any debounce timer before overwriting state (prevents
+  //      demo data being pushed to Supabase after cloud data arrives).
+  //   2. Pushes local state to Supabase when the DB is empty on first run.
+  async function loadFromCloud() {
+    if (!useCloudSync) { loadFromLocal(); render(); return; }
 
-    // ─── PERSISTENCE ─────────────────────────────────────────────────────────────
+    loadFromLocal();
+    render();
 
-    // BUG FIX 3: Save both items and assignees in one atomic write.
-    // Previously, assignees were stored under a separate key and could diverge.
-    function saveToLocal() {
-      try {
-        const state = { items: S.items, savedAssignees: S.savedAssignees || [] };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) { console.warn('Failed to save to localStorage:', e); }
-    }
+    try {
+      const data = await loadFromSupabase();
 
-    // BUG FIX 2: loadFromLocal now validates the parsed object before using it,
-    // and only calls seedDemo() when there is genuinely no existing data.
-    function loadFromLocal() {
-      try {
-        const d = localStorage.getItem(STORAGE_KEY);
-        if (d) {
-          const parsed = JSON.parse(d);
-          if (parsed && Array.isArray(parsed.items)) {
-            S = parsed;
-          }
-        }
-      } catch (e) {
-        console.warn('localStorage parse failed, starting fresh:', e);
-      }
-
-      if (!S.items || !Array.isArray(S.items) || S.items.length === 0) { seedDemo(); }
-
-      S.items.forEach(i => { if (!i.assignees) i.assignees = []; });
-
-      if (!S.savedAssignees || !S.savedAssignees.length) { try { const a = localStorage.getItem(ASSIGNEE_KEY); if (a) S.savedAssignees = JSON.parse(a); } catch (e) { } }
-      if (!S.savedAssignees || !S.savedAssignees.length) S.savedAssignees = [];
-    }
-
-    // Load local first (instant UI), then overlay cloud data if available
-    async function loadFromCloud() {
-      if (!useCloudSync) { loadFromLocal(); return; }
-      loadFromLocal();
-      render();
-      try {
-        const data = await loadFromSupabase();
-        if (data && data.items && Array.isArray(data.items)) {
-          S.items = data.items;
-          S.savedAssignees = data.savedAssignees || [];
-          saveToLocal();
-          render();
-          showToast('✓ Synced from cloud');
-        }
-      } catch (err) { console.warn('Cloud load failed, using local data:', err); }
-    }
-
-    async function saveToCloud() {
-      saveToLocal();
-      if (!useCloudSync) return;
-      await saveToSupabase();
-    }
-
-    function save() { useCloudSync ? saveToCloud() : saveToLocal(); }
-    function saveAssignees() { save(); }
-    function load() { useCloudSync ? loadFromCloud() : (loadFromLocal(), render()); }
-
-    // ─── SEED DATA ────────────────────────────────────────────────────────────────
-    function seedDemo() {
-      const today = new Date();
-      const fixtures = [{ opponent: 'Halifax Panthers', offset: -15, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }, { opponent: 'Featherstone Rovers', offset: -5, venue: 'Millenium Stadium', matchType: 'League', home: false, team: "Men's" }, { opponent: 'York Knights', offset: 4, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }, { opponent: 'Toulouse Olympique', offset: 14, venue: 'Stade Ernest-Wallon', matchType: 'League', home: false, team: "Men's" }, { opponent: 'Sheffield Eagles', offset: 25, venue: 'Odsal Stadium', matchType: 'League', home: true, team: "Men's" }];
-      fixtures.forEach(f => {
-        const fid = uid();
-        const fdate = offsetDate(today, f.offset);
-        S.items.push({ id: fid, type: 'fixture', date: fmtDate(fdate), opponent: f.opponent, venue: f.venue, matchType: f.matchType, venueType: f.home ? 'home' : 'away', teamType: f.team || "Men's", notes: '', assignees: [] });
-        const count = Math.floor(Math.random() * 3) + 1;
-        for (let i = 0; i < count; i++) { S.items.push({ id: uid(), type: 'activity', date: fmtDate(offsetDate(fdate, -Math.floor(Math.random() * 4))), title: randomActivity(), actType: ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id, fixtureId: fid, notes: '', assignees: [], complete: Math.random() > 0.5 }); }
-      });
-      S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offsetDate(today, -20)), title: 'Mid-Season Launch', style: 'gold', notes: 'Media Day Arena Reveal', assignees: [] });
-      S.items.push({ id: uid(), type: 'milestone', date: fmtDate(offsetDate(today, 30)), title: 'Playoffs Kick-off', style: 'red', notes: 'Championship Bracket Matchup', assignees: [] });
-      S.items.push({ id: uid(), type: 'note', date: fmtDate(offsetDate(today, 7)), content: 'Key sponsor wants increased signage on east stand. Follow up by end of week with deck.', assignees: [] });
-      S.items.push({ id: uid(), type: 'note', date: fmtDate(offsetDate(today, -3)), content: 'Season ticket sales ahead of target. Digital reach up 18% YoY. Action: produce mid-season report.', assignees: [] });
-      if (!S.savedAssignees || !S.savedAssignees.length) { S.savedAssignees = ['Sarah Mitchell', 'Tom Bradley', 'Jake Whitfield', 'Emma Clarke', 'Dave Sutton']; }
-      save();
-    }
-
-    function randomActivity() { const acts = ['Instagram Post', 'Facebook Reel', 'Press Release', 'Matchday Programme', 'TikTok Video', 'Twitter Thread', 'Sponsor Video']; return acts[Math.floor(Math.random() * acts.length)]; }
-
-    function offsetDate(d, days) { const r = new Date(d); r.setDate(r.getDate() + days); return r; }
-    function fmtDate(d) { return d.toISOString().split('T')[0]; }
-    function uid() {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-      }
-      // Fallback UUID v4 generator
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
-    }
-    function todayStr() { return new Date().toISOString().split('T')[0]; }
-    function daysUntil(ds) { return Math.round((new Date(ds + 'T12:00:00') - new Date(todayStr() + 'T12:00:00')) / 86400000); }
-    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-    function fmtDisplay(ds) { if (!ds) return ''; return new Date(ds + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' }); }
-    function fmtMonth(ds) { return new Date(ds + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
-
-    // ─── GROUPS BUILDER ───────────────────────────────────────────────────────────
-    function buildGroups(items) {
-      const seen = new Set();
-      const groups = [];
-      const fixtureActMap = {};
-      S.items.filter(i => i.type === 'activity' && i.fixtureId).forEach(a => { if (!fixtureActMap[a.fixtureId]) fixtureActMap[a.fixtureId] = []; fixtureActMap[a.fixtureId].push(a); });
-      const dateMap = {};
-      items.forEach(item => {
-        if (seen.has(item.id)) return;
-        if (item.type === 'fixture') {
-          seen.add(item.id);
-          const linkedActs = fixtureActMap[item.id] || [];
-          linkedActs.forEach(a => seen.add(a.id));
-          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          dateMap[item.date].items.push({ type: 'fixture', fixture: item, activities: linkedActs.sort((a, b) => a.date.localeCompare(b.date)) });
-        } else if (item.type === 'milestone') {
-          seen.add(item.id);
-          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          dateMap[item.date].items.push({ type: 'milestone', item });
-        } else if (item.type === 'note') {
-          seen.add(item.id);
-          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          dateMap[item.date].items.push({ type: 'note', item });
-        } else if (item.type === 'activity' && !item.fixtureId) {
-          seen.add(item.id);
-          if (!dateMap[item.date]) dateMap[item.date] = { type: 'date-group', date: item.date, items: [] };
-          dateMap[item.date].items.push({ type: 'activity', item });
-        }
-      });
-
-      Object.values(dateMap).forEach(dg => groups.push(dg));
-      return groups.sort((a, b) => a.date.localeCompare(b.date));
-    }
-
-    // ─── RENDER ENGINE ────────────────────────────────────────────────────────────
-    function render() {
-      const content = document.getElementById('timeline-content');
-      const today = todayStr();
-      const pastItems = S.items.filter(i => i.date < today);
-      const activeItems = S.items.filter(i => i.date >= today);
-      const pastGroups = buildGroups(pastItems);
-      const activeGroups = buildGroups(activeItems);
-      let html = '';
-      if (pastGroups.length > 0) {
-        let pastInner = '';
-        let side = 0, lastMonth = '';
-        pastGroups.forEach(g => {
-          const month = g.date.slice(0, 7);
-          if (month !== lastMonth) { lastMonth = month; pastInner += `<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`; }
-          pastInner += renderGroup(g, side % 2 === 0 ? 'side-left' : 'side-right', true);
-          side++;
-        });
-        html += `<div id="past-accordion"><div id="past-toggle" onclick="togglePast(event, this)">show previous activity</div><div id="past-items">${pastInner}</div></div>`;
-      }
-      html += `<div id="today-marker"><div class="today-line"></div><div class="today-badge">Today — ${fmtDisplay(today)}</div><div class="today-line"></div></div>`;
-      let side = 0, lastMonth = '';
-      activeGroups.forEach(g => {
-        const month = g.date.slice(0, 7);
-        if (month !== lastMonth) { lastMonth = month; html += `<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`; }
-        html += renderGroup(g, side % 2 === 0 ? 'side-left' : 'side-right', false);
-        side++;
-      });
-      if (activeGroups.length === 0 && pastGroups.length === 0) { html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`; }
-      content.innerHTML = html;
-      attachEvents();
-    }
-
-    function renderGroup(g, side, isPast) { if (g.type === 'date-group') return renderDateGroup(g, side, isPast); return ''; }
-
-    function renderDateGroup(g, side, isPast) {
-      let itemsHtml = '';
-      let itemSide = 0;
-      g.items.forEach(item => {
-        const s = itemSide % 2 === 0 ? 'side-left' : 'side-right';
-        if (item.type === 'fixture') itemsHtml += renderFixtureGroup(item, s, isPast);
-        else if (item.type === 'milestone') itemsHtml += renderMilestoneGroup(item, s, isPast);
-        else if (item.type === 'note') itemsHtml += renderNoteGroup(item, s, isPast);
-        else if (item.type === 'activity') itemsHtml += renderActivityGroup(item, s, isPast);
-        itemSide++;
-      });
-      return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="copyDateLink('${g.date}')" ondblclick="showDatePopup('${g.date}')">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
-    }
-
-    function renderFixtureGroup(g, side, isPast) {
-      const f = g.fixture;
-      const acts = g.activities;
-      const days = daysUntil(f.date);
-      const venueClass = f.venueType === 'home' ? 'home' : f.venueType === 'away' ? 'away' : 'neutral';
-      const venueLabel = f.venueType === 'home' ? 'H' : f.venueType === 'away' ? 'A' : 'N';
-      let countdownTxt, countdownCls;
-      if (isPast || days < 0) { countdownTxt = `${Math.abs(days)}d ago`; countdownCls = 'past'; }
-      else if (days === 0) { countdownTxt = 'MATCHDAY'; countdownCls = 'imminent'; }
-      else if (days === 1) { countdownTxt = 'Tomorrow'; countdownCls = 'imminent'; }
-      else if (days <= 7) { countdownTxt = `${days} Days To Go`; countdownCls = 'imminent'; }
-      else { countdownTxt = `${days} Days`; countdownCls = 'far'; }
-      const teamLogo = getTeamLogo(f.opponent);
-      const logoHtml = teamLogo ? `<img src="${teamLogo}" alt="${esc(f.opponent)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="fixture-logo-initials" style="display:none">${esc(teamInitials(f.opponent))}</div>` : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
-      const teamBadge = f.teamType ? `<span class="team-badge">${esc(f.teamType)}</span>` : '';
-      const actsHtml = acts.map(a => renderMiniActivity(a)).join('');
-      return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? ' past-dot' : ''}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? ' past' : ''}" id="fc-${f.id}" data-fixture-id="${f.id}"><div class="fixture-header"><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ''}<span>🏉 ${esc(f.matchType || '')}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ''}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ''}</div></div></div>`;
-    }
-
-    function renderMiniActivity(a) {
-      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
-      const completeCls = a.complete ? ' complete' : '';
-      const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
-      return `<div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? ' complete-meta' : ''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div>`;
-    }
-
-    function renderActivityGroup(g, side, isPast) {
-      const a = g.item;
-      const aType = ACTIVITY_TYPES.find(t => t.id === a.actType) || ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
-      const completeCls = a.complete ? ' complete' : '';
-      const pastCls = isPast ? ' past' : '';
-      const assigneesHtml = (a.assignees || []).map(p => `<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
-      return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? ' complete-dot' : ''}${isPast && !a.complete ? ' past-dot' : ''}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}"><div class="act-row" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? ' complete-meta' : ''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? ' · ✓ Done' : ''}${a.notes ? ' · ' + esc(a.notes) : ''}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
-    }
-
-    function renderMilestoneGroup(g, side, isPast) {
-      const m = g.item;
-      const style = m.style || 'red';
-      const pastCls = isPast ? ' past' : '';
-      return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast ? ' past-dot' : ''}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}"><div class="act-row"><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
-    }
-
-    function renderNoteGroup(g, side, isPast) {
-      const n = g.item;
-      const pastCls = isPast ? ' past' : '';
-      return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot ${isPast ? 'past-dot' : ''}" style="background: var(--ink-mid); box-shadow: 0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}"><div class="act-row"><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
-    }
-
-    // ─── INTERACTIONS ─────────────────────────────────────────────────────────────
-    function isMobile() {
-      return window.innerWidth <= 768 || ('ontouchstart' in window);
-    }
-
-    function toggleComplete(id) {
-      const item = S.items.find(i => i.id === id);
-      if (!item) return;
-
-      // On mobile, show confirmation dialog
-      if (isMobile()) {
-        showCompleteConfirm(id);
+      if (data === null) {
+        // Network/DB error — keep local data, don't clobber it.
+        console.warn('Cloud load failed; using local data.');
         return;
       }
 
-      // On desktop, toggle immediately
-      const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
-      item.complete = !item.complete;
-      save(); render();
-      openDropdowns.forEach(fid => {
-        const cluster = document.getElementById('cluster-' + fid);
-        const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-        if (cluster) { cluster.style.display = ''; if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
-      });
-      showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
-    }
-
-    function moveToTimeline(id) {
-      const item = S.items.find(i => i.id === id);
-      if (!item) return;
-      if (!item.fixtureId) { showToast('Activity is already on the main timeline'); return; }
-      item.fixtureId = null;
-      save(); render();
-      showToast('Activity moved to main timeline');
-    }
-
-    function togglePast(e, btn) {
-      e.preventDefault(); e.stopPropagation();
-      const isOpening = !btn.classList.contains('open');
-      const todayMarker = document.getElementById('today-marker');
-      const pastItems = document.getElementById('past-items');
-      if (isOpening) {
-        const viewportOffset = todayMarker.getBoundingClientRect().top;
-        pastItems.style.cssText = 'max-height:none; opacity:1; overflow:visible; transition:none;';
-        btn.classList.add('open');
-        btn.textContent = 'hide previous activity';
-        requestAnimationFrame(() => {
-          const newOffset = todayMarker.getBoundingClientRect().top;
-          const shift = newOffset - viewportOffset;
-          if (shift !== 0) window.scrollTo({ top: window.scrollY + shift - 200, behavior: 'instant' });
-        });
+      if (data.items.length > 0) {
+        // Cloud has data — it is the source of truth.
+        clearTimeout(saveDebounceTimer); // Cancel any pending seedDemo save
+        S.items          = data.items;
+        S.savedAssignees = data.savedAssignees.length ? data.savedAssignees : S.savedAssignees;
+        saveToLocal();
+        render();
+        showToast('✓ Synced from cloud');
       } else {
-        pastItems.style.cssText = 'max-height:0; opacity:0; overflow:hidden; transition:none;';
-        btn.classList.remove('open');
-        btn.textContent = 'show previous activity';
-        todayMarker.scrollIntoView({ behavior: 'instant', block: 'center' });
+        // Cloud is empty (first run) — push local/demo data up.
+        console.log('Cloud empty — pushing local data to Supabase.');
+        await saveToSupabase();
       }
+    } catch (err) {
+      console.warn('Cloud load error:', err);
     }
+  }
 
-    function toggleActCluster(fid) {
-      if (disableToggle) return;
-      const cluster = document.getElementById('cluster-' + fid);
-      const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-      if (!cluster) return;
-      const hidden = cluster.style.display === 'none';
-      cluster.style.display = hidden ? '' : 'none';
-      if (btn) btn.textContent = (hidden ? '▾ ' : '▸ ') + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
-    }
+  // FIX: save() debounces Supabase writes to avoid a write per keypress
+  // or per drag event.  800 ms is long enough to batch rapid changes
+  // (e.g. reordering activities) without feeling unresponsive.
+  function save() {
+    saveToLocal();
+    if (!useCloudSync) return;
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(() => saveToSupabase(), 800);
+  }
 
-    function ensureDropdownOpen(fid) {
-      const cluster = document.getElementById('cluster-' + fid);
-      const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-      if (!cluster || !btn) return;
-      cluster.style.display = '';
-      btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities';
-      let attempts = 0;
-      const iv = setInterval(() => {
-        attempts++;
-        if (cluster.style.display === 'none') { cluster.style.display = ''; btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
-        if (attempts >= 60) clearInterval(iv);
-      }, 50);
-    }
+  function saveAssignees() { save(); }
+  function load()          { loadFromCloud(); }
 
-    document.addEventListener('click', function (event) {
-      if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) {
-        const toggleBtn = event.target.closest('.fixture-acts-toggle');
-        if (toggleBtn) { event.preventDefault(); event.stopPropagation(); return false; }
-      }
-    }, true);
-    document.addEventListener('click', function (event) {
-      const dropdown = document.getElementById('autocomplete-dropdown');
-      const input = document.getElementById('assignee-input');
-      if (dropdown && input && !dropdown.contains(event.target) && event.target !== input) { hideAssigneeSuggestions(); }
-    });
-
-    // ─── DRAG & DROP ─────────────────────────────────────────────────────────────
-    function attachEvents() {
-      document.querySelectorAll('.activity-card, .mini-activity').forEach(el => {
-        el.addEventListener('dragstart', (e) => {
-          dragActivityId = el.dataset.id;
-          isDraggingActivity = true;
-          disableToggle = true;
-          e.dataTransfer.effectAllowed = 'move';
-          el.classList.add('dragging');
-          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => { btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick'); });
-        });
-        el.addEventListener('dragend', () => {
-          el.classList.remove('dragging');
-          document.querySelectorAll('.mini-activity').forEach(item => item.classList.remove('drag-over'));
-          isDraggingActivity = false;
-          dragEndTime = Date.now();
-          setTimeout(() => {
-            disableToggle = false;
-            document.querySelectorAll('.fixture-acts-toggle').forEach(btn => { if (btn.dataset.originalOnclick) { btn.setAttribute('onclick', btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; } });
-          }, 500);
-        });
-
-        let touchStartX, touchStartY, touchElement;
-        el.addEventListener('touchstart', (e) => {
-          const touch = e.touches[0];
-          touchStartX = touch.clientX;
-          touchStartY = touch.clientY;
-          touchElement = el;
-          // On mobile, allow drag from anywhere on the card, not just the handle
-          const isMobile = window.innerWidth <= 700;
-          if (!isMobile && !e.target.closest('.drag-handle')) return;
-          dragActivityId = el.dataset.id;
-          isDraggingActivity = true;
-          disableToggle = true;
-          el.classList.add('dragging');
-          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => { btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick'); });
-        }, { passive: true });
-        el.addEventListener('touchmove', (e) => {
-          if (!isDraggingActivity || touchElement !== el) return;
-          const touch = e.touches[0];
-          const deltaX = touch.clientX - touchStartX;
-          const deltaY = touch.clientY - touchStartY;
-          if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
-          e.preventDefault();
-          const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-          const cluster = touchTarget?.closest('.activity-cluster');
-          if (cluster) {
-            const afterElement = getDragAfterElement(cluster, touch.clientY);
-            afterElement == null ? cluster.appendChild(el) : cluster.insertBefore(el, afterElement);
-          }
-        }, { passive: false });
-        el.addEventListener('touchend', (e) => {
-          if (!isDraggingActivity || touchElement !== el) return;
-          el.classList.remove('dragging');
-          document.querySelectorAll('.mini-activity').forEach(item => item.classList.remove('drag-over'));
-          isDraggingActivity = false;
-          dragEndTime = Date.now();
-          const touch = e.changedTouches[0];
-          const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-          const fixtureCard = touchTarget?.closest('.fixture-card');
-          if (fixtureCard) {
-            const act = S.items.find(i => i.id === dragActivityId);
-            if (act && act.type === 'activity') { act.fixtureId = fixtureCard.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
-          }
-          const cluster = touchTarget?.closest('.activity-cluster');
-          if (cluster) {
-            const fixtureId = cluster.id.replace('cluster-', '');
-            const clusterActivities = Array.from(cluster.querySelectorAll('.mini-activity'));
-            const newOrderIds = clusterActivities.map(el => el.dataset.id);
-            const fixtureActivities = S.items.filter(i => i.fixtureId === fixtureId && i.type === 'activity');
-            const orderedActivities = newOrderIds.map(id => fixtureActivities.find(a => a.id === id)).filter(Boolean);
-            S.items = S.items.filter(i => !newOrderIds.includes(i.id));
-            orderedActivities.forEach(act => S.items.push(act));
-            save();
-            ensureDropdownOpen(fixtureId);
-          }
-          setTimeout(() => {
-            disableToggle = false;
-            document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
-              if (btn.dataset.originalOnclick) { btn.setAttribute('onclick', btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; }
-            });
-          }, 500);
-          touchElement = null;
-        });
-      });
-
-      document.querySelectorAll('.fixture-card').forEach(fc => {
-        fc.addEventListener('dragover', e => e.preventDefault());
-        fc.addEventListener('dragenter', () => fc.classList.add('drop-active'));
-        fc.addEventListener('dragleave', () => fc.classList.remove('drop-active'));
-        fc.addEventListener('drop', (e) => {
-          e.preventDefault();
-          fc.classList.remove('drop-active');
-          const act = S.items.find(i => i.id === dragActivityId);
-          if (act && act.type === 'activity') { act.fixtureId = fc.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
-        });
-      });
-      document.querySelectorAll('.fixture-footer').forEach(footer => {
-        footer.addEventListener('click', (e) => {
-          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) { e.stopPropagation(); e.preventDefault(); }
-        }, true);
-      });
-      document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          if (isDraggingActivity || (dragEndTime && Date.now() - dragEndTime < 500)) { e.stopPropagation(); e.preventDefault(); e.stopImmediatePropagation(); }
-        }, true);
-      });
-
-      document.querySelectorAll('.activity-cluster').forEach(cluster => {
-        cluster.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          const dragging = document.querySelector('.dragging');
-          if (!dragging) return;
-          const afterElement = getDragAfterElement(cluster, e.clientY);
-          afterElement == null ? cluster.appendChild(dragging) : cluster.insertBefore(dragging, afterElement);
-        });
-        cluster.addEventListener('drop', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          const fixtureId = cluster.id.replace('cluster-', '');
-          const clusterActivities = Array.from(cluster.querySelectorAll('.mini-activity'));
-          const newOrderIds = clusterActivities.map(el => el.dataset.id);
-          const fixtureActivities = S.items.filter(i => i.fixtureId === fixtureId && i.type === 'activity');
-          const orderedActivities = newOrderIds.map(id => fixtureActivities.find(a => a.id === id)).filter(Boolean);
-          S.items = S.items.filter(i => !newOrderIds.includes(i.id));
-          orderedActivities.forEach(act => S.items.push(act));
-          save();
-          const btn = document.querySelector(`[onclick="toggleActCluster('${fixtureId}')"]`);
-          if (btn) {
-            const orig = btn.getAttribute('onclick');
-            btn.removeAttribute('onclick');
-            btn.style.pointerEvents = 'none';
-            setTimeout(() => { btn.setAttribute('onclick', orig); btn.style.pointerEvents = ''; }, 500);
-          }
-          ensureDropdownOpen(fixtureId);
-        });
-      });
-    }
-    function getDragAfterElement(container, y) {
-      const draggableElements = [...container.querySelectorAll('.mini-activity:not(.dragging)')];
-      return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
-      }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-
-    // ─── MODAL CONTROLS ──────────────────────────────────────────────────────────
-    function openModal(type, id) {
-      currentModal = { type, editId: id || null, data: id ? S.items.find(i => i.id === id) : null, assignees: [] };
-      if (id && currentModal.data) currentModal.assignees = [...(currentModal.data.assignees || [])];
-      renderModal();
-      document.getElementById('modal-overlay').classList.add('open');
-    }
-
-    function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentModal = null; }
-
-    function toggleMobileDropdown() { document.getElementById('mobile-dropdown').classList.toggle('show'); }
-
-    document.addEventListener('click', function (event) {
-      const wrapper = document.querySelector('.mobile-add-wrapper');
-      const dropdown = document.getElementById('mobile-dropdown');
-      if (wrapper && dropdown && !wrapper.contains(event.target)) dropdown.classList.remove('show');
-    });
-
-    function editFixture(id) { openModal('fixture', id); }
-    function editActivity(id) { openModal('activity', id); }
-    function editMilestone(id) { openModal('milestone', id); }
-    function editNote(id) { openModal('note', id); }
-
-    function renderModal() {
-      const { type, editId, data } = currentModal;
-      const isEdit = !!editId;
-      document.getElementById('modal-title').textContent = isEdit ? `Edit ${type.toUpperCase()} ` : `Add ${type.toUpperCase()} `;
-      const body = document.getElementById('modal-body');
-      document.getElementById('modal-delete').style.display = 'none';
-
-      const assigneeSection = () => {
-        const chips = (currentModal.assignees || []).map((p, i) => `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
-        const quickPills = S.savedAssignees.filter(n => !(currentModal.assignees || []).includes(n)).slice(0, 8).map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
-        return `<div class="form-group"><div class="quick-add-row" id="quick-add-row"><span class="quick-add-label">Quick Add:</span>${quickPills}</div><div class="custom-assignee-row"><input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()"><button class="btn btn-outline" onclick="addCustomAssignee()">Add</button></div><div class="assignee-list" id="assignee-list">${chips}</div></div>`;
-      };
-
-      if (type === 'fixture') {
-        const f = data || {};
-        body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent || '')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date || todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League', 'Cup', 'Playoff', 'Friendly'].map(t => `<option ${f.matchType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map(t => `<div class="team-opt ${f.teamType === t || (!f.teamType && t === "Men's") ? 'selected' : ''}" data-value="${t}">${t}</div>`).join('')}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue || '')}"></div><div class="form-group"><label class="form-label">Venue Type</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType === 'home' ? 'selected' : ''}" data-value="home">Home</div><div class="venue-opt away ${f.venueType === 'away' ? 'selected' : ''}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType === 'neutral' ? 'selected' : ''}" data-value="neutral">Neutral</div></div></div>`;
-        document.querySelectorAll('#f-vtype .venue-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#f-vtype .venue-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
-        document.querySelectorAll('#f-teamtype .team-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#f-teamtype .team-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
-      } else if (type === 'activity') {
-        const a = data || {};
-        body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || '')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map(t => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === 'other') ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || '')}</textarea></div>${assigneeSection()}`;
-      } else if (type === 'milestone') {
-        const m = data || {};
-        body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title || '')}"></div><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}"></div><div class="form-group"><label class="form-label">Style Color</label><div class="style-selector" id="m-style"><div class="style-opt red ${m.style === 'red' ? 'selected' : ''}" data-value="red" title="Red"></div><div class="style-opt gold ${m.style === 'gold' ? 'selected' : ''}" data-value="gold" title="Gold"></div><div class="style-opt neutral ${m.style === 'neutral' ? 'selected' : ''}" data-value="neutral" title="Neutral"></div></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || '')}</textarea></div>`;
-        document.querySelectorAll('#m-style .style-opt').forEach(opt => opt.addEventListener('click', function () { document.querySelectorAll('#m-style .style-opt').forEach(o => o.classList.remove('selected')); this.classList.add('selected'); }));
-      } else if (type === 'note') {
-        const n = data || {};
-        body.innerHTML = `<div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="n-date" type="date" value="${n.date || todayStr()}"></div><div class="form-group"><label class="form-label">Content *</label><textarea class="form-input" id="n-content" rows="5">${esc(n.content || '')}</textarea></div>`;
-      }
-    }
-
-    function quickAddAssignee(name) {
-      if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
-      refreshAssigneeUI();
-    }
-
-    function addCustomAssignee() {
-      const inp = document.getElementById('custom-assignee-input');
-      const name = (inp.value || '').trim();
-      if (!name) return;
-      if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
-      inp.value = '';
-      refreshAssigneeUI();
-    }
-
-    function addAssignee() {
-      const inp = document.getElementById('assignee-input');
-      const name = (inp.value || '').trim();
-      if (!name) return;
-      if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
-      if (!S.savedAssignees.includes(name)) { S.savedAssignees.push(name); saveAssignees(); }
-      inp.value = '';
-      hideAssigneeSuggestions();
-      refreshAssigneeUI();
-    }
-
-    function refreshAssigneeUI() {
-      const list = document.getElementById('assignee-list');
-      if (list) list.innerHTML = currentModal.assignees.map((p, i) => `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
-      const quickRow = document.getElementById('quick-add-row');
-      if (quickRow) {
-        const pills = S.savedAssignees.filter(n => !currentModal.assignees.includes(n)).slice(0, 8).map(n => `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
-        quickRow.style.display = pills ? '' : 'none';
-        if (pills) quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}`;
-      }
-    }
-    function showAssigneeSuggestions(query) {
-      const dropdown = document.getElementById('autocomplete-dropdown');
-      if (!query || !query.trim()) { hideAssigneeSuggestions(); return; }
-      const matches = S.savedAssignees.filter(name => name.toLowerCase().includes(query.toLowerCase()) && !currentModal.assignees.includes(name));
-      if (!matches.length) { hideAssigneeSuggestions(); return; }
-      dropdown.innerHTML = matches.map(name => `<div class="autocomplete-item" onclick="selectAssignee('${esc(name)}')">${esc(name)}</div>`).join('');
-      dropdown.style.display = 'block';
-    }
-
-    function hideAssigneeSuggestions() {
-      const dropdown = document.getElementById('autocomplete-dropdown');
-      if (dropdown) dropdown.style.display = 'none';
-    }
-
-    function selectAssignee(name) { const inp = document.getElementById('assignee-input'); inp.value = name; addAssignee(); }
-
-    function handleAssigneeKeydown(event) {
-      const dropdown = document.getElementById('autocomplete-dropdown');
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        if (dropdown.style.display === 'block' && dropdown.querySelector('.autocomplete-item')) dropdown.querySelector('.autocomplete-item').click();
-        else addAssignee();
-      } else if (event.key === 'Escape') hideAssigneeSuggestions();
-    }
-
-    function removeAssignee(idx) { currentModal.assignees.splice(idx, 1); refreshAssigneeUI(); }
-
-    function saveModal() {
-      const { type, editId } = currentModal;
-      if (type === 'fixture') {
-        const opponent = document.getElementById('f-opponent').value.trim();
-        const date = document.getElementById('f-date').value;
-        if (!opponent || !date) return alert('Opponent and date are required');
-        const venueType = document.querySelector('#f-vtype .venue-opt.selected')?.dataset.value || 'home';
-        const teamType = document.querySelector('#f-teamtype .team-opt.selected')?.dataset.value || "Men's";
-        const obj = { id: editId || uid(), type: 'fixture', date, opponent, venue: document.getElementById('f-venue').value, matchType: document.getElementById('f-type').value, venueType, teamType, assignees: [] };
-        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
-      } else if (type === 'activity') {
-        const title = document.getElementById('a-title').value.trim();
-        const date = document.getElementById('a-date').value;
-        const notes = document.getElementById('a-notes').value.trim();
-        if (!title || !date) return alert('Title and date are required');
-        const existing = editId ? S.items.find(i => i.id === editId) : null;
-        const obj = { id: editId || uid(), type: 'activity', date, title, actType: document.getElementById('a-type').value, assignees: currentModal.assignees, notes, complete: existing ? existing.complete : false, fixtureId: existing ? existing.fixtureId : null };
-        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
-      } else if (type === 'milestone') {
-        const title = document.getElementById('m-title').value.trim();
-        const date = document.getElementById('m-date').value;
-        const notes = document.getElementById('m-notes').value.trim();
-        const style = document.querySelector('#m-style .style-opt.selected')?.dataset.value || 'neutral';
-        if (!title || !date) return alert('Title and date are required');
-        const obj = { id: editId || uid(), type: 'milestone', date, title, style, notes, assignees: [] };
-        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
-      } else if (type === 'note') {
-        const date = document.getElementById('n-date').value;
-        const content = document.getElementById('n-content').value.trim();
-        if (!date || !content) return alert('Date and content are required');
-        const obj = { id: editId || uid(), type: 'note', date, content, assignees: [] };
-        if (editId) S.items[S.items.findIndex(i => i.id === editId)] = obj; else S.items.push(obj);
-      }
-
-      const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
-      save(); closeModal(); render();
-      openDropdowns.forEach(fid => {
-        const cluster = document.getElementById('cluster-' + fid);
-        const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-        if (cluster) { cluster.style.display = ''; if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
-      });
-      showToast('Changes saved.');
-    }
-
-    let pendingDeleteId = null;
-
-    function showDeleteConfirm(id) {
-      pendingDeleteId = id;
-      document.getElementById('delete-confirm-overlay').style.display = 'flex';
-      document.getElementById('confirm-delete-btn').onclick = function () {
-        if (pendingDeleteId) {
-          S.items = S.items.filter(i => i.id !== pendingDeleteId && i.fixtureId !== pendingDeleteId);
-          save(); render();
-          showToast('Item deleted.');
-          closeDeleteConfirm();
-          pendingDeleteId = null;
-        }
-      };
-    }
-
-    function closeDeleteConfirm() { document.getElementById('delete-confirm-overlay').style.display = 'none'; pendingDeleteId = null; }
-    function deleteItem(id) { showDeleteConfirm(id); }
-    function deleteModalItem() { if (!currentModal.editId) return; closeModal(); showDeleteConfirm(currentModal.editId); }
-
-    let pendingCompleteId = null;
-
-    function showCompleteConfirm(id) {
-      pendingCompleteId = id;
-      document.getElementById('complete-confirm-overlay').style.display = 'flex';
-      document.getElementById('confirm-complete-btn').onclick = function () {
-        if (pendingCompleteId) {
-          const item = S.items.find(i => i.id === pendingCompleteId);
-          if (item) {
-            const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster')).filter(el => el.style.display !== 'none').map(el => el.id.replace('cluster-', ''));
-            item.complete = !item.complete;
-            save(); render();
-            openDropdowns.forEach(fid => {
-              const cluster = document.getElementById('cluster-' + fid);
-              const btn = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-              if (cluster) { cluster.style.display = ''; if (btn) btn.textContent = '▾ ' + cluster.querySelectorAll('.mini-activity').length + ' Matchday Activities'; }
-            });
-            showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
-          }
-          closeCompleteConfirm();
-          pendingCompleteId = null;
-        }
-      };
-    }
-
-    function closeCompleteConfirm() { document.getElementById('complete-confirm-overlay').style.display = 'none'; pendingCompleteId = null; }
-
-    // ─── DATE POPUP ──────────────────────────────────────────────────────────────
-    let currentPopupDate = null;
-
-    function copyDateLink(dateStr) {
-      document.querySelectorAll('.date-label').forEach(label => {
-        if (label.dataset.date !== dateStr) return;
-        const dg = label.closest('.date-group');
-        if (!dg) return;
-        const rect = dg.getBoundingClientRect();
-        window.scrollTo({ top: window.pageYOffset + rect.top - 80, behavior: 'smooth' });
-      });
-    }
-    function showDatePopup(dateStr) {
-      currentPopupDate = dateStr;
-      document.getElementById('popup-current-date').textContent = fmtDisplay(dateStr);
-      document.getElementById('popup-date-input').value = dateStr;
-      document.getElementById('date-popup-overlay').style.display = 'flex';
-    }
-    function closeDatePopup() { document.getElementById('date-popup-overlay').style.display = 'none'; currentPopupDate = null; }
-    function goToDate() {
-      const newDate = document.getElementById('popup-date-input').value;
-      if (!newDate) { alert('Please select a date'); return; }
-      let nearest = null, nearestDist = Infinity;
-      document.querySelectorAll('.date-label').forEach(label => {
-        const dist = Math.abs(new Date(newDate) - new Date(label.dataset.date));
-        if (label.dataset.date === newDate) {
-          const dg = label.closest('.date-group');
-          if (dg) window.scrollTo({ top: window.pageYOffset + dg.getBoundingClientRect().top - 80, behavior: 'smooth' });
-        } else if (dist < nearestDist) { nearestDist = dist; nearest = label; }
-      });
-      if (nearest) {
-        const dg = nearest.closest('.date-group');
-        if (dg) { window.scrollTo({ top: window.pageYOffset + dg.getBoundingClientRect().top - 80, behavior: 'smooth' }); showToast(`Nearest date: ${fmtDisplay(nearest.dataset.date)}`); }
-      }
-      closeDatePopup();
-    }
-
-    document.getElementById('date-popup-overlay').addEventListener('click', function (e) { if (e.target === this) closeDatePopup(); });
-
-    // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
-    function openSettingsModal() {
-      document.getElementById('settings-overlay').style.display = 'flex';
-      document.getElementById('settings-name-input').value = '';
-      document.getElementById('cloud-sync-toggle').checked = useCloudSync;
-      const toggle = document.getElementById('cloud-sync-toggle');
-      toggle.disabled = !supabaseClient;
-      if (!supabaseClient) {
-        document.getElementById('sync-status').textContent = '⚠ Configure SUPABASE_URL and SUPABASE_ANON_KEY in the HTML before enabling cloud sync.';
-        document.getElementById('sync-status').style.color = 'var(--orange)';
-      } else {
-        updateSyncStatus();
-      }
-      renderSettingsNames();
-    }
-
-    function renderSettingsNames() {
-      const list = document.getElementById('settings-names-list');
-      if (!list) return;
-      list.innerHTML = S.savedAssignees.map((name, idx) => `
-        < div class="settings-name-item" >
-          <span class="settings-name-text">${esc(name)}</span>
-          <span class="settings-name-edit"   onclick="editSettingsName(${idx})"   title="Edit">✎</span>
-          <span class="settings-name-delete" onclick="deleteSettingsName(${idx})" title="Delete">✕</span>
-        </div > `).join('');
-    }
-
-    function addName() {
-      const inp = document.getElementById('settings-name-input');
-      const name = (inp.value || '').trim();
-      if (!name) return;
-      if (S.savedAssignees.includes(name)) { showToast('Name already exists'); return; }
-      S.savedAssignees.push(name);
-      saveAssignees();
-      inp.value = '';
-      renderSettingsNames();
-      showToast('Name added');
-    }
-
-    function deleteSettingsName(idx) {
-      S.savedAssignees.splice(idx, 1);
-      saveAssignees();
-      renderSettingsNames();
-      showToast('Name removed');
-    }
-
-    function editSettingsName(idx) {
-      const name = S.savedAssignees[idx];
-      const inp = document.getElementById('settings-name-input');
-      inp.value = name;
-      inp.focus();
-      S.savedAssignees.splice(idx, 1);
-      renderSettingsNames();
-      const addBtn = document.querySelector('.settings-input-row .btn-primary');
-      const origCb = addBtn.onclick;
-      addBtn.textContent = 'Update';
-      addBtn.onclick = function () {
-        const newName = (inp.value || '').trim();
-        if (!newName || S.savedAssignees.includes(newName)) { S.savedAssignees.splice(idx, 0, name); renderSettingsNames(); resetSettingsAddButton(addBtn, origCb); if (!newName) return; showToast('Name already exists'); return; }
-        S.items.forEach(item => { if (item.assignees) { const i = item.assignees.indexOf(name); if (i !== -1) item.assignees[i] = newName; } });
-        S.savedAssignees.splice(idx, 0, newName);
-        S.savedAssignees.sort((a, b) => a.localeCompare(b));
-        saveAssignees(); save(); render();
-        inp.value = '';
-        renderSettingsNames();
-        resetSettingsAddButton(addBtn, origCb);
-        showToast('Name updated');
-      };
-    }
-    function resetSettingsAddButton(btn, origCb) { btn.textContent = 'Add'; btn.onclick = origCb; }
-
-    document.addEventListener('keydown', function (e) {
-      const settingsOverlay = document.getElementById('settings-overlay');
-      if (settingsOverlay?.style.display === 'flex' && e.key === 'Enter') {
-        const inp = document.getElementById('settings-name-input');
-        const addBtn = document.querySelector('.settings-input-row .btn-primary');
-        if (document.activeElement === inp) addBtn?.click();
+  // ─── SEED DATA ────────────────────────────────────────────────
+  // FIX: seedDemo now calls saveToLocal() only.  It must NOT call save()
+  // because that would debounce a Supabase write that might fire before the
+  // cloud load returns, overwriting real production data.
+  function seedDemo() {
+    const today = new Date();
+    const fixtures = [
+      { opponent:'Halifax Panthers',    offset:-15, venue:'Odsal Stadium',       matchType:'League', home:true,  team:"Men's" },
+      { opponent:'Featherstone Rovers', offset: -5, venue:'Millenium Stadium',   matchType:'League', home:false, team:"Men's" },
+      { opponent:'York Knights',        offset:  4, venue:'Odsal Stadium',       matchType:'League', home:true,  team:"Men's" },
+      { opponent:'Toulouse Olympique',  offset: 14, venue:'Stade Ernest-Wallon', matchType:'League', home:false, team:"Men's" },
+      { opponent:'Sheffield Eagles',    offset: 25, venue:'Odsal Stadium',       matchType:'League', home:true,  team:"Men's" },
+    ];
+    fixtures.forEach(f => {
+      const fid   = uid();
+      const fdate = offsetDate(today, f.offset);
+      S.items.push({ id:fid, type:'fixture', date:fmtDate(fdate), opponent:f.opponent, venue:f.venue, matchType:f.matchType, venueType:f.home?'home':'away', teamType:f.team, notes:'', assignees:[] });
+      const count = Math.floor(Math.random()*3)+1;
+      for (let i=0;i<count;i++) {
+        S.items.push({ id:uid(), type:'activity', date:fmtDate(offsetDate(fdate,-Math.floor(Math.random()*4))), title:randomActivity(), actType:ACTIVITY_TYPES[Math.floor(Math.random()*ACTIVITY_TYPES.length)].id, fixtureId:fid, notes:'', assignees:[], complete:Math.random()>0.5 });
       }
     });
-
-    function closeSettingsModal() { document.getElementById('settings-overlay').style.display = 'none'; }
-
-    // Real-time sync with Supabase
-    if (supabaseClient && useCloudSync) {
-      supabaseClient.channel('timeline_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
-          loadFromCloud();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, () => {
-          loadFromCloud();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'milestones' }, () => {
-          loadFromCloud();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => {
-          loadFromCloud();
-        })
-        .subscribe();
+    S.items.push({ id:uid(), type:'milestone', date:fmtDate(offsetDate(today,-20)), title:'Mid-Season Launch',  style:'gold', notes:'Media Day Arena Reveal',        assignees:[] });
+    S.items.push({ id:uid(), type:'milestone', date:fmtDate(offsetDate(today, 30)), title:'Playoffs Kick-off', style:'red',  notes:'Championship Bracket Matchup',   assignees:[] });
+    S.items.push({ id:uid(), type:'note',      date:fmtDate(offsetDate(today,  7)), content:'Key sponsor wants increased signage on east stand. Follow up by end of week with deck.', assignees:[] });
+    S.items.push({ id:uid(), type:'note',      date:fmtDate(offsetDate(today, -3)), content:'Season ticket sales ahead of target. Digital reach up 18% YoY. Action: produce mid-season report.', assignees:[] });
+    if (!S.savedAssignees || !S.savedAssignees.length) {
+      S.savedAssignees = ['Sarah Mitchell','Tom Bradley','Jake Whitfield','Emma Clarke','Dave Sutton'];
     }
-    // ─── TOASTS ───────────────────────────────────────────────────────────────────
-    function showToast(msg) {
-      const c = document.getElementById('toast-container');
-      const el = document.createElement('div');
-      el.className = 'toast';
-      el.innerHTML = `<span>${msg}</span>`;
-      c.appendChild(el);
-      setTimeout(() => el.remove(), 4000);
-    }
+    saveToLocal(); // FIX: local only — not save() which would write to Supabase
+  }
 
-    // ─── DOT HOVER ANIMATIONS ────────────────────────────────────────────────────
-    function setupDotHoverAnimations() {
-      document.querySelectorAll('.tl-row.side-left .node-dot').forEach(dot => {
-        const row = dot.closest('.tl-row.side-left');
-        const cardWrap = row?.querySelector('.tl-card-wrap');
-        if (!cardWrap) return;
-        cardWrap.querySelectorAll('.fixture-card, .activity-card, .milestone-card, .note-card').forEach(card => {
-          dot.addEventListener('mouseenter', () => {
-            card.classList.add('card-highlight');
-            if (dot.classList.contains('fixture-dot')) card.classList.add('highlight-red');
-            else if (dot.classList.contains('milestone-dot')) card.classList.add('highlight-gold');
-            else if (dot.classList.contains('past-dot')) card.classList.add('highlight-past');
-            else if (dot.classList.contains('complete-dot')) card.classList.add('highlight-complete');
+  function randomActivity() {
+    const acts = ['Instagram Post','Facebook Reel','Press Release','Matchday Programme','TikTok Video','Twitter Thread','Sponsor Video'];
+    return acts[Math.floor(Math.random()*acts.length)];
+  }
+
+  // ─── UTILITY ──────────────────────────────────────────────────
+  function offsetDate(d, days) { const r = new Date(d); r.setDate(r.getDate()+days); return r; }
+  function fmtDate(d)           { return d.toISOString().split('T')[0]; }
+  function uid() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random()*16|0, v = c==='x'?r:(r&0x3|0x8);
+      return v.toString(16);
+    });
+  }
+  function todayStr()    { return new Date().toISOString().split('T')[0]; }
+  function daysUntil(ds) { return Math.round((new Date(ds+'T12:00:00')-new Date(todayStr()+'T12:00:00'))/86400000); }
+  function esc(s)        { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtDisplay(ds){ if (!ds) return ''; return new Date(ds+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'2-digit'}); }
+  function fmtMonth(ds)  { return new Date(ds+'T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
+
+  // ─── GROUPS BUILDER ───────────────────────────────────────────
+  function buildGroups(items) {
+    const seen = new Set();
+    const fixtureActMap = {};
+    S.items.filter(i => i.type==='activity' && i.fixtureId).forEach(a => {
+      if (!fixtureActMap[a.fixtureId]) fixtureActMap[a.fixtureId] = [];
+      fixtureActMap[a.fixtureId].push(a);
+    });
+    const dateMap = {};
+    items.forEach(item => {
+      if (seen.has(item.id)) return;
+      if (item.type==='fixture') {
+        seen.add(item.id);
+        const linked = fixtureActMap[item.id] || [];
+        linked.forEach(a => seen.add(a.id));
+        if (!dateMap[item.date]) dateMap[item.date] = { type:'date-group', date:item.date, items:[] };
+        dateMap[item.date].items.push({ type:'fixture', fixture:item, activities:linked.sort((a,b)=>a.date.localeCompare(b.date)) });
+      } else if (item.type==='milestone') {
+        seen.add(item.id);
+        if (!dateMap[item.date]) dateMap[item.date] = { type:'date-group', date:item.date, items:[] };
+        dateMap[item.date].items.push({ type:'milestone', item });
+      } else if (item.type==='note') {
+        seen.add(item.id);
+        if (!dateMap[item.date]) dateMap[item.date] = { type:'date-group', date:item.date, items:[] };
+        dateMap[item.date].items.push({ type:'note', item });
+      } else if (item.type==='activity' && !item.fixtureId) {
+        seen.add(item.id);
+        if (!dateMap[item.date]) dateMap[item.date] = { type:'date-group', date:item.date, items:[] };
+        dateMap[item.date].items.push({ type:'activity', item });
+      }
+    });
+    return Object.values(dateMap).sort((a,b) => a.date.localeCompare(b.date));
+  }
+
+  // ─── RENDER ENGINE ────────────────────────────────────────────
+  function render() {
+    const content  = document.getElementById('timeline-content');
+    const today    = todayStr();
+    const pastItems   = S.items.filter(i => i.date < today);
+    const activeItems = S.items.filter(i => i.date >= today);
+    const pastGroups  = buildGroups(pastItems);
+    const activeGroups= buildGroups(activeItems);
+    let html = '';
+    if (pastGroups.length > 0) {
+      let inner = '', side = 0, lastMonth = '';
+      pastGroups.forEach(g => {
+        const month = g.date.slice(0,7);
+        if (month!==lastMonth) { lastMonth=month; inner+=`<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`; }
+        inner += renderGroup(g, side%2===0?'side-left':'side-right', true); side++;
+      });
+      html += `<div id="past-accordion"><div id="past-toggle" onclick="togglePast(event,this)">show previous activity</div><div id="past-items">${inner}</div></div>`;
+    }
+    html += `<div id="today-marker"><div class="today-line"></div><div class="today-badge">Today — ${fmtDisplay(today)}</div><div class="today-line"></div></div>`;
+    let side = 0, lastMonth = '';
+    activeGroups.forEach(g => {
+      const month = g.date.slice(0,7);
+      if (month!==lastMonth) { lastMonth=month; html+=`<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`; }
+      html += renderGroup(g, side%2===0?'side-left':'side-right', false); side++;
+    });
+    if (activeGroups.length===0 && pastGroups.length===0) {
+      html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
+    }
+    content.innerHTML = html;
+    attachEvents();
+  }
+
+  function renderGroup(g, side, isPast) { return g.type==='date-group' ? renderDateGroup(g, side, isPast) : ''; }
+
+  function renderDateGroup(g, side, isPast) {
+    let itemsHtml = '';
+    let itemSide = 0;
+    g.items.forEach(item => {
+      const s = itemSide%2===0 ? 'side-left' : 'side-right';
+      if (item.type==='fixture')   itemsHtml += renderFixtureGroup(item, s, isPast);
+      else if (item.type==='milestone') itemsHtml += renderMilestoneGroup(item, s, isPast);
+      else if (item.type==='note')      itemsHtml += renderNoteGroup(item, s, isPast);
+      else if (item.type==='activity')  itemsHtml += renderActivityGroup(item, s, isPast);
+      itemSide++;
+    });
+    return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="copyDateLink('${g.date}')" ondblclick="showDatePopup('${g.date}')">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
+  }
+
+  function renderFixtureGroup(g, side, isPast) {
+    const f = g.fixture, acts = g.activities;
+    const days = daysUntil(f.date);
+    const venueClass = f.venueType==='home'?'home':f.venueType==='away'?'away':'neutral';
+    const venueLabel = f.venueType==='home'?'H':f.venueType==='away'?'A':'N';
+    let countdownTxt, countdownCls;
+    if (isPast||days<0)  { countdownTxt=`${Math.abs(days)}d ago`; countdownCls='past'; }
+    else if (days===0)   { countdownTxt='MATCHDAY'; countdownCls='imminent'; }
+    else if (days===1)   { countdownTxt='Tomorrow'; countdownCls='imminent'; }
+    else if (days<=7)    { countdownTxt=`${days} Days To Go`; countdownCls='imminent'; }
+    else                 { countdownTxt=`${days} Days`; countdownCls='far'; }
+    const teamLogo = getTeamLogo(f.opponent);
+    const logoHtml = teamLogo
+      ? `<img src="${teamLogo}" alt="${esc(f.opponent)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="fixture-logo-initials" style="display:none">${esc(teamInitials(f.opponent))}</div>`
+      : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
+    const teamBadge = f.teamType ? `<span class="team-badge">${esc(f.teamType)}</span>` : '';
+    const actsHtml = acts.map(a => renderMiniActivity(a)).join('');
+    return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast?' past':''}" id="fc-${f.id}" data-fixture-id="${f.id}"><div class="fixture-header"><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue?`<span>📍 ${esc(f.venue)}</span>`:''}<span>🏉 ${esc(f.matchType||'')}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length>0?`<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>`:''}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length>0?`<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>`:''}</div></div></div>`;
+  }
+
+  function renderMiniActivity(a) {
+    const aType = ACTIVITY_TYPES.find(t=>t.id===a.actType)||ACTIVITY_TYPES[ACTIVITY_TYPES.length-1];
+    const completeCls = a.complete?' complete':'';
+    const assigneesHtml = (a.assignees||[]).map(p=>`<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
+    return `<div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete?' complete-meta':''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete?' · ✓ Done':''}${a.notes?' · '+esc(a.notes):''}</div>${assigneesHtml?`<div class="assignees-row">${assigneesHtml}</div>`:''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete?' done':''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div>`;
+  }
+
+  function renderActivityGroup(g, side, isPast) {
+    const a = g.item;
+    const aType = ACTIVITY_TYPES.find(t=>t.id===a.actType)||ACTIVITY_TYPES[ACTIVITY_TYPES.length-1];
+    const completeCls = a.complete?' complete':'';
+    const pastCls     = isPast?' past':'';
+    const assigneesHtml = (a.assignees||[]).map(p=>`<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
+    return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete?' complete-dot':''}${isPast&&!a.complete?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}"><div class="act-row" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete?' complete-meta':''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete?' · ✓ Done':''}${a.notes?' · '+esc(a.notes):''}</div>${assigneesHtml?`<div class="assignees-row">${assigneesHtml}</div>`:''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete?' done':''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
+  }
+
+  function renderMilestoneGroup(g, side, isPast) {
+    const m = g.item, style = m.style||'red', pastCls = isPast?' past':'';
+    return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}"><div class="act-row"><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes?' · '+esc(m.notes):''}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
+  }
+
+  function renderNoteGroup(g, side, isPast) {
+    const n = g.item, pastCls = isPast?' past':'';
+    return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast?' past-dot':''}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}"><div class="act-row"><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
+  }
+
+  // ─── INTERACTIONS ─────────────────────────────────────────────
+  function isMobile() { return window.innerWidth<=768||('ontouchstart' in window); }
+
+  function toggleComplete(id) {
+    const item = S.items.find(i=>i.id===id);
+    if (!item) return;
+    if (isMobile()) { showCompleteConfirm(id); return; }
+    const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster'))
+      .filter(el=>el.style.display!=='none').map(el=>el.id.replace('cluster-',''));
+    item.complete = !item.complete;
+    save(); render();
+    openDropdowns.forEach(fid => {
+      const cluster = document.getElementById('cluster-'+fid);
+      const btn     = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+      if (cluster) { cluster.style.display=''; if(btn) btn.textContent='▾ '+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities'; }
+    });
+    showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
+  }
+
+  function moveToTimeline(id) {
+    const item = S.items.find(i=>i.id===id);
+    if (!item) return;
+    if (!item.fixtureId) { showToast('Activity is already on the main timeline'); return; }
+    item.fixtureId = null;
+    save(); render();
+    showToast('Activity moved to main timeline');
+  }
+
+  function togglePast(e, btn) {
+    e.preventDefault(); e.stopPropagation();
+    const isOpening = !btn.classList.contains('open');
+    const todayMarker = document.getElementById('today-marker');
+    const pastItems   = document.getElementById('past-items');
+    if (isOpening) {
+      const viewportOffset = todayMarker.getBoundingClientRect().top;
+      pastItems.style.cssText = 'max-height:none;opacity:1;overflow:visible;transition:none;';
+      btn.classList.add('open');
+      btn.textContent = 'hide previous activity';
+      requestAnimationFrame(() => {
+        const newOffset = todayMarker.getBoundingClientRect().top;
+        const shift = newOffset-viewportOffset;
+        if (shift!==0) window.scrollTo({top:window.scrollY+shift-200,behavior:'instant'});
+      });
+    } else {
+      pastItems.style.cssText = 'max-height:0;opacity:0;overflow:hidden;transition:none;';
+      btn.classList.remove('open');
+      btn.textContent = 'show previous activity';
+      todayMarker.scrollIntoView({behavior:'instant',block:'center'});
+    }
+  }
+
+  function toggleActCluster(fid) {
+    if (disableToggle) return;
+    const cluster = document.getElementById('cluster-'+fid);
+    const btn     = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+    if (!cluster) return;
+    const hidden = cluster.style.display==='none';
+    cluster.style.display = hidden ? '' : 'none';
+    if (btn) btn.textContent = (hidden?'▾ ':'▸ ')+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities';
+  }
+
+  function ensureDropdownOpen(fid) {
+    const cluster = document.getElementById('cluster-'+fid);
+    const btn     = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+    if (!cluster||!btn) return;
+    cluster.style.display='';
+    btn.textContent = '▾ '+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities';
+    let attempts = 0;
+    const iv = setInterval(()=>{
+      attempts++;
+      if (cluster.style.display==='none') { cluster.style.display=''; btn.textContent='▾ '+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities'; }
+      if (attempts>=60) clearInterval(iv);
+    }, 50);
+  }
+
+  document.addEventListener('click', event => {
+    if (isDraggingActivity||(dragEndTime&&Date.now()-dragEndTime<500)) {
+      const toggleBtn = event.target.closest('.fixture-acts-toggle');
+      if (toggleBtn) { event.preventDefault(); event.stopPropagation(); return false; }
+    }
+  }, true);
+  document.addEventListener('click', event => {
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    const input    = document.getElementById('assignee-input');
+    if (dropdown&&input&&!dropdown.contains(event.target)&&event.target!==input) hideAssigneeSuggestions();
+  });
+
+  // ─── DRAG & DROP ──────────────────────────────────────────────
+  function attachEvents() {
+    document.querySelectorAll('.activity-card,.mini-activity').forEach(el => {
+      el.addEventListener('dragstart', e => {
+        dragActivityId = el.dataset.id;
+        isDraggingActivity = true;
+        disableToggle = true;
+        e.dataTransfer.effectAllowed = 'move';
+        el.classList.add('dragging');
+        document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+          btn.dataset.originalOnclick = btn.getAttribute('onclick');
+          btn.removeAttribute('onclick');
+        });
+      });
+      el.addEventListener('dragend', () => {
+        el.classList.remove('dragging');
+        document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
+        isDraggingActivity = false;
+        dragEndTime = Date.now();
+        setTimeout(() => {
+          disableToggle = false;
+          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+            if (btn.dataset.originalOnclick) { btn.setAttribute('onclick',btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; }
           });
-          dot.addEventListener('mouseleave', () => {
-            card.classList.remove('card-highlight', 'highlight-red', 'highlight-gold', 'highlight-past', 'highlight-complete');
-          });
-        });
+        }, 500);
       });
-    }
 
-    // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+      let touchStartX, touchStartY, touchElement;
+      el.addEventListener('touchstart', e => {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX; touchStartY = touch.clientY; touchElement = el;
+        const isMob = window.innerWidth<=700;
+        if (!isMob && !e.target.closest('.drag-handle')) return;
+        dragActivityId = el.dataset.id;
+        isDraggingActivity = true; disableToggle = true;
+        el.classList.add('dragging');
+        document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+          btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick');
+        });
+      }, {passive:true});
+      el.addEventListener('touchmove', e => {
+        if (!isDraggingActivity||touchElement!==el) return;
+        const touch = e.touches[0];
+        if (Math.abs(touch.clientX-touchStartX)<10&&Math.abs(touch.clientY-touchStartY)<10) return;
+        e.preventDefault();
+        const target  = document.elementFromPoint(touch.clientX,touch.clientY);
+        const cluster = target?.closest('.activity-cluster');
+        if (cluster) { const after=getDragAfterElement(cluster,touch.clientY); after==null?cluster.appendChild(el):cluster.insertBefore(el,after); }
+      }, {passive:false});
+      el.addEventListener('touchend', e => {
+        if (!isDraggingActivity||touchElement!==el) return;
+        el.classList.remove('dragging');
+        document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
+        isDraggingActivity = false; dragEndTime = Date.now();
+        const touch  = e.changedTouches[0];
+        const target = document.elementFromPoint(touch.clientX,touch.clientY);
+        const fc = target?.closest('.fixture-card');
+        if (fc) {
+          const act = S.items.find(i=>i.id===dragActivityId);
+          if (act&&act.type==='activity') { act.fixtureId=fc.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
+        }
+        const cluster = target?.closest('.activity-cluster');
+        if (cluster) {
+          const fixtureId = cluster.id.replace('cluster-','');
+          const order = Array.from(cluster.querySelectorAll('.mini-activity')).map(e=>e.dataset.id);
+          const acts  = S.items.filter(i=>i.fixtureId===fixtureId&&i.type==='activity');
+          const sorted= order.map(id=>acts.find(a=>a.id===id)).filter(Boolean);
+          S.items = S.items.filter(i=>!order.includes(i.id));
+          sorted.forEach(a=>S.items.push(a));
+          save(); ensureDropdownOpen(fixtureId);
+        }
+        setTimeout(()=>{
+          disableToggle=false;
+          document.querySelectorAll('.fixture-acts-toggle').forEach(btn=>{
+            if (btn.dataset.originalOnclick) { btn.setAttribute('onclick',btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; }
+          });
+        }, 500);
+        touchElement = null;
+      });
+    });
 
-    const _baseRender = render;
-    render = function () {
-      _baseRender.apply(this, arguments);
-      setTimeout(setupDotHoverAnimations, 100);
+    document.querySelectorAll('.fixture-card').forEach(fc => {
+      fc.addEventListener('dragover', e=>e.preventDefault());
+      fc.addEventListener('dragenter', ()=>fc.classList.add('drop-active'));
+      fc.addEventListener('dragleave', ()=>fc.classList.remove('drop-active'));
+      fc.addEventListener('drop', e => {
+        e.preventDefault(); fc.classList.remove('drop-active');
+        const act = S.items.find(i=>i.id===dragActivityId);
+        if (act&&act.type==='activity') { act.fixtureId=fc.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
+      });
+    });
+
+    document.querySelectorAll('.fixture-footer').forEach(footer => {
+      footer.addEventListener('click', e => {
+        if (isDraggingActivity||(dragEndTime&&Date.now()-dragEndTime<500)) { e.stopPropagation(); e.preventDefault(); }
+      }, true);
+    });
+    document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+      btn.addEventListener('click', e => {
+        if (isDraggingActivity||(dragEndTime&&Date.now()-dragEndTime<500)) { e.stopPropagation(); e.preventDefault(); e.stopImmediatePropagation(); }
+      }, true);
+    });
+
+    document.querySelectorAll('.activity-cluster').forEach(cluster => {
+      cluster.addEventListener('dragover', e => {
+        e.preventDefault();
+        const dragging = document.querySelector('.dragging');
+        if (!dragging) return;
+        const after = getDragAfterElement(cluster,e.clientY);
+        after==null ? cluster.appendChild(dragging) : cluster.insertBefore(dragging,after);
+      });
+      cluster.addEventListener('drop', e => {
+        e.preventDefault(); e.stopPropagation();
+        const fixtureId = cluster.id.replace('cluster-','');
+        const order = Array.from(cluster.querySelectorAll('.mini-activity')).map(e=>e.dataset.id);
+        const acts  = S.items.filter(i=>i.fixtureId===fixtureId&&i.type==='activity');
+        const sorted= order.map(id=>acts.find(a=>a.id===id)).filter(Boolean);
+        S.items = S.items.filter(i=>!order.includes(i.id));
+        sorted.forEach(a=>S.items.push(a));
+        save();
+        const btn = document.querySelector(`[onclick="toggleActCluster('${fixtureId}')"]`);
+        if (btn) { const orig=btn.getAttribute('onclick'); btn.removeAttribute('onclick'); btn.style.pointerEvents='none'; setTimeout(()=>{btn.setAttribute('onclick',orig);btn.style.pointerEvents='';},500); }
+        ensureDropdownOpen(fixtureId);
+      });
+    });
+  }
+
+  function getDragAfterElement(container, y) {
+    return [...container.querySelectorAll('.mini-activity:not(.dragging)')].reduce((closest,child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y-box.top-box.height/2;
+      return (offset<0&&offset>closest.offset) ? {offset,element:child} : closest;
+    }, {offset:Number.NEGATIVE_INFINITY}).element;
+  }
+
+  // ─── MODAL CONTROLS ───────────────────────────────────────────
+  function openModal(type, id) {
+    currentModal = { type, editId:id||null, data:id?S.items.find(i=>i.id===id):null, assignees:[] };
+    if (id&&currentModal.data) currentModal.assignees = [...(currentModal.data.assignees||[])];
+    renderModal();
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentModal=null; }
+
+  function toggleMobileDropdown() { document.getElementById('mobile-dropdown').classList.toggle('show'); }
+
+  document.addEventListener('click', event => {
+    const wrapper  = document.querySelector('.mobile-add-wrapper');
+    const dropdown = document.getElementById('mobile-dropdown');
+    if (wrapper&&dropdown&&!wrapper.contains(event.target)) dropdown.classList.remove('show');
+  });
+
+  function editFixture(id)   { openModal('fixture',id);   }
+  function editActivity(id)  { openModal('activity',id);  }
+  function editMilestone(id) { openModal('milestone',id); }
+  function editNote(id)      { openModal('note',id);      }
+
+  function renderModal() {
+    const {type,editId,data} = currentModal;
+    const isEdit = !!editId;
+    document.getElementById('modal-title').textContent = isEdit ? `Edit ${type.toUpperCase()}` : `Add ${type.toUpperCase()}`;
+    const body = document.getElementById('modal-body');
+    document.getElementById('modal-delete').style.display = 'none';
+
+    const assigneeSection = () => {
+      const chips     = (currentModal.assignees||[]).map((p,i)=>`<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
+      const quickPills= S.savedAssignees.filter(n=>!(currentModal.assignees||[]).includes(n)).slice(0,8).map(n=>`<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
+      return `<div class="form-group"><div class="quick-add-row" id="quick-add-row"><span class="quick-add-label">Quick Add:</span>${quickPills}</div><div class="custom-assignee-row"><input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()"><button class="btn btn-outline" onclick="addCustomAssignee()">Add</button></div><div class="assignee-list" id="assignee-list">${chips}</div></div>`;
     };
-    load();
-    document.getElementById('brand-logo-wrap').addEventListener('click', () => {
-      document.getElementById('today-marker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    if (type==='fixture') {
+      const f = data||{};
+      body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent||'')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date||todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League','Cup','Playoff','Friendly'].map(t=>`<option ${f.matchType===t?'selected':''}>${t}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map(t=>`<div class="team-opt ${f.teamType===t||(!f.teamType&&t==="Men's")?'selected':''}" data-value="${t}">${t}</div>`).join('')}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue||'')}"></div><div class="form-group"><label class="form-label">Venue Type</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType==='home'?'selected':''}" data-value="home">Home</div><div class="venue-opt away ${f.venueType==='away'?'selected':''}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType==='neutral'?'selected':''}" data-value="neutral">Neutral</div></div></div>`;
+      document.querySelectorAll('#f-vtype .venue-opt').forEach(opt=>opt.addEventListener('click',function(){document.querySelectorAll('#f-vtype .venue-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected');}));
+      document.querySelectorAll('#f-teamtype .team-opt').forEach(opt=>opt.addEventListener('click',function(){document.querySelectorAll('#f-teamtype .team-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected');}));
+    } else if (type==='activity') {
+      const a = data||{};
+      body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title||'')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date||todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map(t=>`<option value="${t.id}" ${a.actType===t.id||(!a.actType&&t.id==='other')?'selected':''}>${t.icon} ${t.label}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes||'')}</textarea></div>${assigneeSection()}`;
+    } else if (type==='milestone') {
+      const m = data||{};
+      body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title||'')}"></div><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date||todayStr()}"></div><div class="form-group"><label class="form-label">Style Color</label><div class="style-selector" id="m-style"><div class="style-opt red ${m.style==='red'?'selected':''}" data-value="red" title="Red"></div><div class="style-opt gold ${m.style==='gold'?'selected':''}" data-value="gold" title="Gold"></div><div class="style-opt neutral ${m.style==='neutral'?'selected':''}" data-value="neutral" title="Neutral"></div></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes||'')}</textarea></div>`;
+      document.querySelectorAll('#m-style .style-opt').forEach(opt=>opt.addEventListener('click',function(){document.querySelectorAll('#m-style .style-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected');}));
+    } else if (type==='note') {
+      const n = data||{};
+      body.innerHTML = `<div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="n-date" type="date" value="${n.date||todayStr()}"></div><div class="form-group"><label class="form-label">Content *</label><textarea class="form-input" id="n-content" rows="5">${esc(n.content||'')}</textarea></div>`;
+    }
+  }
+
+  function quickAddAssignee(name) {
+    if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
+    refreshAssigneeUI();
+  }
+  function addCustomAssignee() {
+    const inp  = document.getElementById('custom-assignee-input');
+    const name = (inp.value||'').trim();
+    if (!name) return;
+    if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
+    inp.value = '';
+    refreshAssigneeUI();
+  }
+  function addAssignee() {
+    const inp  = document.getElementById('assignee-input');
+    const name = (inp.value||'').trim();
+    if (!name) return;
+    if (!currentModal.assignees.includes(name)) currentModal.assignees.push(name);
+    if (!S.savedAssignees.includes(name)) { S.savedAssignees.push(name); saveAssignees(); }
+    inp.value = ''; hideAssigneeSuggestions(); refreshAssigneeUI();
+  }
+  function refreshAssigneeUI() {
+    const list = document.getElementById('assignee-list');
+    if (list) list.innerHTML = currentModal.assignees.map((p,i)=>`<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
+    const quickRow = document.getElementById('quick-add-row');
+    if (quickRow) {
+      const pills = S.savedAssignees.filter(n=>!currentModal.assignees.includes(n)).slice(0,8).map(n=>`<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
+      quickRow.style.display = pills?'':'none';
+      if (pills) quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}`;
+    }
+  }
+  function showAssigneeSuggestions(query) {
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    if (!query||!query.trim()) { hideAssigneeSuggestions(); return; }
+    const matches = S.savedAssignees.filter(n=>n.toLowerCase().includes(query.toLowerCase())&&!currentModal.assignees.includes(n));
+    if (!matches.length) { hideAssigneeSuggestions(); return; }
+    dropdown.innerHTML = matches.map(n=>`<div class="autocomplete-item" onclick="selectAssignee('${esc(n)}')">${esc(n)}</div>`).join('');
+    dropdown.style.display = 'block';
+  }
+  function hideAssigneeSuggestions() { const d=document.getElementById('autocomplete-dropdown'); if(d) d.style.display='none'; }
+  function selectAssignee(name) { const inp=document.getElementById('assignee-input'); inp.value=name; addAssignee(); }
+  function handleAssigneeKeydown(event) {
+    const d = document.getElementById('autocomplete-dropdown');
+    if (event.key==='Enter') { event.preventDefault(); if(d.style.display==='block'&&d.querySelector('.autocomplete-item')) d.querySelector('.autocomplete-item').click(); else addAssignee(); }
+    else if (event.key==='Escape') hideAssigneeSuggestions();
+  }
+  function removeAssignee(idx) { currentModal.assignees.splice(idx,1); refreshAssigneeUI(); }
+
+  function saveModal() {
+    const {type,editId} = currentModal;
+    if (type==='fixture') {
+      const opponent = document.getElementById('f-opponent').value.trim();
+      const date     = document.getElementById('f-date').value;
+      if (!opponent||!date) return alert('Opponent and date are required');
+      const venueType = document.querySelector('#f-vtype .venue-opt.selected')?.dataset.value||'home';
+      const teamType  = document.querySelector('#f-teamtype .team-opt.selected')?.dataset.value||"Men's";
+      const obj = { id:editId||uid(), type:'fixture', date, opponent, venue:document.getElementById('f-venue').value, matchType:document.getElementById('f-type').value, venueType, teamType, assignees:[] };
+      if (editId) S.items[S.items.findIndex(i=>i.id===editId)]=obj; else S.items.push(obj);
+    } else if (type==='activity') {
+      const title = document.getElementById('a-title').value.trim();
+      const date  = document.getElementById('a-date').value;
+      const notes = document.getElementById('a-notes').value.trim();
+      if (!title||!date) return alert('Title and date are required');
+      const existing = editId ? S.items.find(i=>i.id===editId) : null;
+      const obj = { id:editId||uid(), type:'activity', date, title, actType:document.getElementById('a-type').value, assignees:currentModal.assignees, notes, complete:existing?existing.complete:false, fixtureId:existing?existing.fixtureId:null };
+      if (editId) S.items[S.items.findIndex(i=>i.id===editId)]=obj; else S.items.push(obj);
+    } else if (type==='milestone') {
+      const title = document.getElementById('m-title').value.trim();
+      const date  = document.getElementById('m-date').value;
+      const notes = document.getElementById('m-notes').value.trim();
+      const style = document.querySelector('#m-style .style-opt.selected')?.dataset.value||'neutral';
+      if (!title||!date) return alert('Title and date are required');
+      const obj = { id:editId||uid(), type:'milestone', date, title, style, notes, assignees:[] };
+      if (editId) S.items[S.items.findIndex(i=>i.id===editId)]=obj; else S.items.push(obj);
+    } else if (type==='note') {
+      const date    = document.getElementById('n-date').value;
+      const content = document.getElementById('n-content').value.trim();
+      if (!date||!content) return alert('Date and content are required');
+      const obj = { id:editId||uid(), type:'note', date, content, assignees:[] };
+      if (editId) S.items[S.items.findIndex(i=>i.id===editId)]=obj; else S.items.push(obj);
+    }
+    const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster'))
+      .filter(el=>el.style.display!=='none').map(el=>el.id.replace('cluster-',''));
+    save(); closeModal(); render();
+    openDropdowns.forEach(fid => {
+      const cluster = document.getElementById('cluster-'+fid);
+      const btn     = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+      if (cluster) { cluster.style.display=''; if(btn) btn.textContent='▾ '+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities'; }
     });
-  </script>
+    showToast('Changes saved.');
+  }
+
+  // ─── DELETE ───────────────────────────────────────────────────
+  // FIX: deleteItem now records the item type in pendingDeleteOps before
+  // removing from S.items so saveToSupabase can issue the correct DELETE
+  // against the right table.
+  let pendingDeleteId = null;
+
+  function showDeleteConfirm(id) {
+    pendingDeleteId = id;
+    document.getElementById('delete-confirm-overlay').style.display = 'flex';
+    document.getElementById('confirm-delete-btn').onclick = () => {
+      if (!pendingDeleteId) return;
+      // FIX: record all items being deleted (fixture cascades linked activities)
+      const toDelete = S.items.filter(i => i.id===pendingDeleteId||i.fixtureId===pendingDeleteId);
+      toDelete.forEach(i => pendingDeleteOps.push({ id:i.id, type:i.type }));
+      S.items = S.items.filter(i => i.id!==pendingDeleteId && i.fixtureId!==pendingDeleteId);
+      save(); render();
+      showToast('Item deleted.');
+      closeDeleteConfirm();
+      pendingDeleteId = null;
+    };
+  }
+
+  function closeDeleteConfirm() { document.getElementById('delete-confirm-overlay').style.display='none'; pendingDeleteId=null; }
+  function deleteItem(id) { showDeleteConfirm(id); }
+  function deleteModalItem() { if (!currentModal.editId) return; closeModal(); showDeleteConfirm(currentModal.editId); }
+
+  // ─── COMPLETE CONFIRM ─────────────────────────────────────────
+  let pendingCompleteId = null;
+
+  function showCompleteConfirm(id) {
+    pendingCompleteId = id;
+    document.getElementById('complete-confirm-overlay').style.display='flex';
+    document.getElementById('confirm-complete-btn').onclick = () => {
+      if (!pendingCompleteId) return;
+      const item = S.items.find(i=>i.id===pendingCompleteId);
+      if (item) {
+        const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster'))
+          .filter(el=>el.style.display!=='none').map(el=>el.id.replace('cluster-',''));
+        item.complete = !item.complete;
+        save(); render();
+        openDropdowns.forEach(fid => {
+          const cluster = document.getElementById('cluster-'+fid);
+          const btn     = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+          if (cluster) { cluster.style.display=''; if(btn) btn.textContent='▾ '+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities'; }
+        });
+        showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
+      }
+      closeCompleteConfirm(); pendingCompleteId=null;
+    };
+  }
+  function closeCompleteConfirm() { document.getElementById('complete-confirm-overlay').style.display='none'; pendingCompleteId=null; }
+
+  // ─── DATE POPUP ───────────────────────────────────────────────
+  let currentPopupDate = null;
+
+  function copyDateLink(dateStr) {
+    document.querySelectorAll('.date-label').forEach(label => {
+      if (label.dataset.date!==dateStr) return;
+      const dg = label.closest('.date-group');
+      if (dg) window.scrollTo({top:window.pageYOffset+dg.getBoundingClientRect().top-80,behavior:'smooth'});
+    });
+  }
+  function showDatePopup(dateStr) {
+    currentPopupDate = dateStr;
+    document.getElementById('popup-current-date').textContent = fmtDisplay(dateStr);
+    document.getElementById('popup-date-input').value = dateStr;
+    document.getElementById('date-popup-overlay').style.display = 'flex';
+  }
+  function closeDatePopup() { document.getElementById('date-popup-overlay').style.display='none'; currentPopupDate=null; }
+  function goToDate() {
+    const newDate = document.getElementById('popup-date-input').value;
+    if (!newDate) { alert('Please select a date'); return; }
+    let nearest=null, nearestDist=Infinity;
+    document.querySelectorAll('.date-label').forEach(label => {
+      const dist = Math.abs(new Date(newDate)-new Date(label.dataset.date));
+      if (label.dataset.date===newDate) { const dg=label.closest('.date-group'); if(dg) window.scrollTo({top:window.pageYOffset+dg.getBoundingClientRect().top-80,behavior:'smooth'}); }
+      else if (dist<nearestDist) { nearestDist=dist; nearest=label; }
+    });
+    if (nearest) { const dg=nearest.closest('.date-group'); if(dg) { window.scrollTo({top:window.pageYOffset+dg.getBoundingClientRect().top-80,behavior:'smooth'}); showToast(`Nearest date: ${fmtDisplay(nearest.dataset.date)}`); } }
+    closeDatePopup();
+  }
+  document.getElementById('date-popup-overlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeDatePopup(); });
+
+  // ─── SETTINGS MODAL ───────────────────────────────────────────
+  // FIX: updateSyncStatus was called but never defined.
+  // FIX: openSettingsModal was crashing immediately on a null reference
+  // to `cloud-sync-toggle` which does not exist in the HTML.
+  function updateSyncStatus() {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    if (!supabaseClient) {
+      el.textContent = '⚠ Supabase not initialised — check credentials in HTML';
+      el.style.cssText = 'color:var(--orange);background:rgba(232,102,10,0.1);border-color:var(--orange);font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid;margin-bottom:12px;';
+    } else if (useCloudSync) {
+      el.textContent = '✓ Cloud sync active — saving to Supabase';
+      el.style.cssText = 'color:var(--green);background:rgba(46,125,50,0.1);border-color:var(--green);font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid;margin-bottom:12px;';
+    } else {
+      el.textContent = '⚠ Cloud sync disabled — local storage only';
+      el.style.cssText = 'color:var(--orange);background:rgba(232,102,10,0.1);border-color:var(--orange);font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid;margin-bottom:12px;';
+    }
+  }
+
+  function openSettingsModal() {
+    document.getElementById('settings-overlay').style.display='flex';
+    document.getElementById('settings-name-input').value='';
+    updateSyncStatus();         // FIX: was crashing; now a real function
+    renderSettingsNames();
+  }
+
+  function renderSettingsNames() {
+    const list = document.getElementById('settings-names-list');
+    if (!list) return;
+    list.innerHTML = S.savedAssignees.map((name,idx) => `
+      <div class="settings-name-item">
+        <span class="settings-name-text">${esc(name)}</span>
+        <span class="settings-name-edit"   onclick="editSettingsName(${idx})"   title="Edit">✎</span>
+        <span class="settings-name-delete" onclick="deleteSettingsName(${idx})" title="Delete">✕</span>
+      </div>`).join('');
+  }
+
+  function addName() {
+    const inp  = document.getElementById('settings-name-input');
+    const name = (inp.value||'').trim();
+    if (!name) return;
+    if (S.savedAssignees.includes(name)) { showToast('Name already exists'); return; }
+    S.savedAssignees.push(name);
+    saveAssignees(); inp.value=''; renderSettingsNames(); showToast('Name added');
+  }
+  function deleteSettingsName(idx) { S.savedAssignees.splice(idx,1); saveAssignees(); renderSettingsNames(); showToast('Name removed'); }
+  function editSettingsName(idx) {
+    const name = S.savedAssignees[idx];
+    const inp  = document.getElementById('settings-name-input');
+    inp.value = name; inp.focus();
+    S.savedAssignees.splice(idx,1); renderSettingsNames();
+    const addBtn  = document.querySelector('.settings-input-row .btn-primary');
+    const origCb  = addBtn.onclick;
+    addBtn.textContent = 'Update';
+    addBtn.onclick = () => {
+      const newName = (inp.value||'').trim();
+      if (!newName||S.savedAssignees.includes(newName)) {
+        S.savedAssignees.splice(idx,0,name); renderSettingsNames(); resetSettingsAddButton(addBtn,origCb);
+        if (!newName) return; showToast('Name already exists'); return;
+      }
+      S.items.forEach(item=>{ if(item.assignees){ const i=item.assignees.indexOf(name); if(i!==-1) item.assignees[i]=newName; } });
+      S.savedAssignees.splice(idx,0,newName);
+      S.savedAssignees.sort((a,b)=>a.localeCompare(b));
+      saveAssignees(); save(); render(); inp.value=''; renderSettingsNames();
+      resetSettingsAddButton(addBtn,origCb); showToast('Name updated');
+    };
+  }
+  function resetSettingsAddButton(btn,origCb) { btn.textContent='Add'; btn.onclick=origCb; }
+  function closeSettingsModal() { document.getElementById('settings-overlay').style.display='none'; }
+
+  document.addEventListener('keydown', e => {
+    const settingsOverlay = document.getElementById('settings-overlay');
+    if (settingsOverlay?.style.display==='flex' && e.key==='Enter') {
+      const inp    = document.getElementById('settings-name-input');
+      const addBtn = document.querySelector('.settings-input-row .btn-primary');
+      if (document.activeElement===inp) addBtn?.click();
+    }
+  });
+
+  // ─── TOASTS ───────────────────────────────────────────────────
+  function showToast(msg) {
+    const c  = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<span>${msg}</span>`;
+    c.appendChild(el);
+    setTimeout(()=>el.remove(), 4000);
+  }
+
+  // ─── DOT HOVER ANIMATIONS ─────────────────────────────────────
+  function setupDotHoverAnimations() {
+    document.querySelectorAll('.tl-row.side-left .node-dot').forEach(dot => {
+      const row      = dot.closest('.tl-row.side-left');
+      const cardWrap = row?.querySelector('.tl-card-wrap');
+      if (!cardWrap) return;
+      cardWrap.querySelectorAll('.fixture-card,.activity-card,.milestone-card,.note-card').forEach(card => {
+        dot.addEventListener('mouseenter',()=>{
+          card.classList.add('card-highlight');
+          if (dot.classList.contains('fixture-dot'))  card.classList.add('highlight-red');
+          else if (dot.classList.contains('milestone-dot')) card.classList.add('highlight-gold');
+          else if (dot.classList.contains('past-dot')) card.classList.add('highlight-past');
+          else if (dot.classList.contains('complete-dot')) card.classList.add('highlight-complete');
+        });
+        dot.addEventListener('mouseleave',()=>{
+          card.classList.remove('card-highlight','highlight-red','highlight-gold','highlight-past','highlight-complete');
+        });
+      });
+    });
+  }
+
+  // ─── BOOTSTRAP ────────────────────────────────────────────────
+  document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+
+  const _baseRender = render;
+  render = function() { _baseRender.apply(this,arguments); setTimeout(setupDotHoverAnimations,100); };
+
+  load();
+  setupRealtime(); // FIX: Extracted from inline code; called once at bootstrap.
+
+  document.getElementById('brand-logo-wrap').addEventListener('click', () => {
+    document.getElementById('today-marker')?.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+</script>
 </body>
 
 </html>
