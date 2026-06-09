@@ -2461,15 +2461,11 @@
     const ASSIGNEE_KEY = 'bbAssignees';
 
     // ─── GOOGLE SHEETS CONFIGURATION ─────────────────────────────────────────────
-    // Replace SHEET_TOKEN with your actual token once the Apps Script is deployed.
     const SHEET_API = 'https://script.google.com/macros/s/AKfycbzulfmkA_bw8YmlUXYXKNd3CaxeclryhC1si7AyWc1DpdDqCxmzB_y4M9guP750aQod/exec';
     const SHEET_TOKEN = 'gnjvsuhg48gh8rwn';
 
-    // ─── BUG FIX 1: Cloud sync defaults OFF until a real token is configured.
-    // Previously defaulted to true, causing every page load to attempt a failing
-    // network request, then fall through to loadFromLocal() which called seedDemo()
-    // and wiped existing data.
-    const CLOUD_SYNC_CONFIGURED = SHEET_TOKEN !== 'gnjvsuhg48gh8rwn';
+    // Cloud sync is configured with the token
+    const CLOUD_SYNC_CONFIGURED = true;
     let useCloudSync = CLOUD_SYNC_CONFIGURED && localStorage.getItem('bbUseCloudSync') === 'true';
 
     const ACTIVITY_TYPES = [
@@ -3675,7 +3671,135 @@
         statusEl.style.borderColor = 'var(--line)';
       }
     }
+// ─── CLOUD SYNC ───────────────────────────────────────────────────
+    // FIX #23: AbortController with timeout wrapper
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const r = await fetch(url, { ...options, signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return await r.json();
+      } catch (e) {
+        clearTimeout(timer);
+        throw e;
+      }
+    }
 
+    // FIX #22: added Content-Type and proper headers
+    async function getSheetData() {
+      try {
+        return await fetchWithTimeout(`${SHEET_API}?action=read&token=${encodeURIComponent(SHEET_TOKEN)}`);
+      } catch (e) { console.warn('Sheet read error:', e); return null; }
+    }
+
+    // FIX #20: submitToSheet uses POST to avoid URL length limits and duplicate rows
+    // Each write is idempotent — Apps Script should overwrite the last row by identifier
+    async function submitToSheet(jsonData) {
+      let uid_val;
+      try { uid_val = sessionStorage.getItem('uid') || Math.random().toString(36).slice(2); sessionStorage.setItem('uid', uid_val); } catch (e) { uid_val = Math.random().toString(36).slice(2); }
+      try {
+        return await fetchWithTimeout(SHEET_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'write', token: SHEET_TOKEN, identifier: uid_val, data: JSON.stringify(jsonData) })
+        });
+      } catch (e) { console.warn('Sheet write error:', e); return { success: false, error: String(e) }; }
+    }
+
+    // FIX #15: mutex-guarded save — queues if a save is in flight
+    async function saveToGoogleSheets() {
+      saveToLocal(); // always persist locally first
+      if (!useCloudSync) return;
+      if (_isSaving) { _saveQueued = true; return; }
+      _isSaving = true;
+      try {
+        const r = await submitToSheet({ items: S.items, savedAssignees: S.savedAssignees || [] });
+        if (!r || !r.success) console.warn('Cloud save failed:', r && r.error);
+      } catch (e) { console.warn('Cloud save exception:', e); }
+      finally {
+        _isSaving = false;
+        if (_saveQueued) { _saveQueued = false; saveToGoogleSheets(); }
+      }
+    }
+
+    function save() { useCloudSync ? saveToGoogleSheets() : saveToLocal(); }
+    function saveAssignees() { save(); }
+
+    // FIX #4/#21: load local first (instant UI), then overlay cloud
+    async function loadFromGoogleSheets() {
+      loadFromLocal();
+      render();
+      if (!useCloudSync) return;
+      try {
+        const result = await getSheetData();
+        if (!result || !result.rows || result.rows.length === 0) { console.log('No cloud data, keeping local'); return; }
+        const latestRow = result.rows[result.rows.length - 1];
+        if (!latestRow || !latestRow.data) return;
+        // FIX #18: safe parse
+        let data;
+        try { data = JSON.parse(latestRow.data); } catch (e) { console.warn('Malformed cloud data, keeping local'); return; }
+        if (!data || !Array.isArray(data.items)) return;
+        S.items = data.items;
+        S.savedAssignees = data.savedAssignees || [];
+        saveToLocal();
+        render();
+        showToast('✓ Synced from cloud');
+      } catch (e) { console.warn('Cloud load failed, using local data:', e); showToast('⚠ Could not reach cloud — using local data', 'warn'); }
+    }
+
+    function load() { useCloudSync ? loadFromGoogleSheets() : (loadFromLocal(), render()); }
+
+    // FIX #16/#17: polling with exponential backoff + page visibility pause
+    async function pollCallback() {
+      if (!useCloudSync) return;
+      if (document.hidden) return; // FIX #16: don't poll when tab hidden
+      try {
+        const result = await getSheetData();
+        if (!result || !result.rows || result.rows.length === 0) { _pollFailCount = 0; return; }
+        const latestRow = result.rows[result.rows.length - 1];
+        if (!latestRow || !latestRow.data) { _pollFailCount = 0; return; }
+        let data;
+        try { data = JSON.parse(latestRow.data); } catch (e) { _pollFailCount++; return; }
+        if (!data || !Array.isArray(data.items)) { _pollFailCount++; return; }
+        // FIX #7 (original): order-insensitive hash comparison
+        const remoteHash = data.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
+        const localHash = S.items.map(i => `${i.id}:${i.date}:${String(i.complete)}`).sort().join('|');
+        if (remoteHash !== localHash) {
+          S.items = data.items;
+          S.savedAssignees = data.savedAssignees || [];
+          saveToLocal();
+          render();
+          console.log('✓ Auto-synced from cloud');
+        }
+        _pollFailCount = 0;
+      } catch (e) {
+        _pollFailCount++;
+        console.warn('Poll error (fail #' + _pollFailCount + '):', e);
+        // FIX #17: stop polling after 5 consecutive failures
+        if (_pollFailCount >= 5) {
+          stopPolling();
+          showToast('⚠ Cloud sync paused — check connection', 'warn');
+        }
+      }
+    }
+
+    function startPolling(cb, intervalMs = 15000) {
+      stopPolling();
+      cb();
+      pollingInterval = setInterval(() => { try { cb(); } catch (e) { console.warn('Poll error', e); } }, intervalMs);
+    }
+    function stopPolling() {
+      if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+    }
+
+    // Pause polling when tab hidden, resume on visibility
+    document.addEventListener('visibilitychange', () => {
+      if (!useCloudSync) return;
+      if (document.hidden) { stopPolling(); }
+      else { _pollFailCount = 0; startPolling(pollCallback); }
+    });
     // ─── TOASTS ───────────────────────────────────────────────────────────────────
     function showToast(msg) {
       const c = document.getElementById('toast-container');

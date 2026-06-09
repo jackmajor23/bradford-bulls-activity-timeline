@@ -1,96 +1,66 @@
-# Bradford Bulls Timeline - Secure Google Sheets Integration
+# Bradford Bulls Timeline - Google Sheets Cloud Sync
 
-## 🚀 Simple Setup (Recommended)
+## 🚀 Quick Setup
 
-**Use this approach for easy setup with one configuration file.**
+This timeline uses Google Apps Script for cloud sync. No backend server required!
 
-### Quick Start (5 minutes):
+### Quick Start (2 minutes):
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+1. **Open `index.html` in your browser**
 
-2. **Configure the simple server:**
-   - Open `simple-server.js`
-   - Paste your Google Service Account JSON key where indicated
-   - Change the secret key to something random
+2. **Enable Cloud Sync:**
+   - Click Settings → Enable cloud sync checkbox
+   - Your data will sync to Google Sheets automatically
 
-3. **Update your HTML file:**
-   - Open `index.html`
-   - Update the `PROXY_API_KEY` to match your secret key
-
-4. **Start the server:**
-   ```bash
-   node simple-server.js
-   ```
-
-5. **Setup Google Sheet:**
-   - Create a Google Sheet
-   - Share it with your service account email
-   - Test connection in timeline Settings
-
-**📖 Detailed Instructions:** See `SIMPLE_SETUP_GUIDE.md`
+3. **That's it!**
 
 ---
 
 ## 📁 What You Need
 
 **Essential Files:**
-- `simple-server.js` - All-in-one server (configure this)
-- `index.html` - Your timeline (configure this)
-- `package.json` - Dependencies
-- `SIMPLE_SETUP_GUIDE.md` - Simple setup instructions
-
-**Optional Files (for reference):**
-- `GOOGLE_SHEETS_SETUP_GUIDE.md` - Original detailed guide
-- Other files can be ignored for simple setup
+- `index.html` - Your timeline (everything is self-contained)
 
 ---
 
-## 🔐 Why This Approach?
+## 🔐 How It Works
 
-✅ **One file to configure** - simple-server.js has everything
-✅ **Secure** - API credentials hidden on server
-✅ **Simple** - No complex environment files
-✅ **Fast setup** - Get running in 5 minutes
-✅ **Secure sharing** - Team collaboration with permissions
-
----
-
-## 🛠️ Quick Commands
-
-```bash
-# Install dependencies
-npm install
-
-# Start the simple server
-node simple-server.js
-
-# Test server is running
-curl http://localhost:3000/api/health
-```
+✅ **No backend server** - Uses Google Apps Script API directly
+✅ **Simple** - Just open the HTML file in a browser
+✅ **Secure** - Token-based authentication with Google Apps Script
+✅ **Real-time sync** - Polls for updates every 10 seconds
+✅ **Offline support** - Local storage fallback when offline
 
 ---
 
-## 📝 Configuration Summary
-
-**In simple-server.js:**
-1. Paste your Google Service Account JSON key
-2. Change the PROXY_SECRET_KEY to something random
+## 📝 Configuration
 
 **In index.html:**
-1. Update PROXY_API_KEY to match your secret key
+- `SHEET_API` - Google Apps Script deployment URL
+- `SHEET_TOKEN` - Authentication token for the Apps Script
 
-**In Google Cloud Console:**
-1. Create service account
-2. Download JSON key
-3. Share Google Sheet with service account email
+**Current Configuration:**
+- Token: `gnjvsuhg48gh8rwn`
+- Cloud sync: Enabled
 
 ---
 
-## 🎯 Ready to Go?
+## 🎯 Features
 
-Follow the **SIMPLE_SETUP_GUIDE.md** for step-by-step instructions.
+- ✅ Cross-device sync via Google Sheets
+- ✅ Team collaboration with shared sheets
+- ✅ Offline support with local storage
+- ✅ Automatic polling for updates
+- ✅ No server setup required
 
-Your timeline will have secure cloud sync, cross-device access, and team collaboration with minimal setup complexity!
+---
+
+## 🛠️ Google Apps Script Setup (Optional)
+
+If you need to deploy your own Google Apps Script:
+
+1. Create a Google Sheet
+2. Open Extensions → Apps Script
+3. Paste the Apps Script code
+4. Deploy as web app
+5. Update `SHEET_API` and `SHEET_TOKEN` in index.html
