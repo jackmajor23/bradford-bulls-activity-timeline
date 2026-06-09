@@ -2437,13 +2437,13 @@
     const SUPABASE_URL = typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.URL : 'YOUR_SUPABASE_URL';
     const SUPABASE_ANON_KEY = typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.ANON_KEY : 'YOUR_SUPABASE_ANON_KEY';
 
-    let supabase = null;
+    let supabaseClient = null;
     let useCloudSync = false; // Set to true after configuring Supabase
 
     // Initialize Supabase client when credentials are provided
     if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
       try {
-        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         useCloudSync = true;
         console.log('✓ Supabase initialized');
       } catch (e) {
@@ -2470,14 +2470,14 @@
 
     // ─── SUPABASE HELPERS ─────────────────────────────────────────────────────────
     async function loadFromSupabase() {
-      if (!supabase || !useCloudSync) return null;
+      if (!supabaseClient || !useCloudSync) return null;
       try {
         // Load all data from structured tables
         const [fixturesData, activitiesData, milestonesData, notesData] = await Promise.all([
-          supabase.from('fixtures').select('*').order('date', { ascending: true }),
-          supabase.from('activities').select('*').order('date', { ascending: true }),
-          supabase.from('milestones').select('*').order('date', { ascending: true }),
-          supabase.from('notes').select('*').order('date', { ascending: true })
+          supabaseClient.from('fixtures').select('*').order('date', { ascending: true }),
+          supabaseClient.from('activities').select('*').order('date', { ascending: true }),
+          supabaseClient.from('milestones').select('*').order('date', { ascending: true }),
+          supabaseClient.from('notes').select('*').order('date', { ascending: true })
         ]);
 
         if (fixturesData.error) throw fixturesData.error;
@@ -2550,7 +2550,7 @@
     }
 
     async function saveToSupabase() {
-      if (!supabase || !useCloudSync) return;
+      if (!supabaseClient || !useCloudSync) return;
       try {
         // Separate items by type
         const fixtures = S.items.filter(i => i.type === 'fixture');
@@ -2560,10 +2560,10 @@
 
         // Delete all existing data (simple approach for now)
         await Promise.all([
-          supabase.from('fixtures').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-          supabase.from('activities').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-          supabase.from('milestones').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-          supabase.from('notes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+          supabaseClient.from('fixtures').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+          supabaseClient.from('activities').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+          supabaseClient.from('milestones').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+          supabaseClient.from('notes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
         ]);
 
         // Insert fixtures
@@ -2574,7 +2574,7 @@
             venue: f.venueType,
             date: new Date(f.date).toISOString()
           }));
-          const { error: fError } = await supabase.from('fixtures').insert(fixturesToInsert);
+          const { error: fError } = await supabaseClient.from('fixtures').insert(fixturesToInsert);
           if (fError) throw fError;
         }
 
@@ -2589,7 +2589,7 @@
             assignees: a.assignees || [],
             fixture_id: a.fixtureId
           }));
-          const { error: aError } = await supabase.from('activities').insert(activitiesToInsert);
+          const { error: aError } = await supabaseClient.from('activities').insert(activitiesToInsert);
           if (aError) throw aError;
         }
 
@@ -2601,7 +2601,7 @@
             color: m.style,
             date: new Date(m.date).toISOString()
           }));
-          const { error: mError } = await supabase.from('milestones').insert(milestonesToInsert);
+          const { error: mError } = await supabaseClient.from('milestones').insert(milestonesToInsert);
           if (mError) throw mError;
         }
 
@@ -2613,7 +2613,7 @@
             content: n.content,
             date: new Date(n.date).toISOString()
           }));
-          const { error: nError } = await supabase.from('notes').insert(notesToInsert);
+          const { error: nError } = await supabaseClient.from('notes').insert(notesToInsert);
           if (nError) throw nError;
         }
 
@@ -3305,8 +3305,8 @@
       document.getElementById('settings-name-input').value = '';
       document.getElementById('cloud-sync-toggle').checked = useCloudSync;
       const toggle = document.getElementById('cloud-sync-toggle');
-      toggle.disabled = !supabase;
-      if (!supabase) {
+      toggle.disabled = !supabaseClient;
+      if (!supabaseClient) {
         document.getElementById('sync-status').textContent = '⚠ Configure SUPABASE_URL and SUPABASE_ANON_KEY in the HTML before enabling cloud sync.';
         document.getElementById('sync-status').style.color = 'var(--orange)';
       } else {
@@ -3382,8 +3382,8 @@
     function closeSettingsModal() { document.getElementById('settings-overlay').style.display = 'none'; }
 
     // Real-time sync with Supabase
-    if (supabase && useCloudSync) {
-      supabase.channel('timeline_changes')
+    if (supabaseClient && useCloudSync) {
+      supabaseClient.channel('timeline_changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
           loadFromCloud();
         })
