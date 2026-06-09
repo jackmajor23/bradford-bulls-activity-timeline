@@ -17,7 +17,7 @@
    - Change the secret key to something random
 
 3. **Update your HTML file:**
-   - Open `bradford-bulls-timeline.html`
+   - Open `index.html`
    - Update the `PROXY_API_KEY` to match your secret key
 
 4. **Start the server:**
@@ -38,7 +38,7 @@
 
 **Essential Files:**
 - `simple-server.js` - All-in-one server (configure this)
-- `bradford-bulls-timeline.html` - Your timeline (configure this)
+- `index.html` - Your timeline (configure this)
 - `package.json` - Dependencies
 - `SIMPLE_SETUP_GUIDE.md` - Simple setup instructions
 
@@ -79,7 +79,7 @@ curl http://localhost:3000/api/health
 1. Paste your Google Service Account JSON key
 2. Change the PROXY_SECRET_KEY to something random
 
-**In bradford-bulls-timeline.html:**
+**In index.html:**
 1. Update PROXY_API_KEY to match your secret key
 
 **In Google Cloud Console:**

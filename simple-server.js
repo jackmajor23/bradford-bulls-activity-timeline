@@ -30,7 +30,8 @@ const GOOGLE_SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY || `{
 // Secret key for securing the proxy
 // Set as environment variable: PROXY_SECRET_KEY
 // Or change the value below (NOT RECOMMENDED for production)
-const PROXY_SECRET_KEY = process.env.PROXY_SECRET_KEY || "da4e53877124bfd346c8839762985ed7ecb18e15094f471dbfb04da9a2c13250";
+// Generate a random key with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+const PROXY_SECRET_KEY = process.env.PROXY_SECRET_KEY || "YOUR_SECRET_KEY_HERE"; // Replace with a random secure key
 
 // Server port
 const PORT = 3000;

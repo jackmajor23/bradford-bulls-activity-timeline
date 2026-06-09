@@ -1141,6 +1141,16 @@
       color: #fff;
     }
 
+    .activity-btn.edit:hover {
+      background: var(--ink-mid);
+      color: #fff;
+    }
+
+    .activity-btn.complete-btn:hover {
+      background: var(--green);
+      color: #fff;
+    }
+
     .activity-btn.complete-btn.done {
       background: var(--green);
       color: #fff;
@@ -1302,12 +1312,14 @@
       justify-content: space-between;
     }
 
-    .note-card .activity-btns {
+    .note-card .activity-btns,
+    .milestone-card .activity-btns {
       opacity: 0;
       transition: opacity 0.15s;
     }
 
-    .note-card:hover .activity-btns {
+    .note-card:hover .activity-btns,
+    .milestone-card:hover .activity-btns {
       opacity: 1;
     }
 
@@ -2085,21 +2097,21 @@
 
     @media (max-width: 700px) {
       #timeline-wrap::before {
-        left: 28px;
+        left: 36px;
         transform: none;
       }
 
       #today-marker {
-        padding: 0 12px 0 52px;
+        padding: 0 12px 0 60px;
       }
 
       .month-divider {
-        padding-left: 52px;
-        justify-content: flex-start;
+        padding-left: 0;
+        justify-content: center;
       }
 
       .tl-row {
-        grid-template-columns: 28px 1fr;
+        grid-template-columns: 48px 1fr;
         padding: 0 12px;
         margin-bottom: 16px;
       }
@@ -2118,7 +2130,7 @@
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding-top: 20px;
+        padding-top: 24px;
         position: relative;
         z-index: 4;
       }
@@ -2139,7 +2151,18 @@
       .node-date-label {
         top: 18px;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translateX(36px);
+      }
+
+      /* Adjust padding for different dot sizes on mobile */
+      .tl-row.side-left .tl-node .node-dot.fixture-dot,
+      .tl-row.side-right .tl-node .node-dot.fixture-dot {
+        margin-top: 0;
+      }
+
+      .tl-row.side-left .tl-node .node-dot.milestone-dot,
+      .tl-row.side-right .tl-node .node-dot.milestone-dot {
+        margin-top: -2px;
       }
 
       /* Ensure cards don't overflow */
@@ -2539,6 +2562,89 @@
       return null; // Falls back to initials if no logo found
     }
 
+    // ─── GOOGLE SHEETS CONFIGURATION ───────────────────────────────────────────────
+    const SHEET_API = 'https://script.google.com/macros/s/AKfycbwNVr4u5fu9kq36MqXKULfaKiQ9992mhHhfG_gSIZA5FKAAEYnXhW5hInI6KCFXXCFp/exec';
+    const SHEET_TOKEN = 'YOUR_SECURE_TOKEN_HERE'; // Replace with your token from GOOGLE_APPS_SCRIPT_CODE.js
+
+    // Retry configuration
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000;
+
+    async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        if (retries > 0) {
+          console.log(`Retrying... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return fetchWithRetry(url, options, retries - 1);
+        }
+        throw error;
+      }
+    }
+
+    async function getSheetData() {
+      try {
+        const data = await fetchWithRetry(`${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
+        if (data.success) return data;
+        console.error('Read failed:', data.error);
+        return null;
+      } catch (error) {
+        console.error('Fetch error:', error);
+        return null;
+      }
+    }
+
+    async function submitToSheet(formData) {
+      const identifier = sessionStorage.getItem('uid') || Math.random().toString(36).slice(2);
+      sessionStorage.setItem('uid', identifier);
+
+      const params = new URLSearchParams({
+        action: 'write',
+        token: SHEET_TOKEN,
+        identifier,
+        ...formData
+      });
+
+      try {
+        const data = await fetchWithRetry(`${SHEET_API}?${params}`);
+        if (!data.success) console.error('Write failed:', data.error);
+        return data;
+      } catch (error) {
+        console.error('Fetch error:', error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    let pollingInterval = null;
+    function startPolling(callback, intervalMs = 5000) {
+      // Clear any existing polling
+      if (pollingInterval) clearInterval(pollingInterval);
+
+      // Run immediately
+      callback();
+
+      // Set up polling with error handling
+      pollingInterval = setInterval(async () => {
+        try {
+          await callback();
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, intervalMs);
+
+      return pollingInterval;
+    }
+
+    function stopPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    }
+
     // ─── STATE ────────────────────────────────────────────────────────────────────
     let S = { items: [], savedAssignees: [] };
     let currentModal = null;
@@ -2548,8 +2654,11 @@
     let disableToggle = false;
 
     async function saveToGoogleSheets() {
+      // Always save to localStorage first as immediate backup
+      // This ensures data persists even if cloud sync fails or page refreshes
+      saveToLocal();
+
       if (!useCloudSync) {
-        saveToLocal();
         return;
       }
 
@@ -2559,20 +2668,23 @@
           throw new Error('Invalid items data');
         }
 
+        const dataToSend = { items: S.items, savedAssignees: S.savedAssignees || [] };
+        console.log('Saving to Google Sheets:', dataToSend);
+
         // Save items as JSON string
         const result = await submitToSheet({
-          data: JSON.stringify({ items: S.items, savedAssignees: S.savedAssignees || [] })
+          data: JSON.stringify(dataToSend)
         });
 
+        console.log('Save result:', result);
+
         if (result.success) {
-          console.log('Autosaved to Google Sheets');
+          console.log('✓ Autosaved to Google Sheets');
         } else {
           console.error('Save failed:', result.error);
-          saveToLocal();
         }
       } catch (err) {
         console.error('Google Sheets save error:', err);
-        saveToLocal();
       }
     }
 
@@ -2937,7 +3049,7 @@
           <div class="countdown-text ${countdownCls}">${countdownTxt}</div>
           ${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ''}
           <div class="fixture-actions">
-            <button class="activity-btn" title="Edit" onclick="editFixture('${f.id}')">✎</button>
+            <button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button>
             <button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button>
           </div>
         </div>
@@ -2963,7 +3075,7 @@
     <div class="activity-btns">
       <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
       <button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button>
-      <button class="activity-btn" title="Edit" onclick="editActivity('${a.id}')">✎</button>
+      <button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button>
       <button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button>
     </div>
   </div>`;
@@ -2996,7 +3108,7 @@
           </div>
           <div class="activity-btns">
             <button class="activity-btn complete-btn${a.complete ? ' done' : ''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button>
-            <button class="activity-btn" title="Edit" onclick="editActivity('${a.id}')">✎</button>
+            <button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button>
             <button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button>
           </div>
         </div>
@@ -3016,10 +3128,18 @@
       <div class="node-dot milestone-dot${isPast ? ' past-dot' : ''}"></div>
     </div>
     <div class="tl-card-wrap">
-      <div class="milestone-card ${style}${pastCls}" ondblclick="editMilestone('${m.id}')">
-        <div class="milestone-label">⚑ Milestone</div>
-        <div class="milestone-title">${esc(m.title)}</div>
-        <div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div>
+      <div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}">
+        <div class="act-row">
+          <div class="milestone-body">
+            <div class="milestone-label">⚑ Milestone</div>
+            <div class="milestone-title">${esc(m.title)}</div>
+            <div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? ' · ' + esc(m.notes) : ''}</div>
+          </div>
+          <div class="activity-btns">
+            <button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button>
+            <button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>`;
@@ -3044,7 +3164,7 @@
             </div>
           </div>
           <div class="activity-btns">
-            <button class="activity-btn" title="Edit" onclick="editNote('${n.id}')">✎</button>
+            <button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button>
             <button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button>
           </div>
         </div>
@@ -3217,6 +3337,119 @@
             });
           }, 200);
         });
+
+        // Touch events for mobile drag and drop
+        let touchStartX, touchStartY, touchElement, touchClone;
+
+        el.addEventListener('touchstart', (e) => {
+          const touch = e.touches[0];
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+          touchElement = el;
+
+          // Only start drag if touching the drag handle
+          const dragHandle = e.target.closest('.drag-handle');
+          if (!dragHandle) return;
+
+          dragActivityId = el.dataset.id;
+          isDraggingActivity = true;
+          el.classList.add('dragging');
+
+          // Temporarily disable toggle buttons during drag
+          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+            btn.dataset.originalOnclick = btn.getAttribute('onclick');
+            btn.removeAttribute('onclick');
+          });
+        }, { passive: true });
+
+        el.addEventListener('touchmove', (e) => {
+          if (!isDraggingActivity || touchElement !== el) return;
+
+          const touch = e.touches[0];
+          const deltaX = touch.clientX - touchStartX;
+          const deltaY = touch.clientY - touchStartY;
+
+          // Only allow drag if moved significantly
+          if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
+
+          e.preventDefault();
+
+          // Find the element under the touch point
+          const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+          const cluster = touchTarget?.closest('.activity-cluster');
+
+          if (cluster) {
+            const afterElement = getDragAfterElement(cluster, touch.clientY);
+            if (afterElement == null) {
+              cluster.appendChild(el);
+            } else {
+              cluster.insertBefore(el, afterElement);
+            }
+          }
+        }, { passive: false });
+
+        el.addEventListener('touchend', (e) => {
+          if (!isDraggingActivity || touchElement !== el) return;
+
+          el.classList.remove('dragging');
+          document.querySelectorAll('.mini-activity').forEach(item => {
+            item.classList.remove('drag-over');
+          });
+          isDraggingActivity = false;
+          dragEndTime = Date.now();
+
+          // Check if dropped on a fixture card
+          const touch = e.changedTouches[0];
+          const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+          const fixtureCard = touchTarget?.closest('.fixture-card');
+
+          if (fixtureCard) {
+            const act = S.items.find(i => i.id === dragActivityId);
+            if (act && act.type === 'activity') {
+              act.fixtureId = fixtureCard.dataset.fixtureId;
+              save(); render();
+              showToast('🏉 Activity linked smoothly to match!');
+            }
+          }
+
+          // Check if dropped in an activity cluster (reordering)
+          const cluster = touchTarget?.closest('.activity-cluster');
+          if (cluster) {
+            const fixtureId = cluster.id.replace('cluster-', '');
+            const clusterActivities = Array.from(cluster.querySelectorAll('.mini-activity'));
+            const newOrderIds = clusterActivities.map(el => el.dataset.id);
+
+            // Update the order in the data structure
+            const fixtureActivities = S.items.filter(i => i.fixtureId === fixtureId && i.type === 'activity');
+            const orderedActivities = [];
+
+            newOrderIds.forEach(id => {
+              const activity = fixtureActivities.find(a => a.id === id);
+              if (activity) orderedActivities.push(activity);
+            });
+
+            // Update the main items array to reflect new order
+            S.items = S.items.filter(i => !newOrderIds.includes(i.id));
+            orderedActivities.forEach(act => S.items.push(act));
+
+            save();
+
+            // Ensure the dropdown stays open after reordering
+            ensureDropdownOpen(fixtureId);
+          }
+
+          // Restore toggle button onclick handlers after drag
+          setTimeout(() => {
+            document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+              if (btn.dataset.originalOnclick) {
+                btn.setAttribute('onclick', btn.dataset.originalOnclick);
+                delete btn.dataset.originalOnclick;
+              }
+            });
+          }, 200);
+
+          touchElement = null;
+        });
       });
 
       document.querySelectorAll('.fixture-card').forEach(fc => {
@@ -3366,9 +3599,9 @@
       document.getElementById('modal-title').textContent = isEdit ? `Edit ${type.toUpperCase()}` : `Add ${type.toUpperCase()}`;
       const body = document.getElementById('modal-body');
 
-      // Show delete button only for editing milestones
+      // Hide delete button for milestones
       const deleteBtn = document.getElementById('modal-delete');
-      deleteBtn.style.display = (isEdit && type === 'milestone') ? 'block' : 'none';
+      deleteBtn.style.display = 'none';
 
       const assigneeSection = () => {
         const chips = (currentModal.assignees || []).map((p, i) =>
@@ -4031,31 +4264,49 @@
 
     // Start polling for real-time updates if cloud sync is enabled
     if (useCloudSync) {
+      console.log('Starting polling for real-time sync...');
       startPolling(async () => {
         try {
+          console.log('Polling Google Sheets for updates...');
           const result = await getSheetData();
 
+          console.log('Poll result:', result);
+
           if (result && result.rows && result.rows.length > 0) {
+            console.log('Found', result.rows.length, 'rows in sheet');
             const latestRow = result.rows[result.rows.length - 1];
+            console.log('Latest row:', latestRow);
 
             if (latestRow && latestRow.data) {
               try {
                 const data = JSON.parse(latestRow.data);
+                console.log('Parsed data:', data);
 
                 // Validate data
                 if (data.items && Array.isArray(data.items)) {
+                  console.log('Current items count:', S.items.length, 'New items count:', data.items.length);
+
                   // Only update if data has changed
                   if (JSON.stringify(data.items) !== JSON.stringify(S.items)) {
+                    console.log('Data changed, updating UI...');
                     S.items = data.items;
                     S.savedAssignees = data.savedAssignees || [];
                     render();
-                    console.log('Auto-synced from Google Sheets');
+                    console.log('✓ Auto-synced from Google Sheets');
+                  } else {
+                    console.log('Data unchanged, no update needed');
                   }
+                } else {
+                  console.error('Invalid data format - no items array');
                 }
               } catch (parseError) {
                 console.error('Failed to parse synced data:', parseError);
               }
+            } else {
+              console.log('No data field in latest row');
             }
+          } else {
+            console.log('No rows found in Google Sheets');
           }
         } catch (error) {
           console.error('Polling sync error:', error);
@@ -4121,91 +4372,19 @@
   </script>
 
   <script>
-    const SHEET_API = 'https://script.google.com/macros/s/AKfycbwNVr4u5fu9kq36MqXKULfaKiQ9992mhHhfG_gSIZA5FKAAEYnXhW5hInI6KCFXXCFp/exec';
-    const SHEET_TOKEN = 'gnjvsuhg48gh8rwn';
-
-    // Retry configuration
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1000;
-
-    async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES) {
-      try {
-        const response = await fetch(url, options);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
-      } catch (error) {
-        if (retries > 0) {
-          console.log(`Retrying... (${retries} attempts left)`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-          return fetchWithRetry(url, options, retries - 1);
-        }
-        throw error;
-      }
-    }
-
-    async function getSheetData() {
-      try {
-        const data = await fetchWithRetry(`${SHEET_API}?action=read&token=${SHEET_TOKEN}`);
-        if (data.success) return data;
-        console.error('Read failed:', data.error);
-        return null;
-      } catch (error) {
-        console.error('Fetch error:', error);
-        return null;
-      }
-    }
-
-    async function submitToSheet(formData) {
-      const identifier = sessionStorage.getItem('uid') || Math.random().toString(36).slice(2);
-      sessionStorage.setItem('uid', identifier);
-
-      const params = new URLSearchParams({
-        action: 'write',
-        token: SHEET_TOKEN,
-        identifier,
-        ...formData
-      });
-
-      try {
-        const data = await fetchWithRetry(`${SHEET_API}?${params}`);
-        if (!data.success) console.error('Write failed:', data.error);
-        return data;
-      } catch (error) {
-        console.error('Fetch error:', error);
-        return { success: false, error: error.message };
-      }
-    }
-
-    let pollingInterval = null;
-    function startPolling(callback, intervalMs = 5000) {
-      // Clear any existing polling
-      if (pollingInterval) clearInterval(pollingInterval);
-
-      // Run immediately
-      callback();
-
-      // Set up polling with error handling
-      pollingInterval = setInterval(async () => {
-        try {
-          await callback();
-        } catch (error) {
-          console.error('Polling error:', error);
-        }
-      }, intervalMs);
-
-      return pollingInterval;
-    }
-
-    function stopPolling() {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-      }
-    }
+    // Google Apps Script Configuration (Current approach)
+    // Note: The SHEET_API and SHEET_TOKEN constants and related functions are now defined
+    // in the main script tag above to avoid scope issues.
+    //
+    // Alternative: Direct Google Sheets API Configuration (for Direct API approach)
+    // Uncomment and configure these if using the Direct API approach instead of Google Apps Script
+    // const GCP_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE'; // Replace with your Google Client ID
+    // const GCP_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE'; // Replace with your Google API Key
+    //
+    // Alternative: Backend Proxy Configuration (for Backend Proxy approach)
+    // Uncomment and configure this if using the Backend Proxy approach instead of Google Apps Script
+    // const PROXY_API_KEY = 'your-secret-key-here'; // Replace with your PROXY_SECRET_KEY from simple-server.js
   </script>
-</body>
-
-</html>
 </body>
 
 </html>

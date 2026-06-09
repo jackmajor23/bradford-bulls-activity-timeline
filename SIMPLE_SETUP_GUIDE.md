@@ -47,7 +47,7 @@ node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
 
 ### Step 5: Update Your HTML File
 
-In `bradford-bulls-timeline.html`, update this line to match your secret key:
+In `index.html`, update this line to match your secret key:
 
 ```javascript
 const PROXY_API_KEY = 'your-secret-key-here';
@@ -78,7 +78,7 @@ BRADFORD BULLS TIMELINE SERVER
 
 ### Step 8: Test and Use
 
-1. Open `bradford-bulls-timeline.html` in your browser
+1. Open `index.html` in your browser
 2. Click Settings → Enable Cloud Sync
 3. Enter your Google Sheet ID
 4. Click "🔗 Test Connection"
@@ -97,7 +97,7 @@ Your timeline now has secure cloud sync with:
 ## 📁 Files You Need
 
 - `simple-server.js` - All-in-one server (edit this file)
-- `bradford-bulls-timeline.html` - Your timeline (edit this file)
+- `index.html` - Your timeline (edit this file)
 - `package.json` - Dependencies (already exists)
 
 ## 🛠️ Common Issues
