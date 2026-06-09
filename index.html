@@ -2439,50 +2439,27 @@
           </p>
 
           <div class="settings-toggle-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-            <input type="checkbox" id="cloud-sync-toggle" onchange="confirmCloudSyncToggle()"
+            <input type="checkbox" id="cloud-sync-toggle" onchange="toggleCloudSyncSetting()"
               style="width: 16px; height: 16px; cursor: pointer;">
             <label for="cloud-sync-toggle" style="font-size: 13px; color: var(--ink); cursor: pointer;">Enable cloud
               sync</label>
           </div>
 
-          <div id="cloud-sync-config" style="display: none;">
-            <div style="margin-bottom: 12px;">
-              <label
-                style="font-size: 12px; font-weight: 500; color: var(--ink-mid); display: block; margin-bottom: 4px;">Google
-                Sheet ID</label>
-              <input type="text" id="sheet-id-input" placeholder="1BxiMVs0XRA5nFMdKvBdBZjGMUUqptb..."
-                class="settings-input" style="width: 100%; margin-bottom: 8px;" onchange="confirmSheetIdChange()">
-              <p style="font-size: 11px; color: var(--ink-light); margin: 0;">
-                From sheet URL: docs.google.com/spreadsheets/d/<strong>THIS_PART</strong>/edit
-              </p>
-            </div>
+          <div id="sync-status"
+            style="font-size: 12px; color: var(--ink-mid); margin-bottom: 12px; padding: 8px 12px; background: rgba(247, 245, 242, 0.5); border-radius: 6px; border: 1px solid var(--line);">
+            Sync status will appear here
+          </div>
 
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-              <button class="btn btn-primary" onclick="authenticateGoogle()">🔗 Test Connection</button>
-              <button class="btn btn-outline" onclick="setupGoogleSheetsStructure()">📊 Setup Sheet</button>
-            </div>
-
-            <div id="auth-status" style="font-size: 12px; color: var(--ink-mid); margin-bottom: 12px;"></div>
-
-            <button class="btn btn-gold" onclick="confirmSaveConfiguration()" style="width: 100%;">💾 Save
-              Configuration</button>
-
-            <div
-              style="margin-top: 16px; padding: 12px; background: rgba(26, 79, 139, 0.1); border-radius: 6px; border: 1px solid var(--blue);">
-              <h4
-                style="font-size: 11px; font-weight: 600; color: var(--blue); margin: 0 0 8px 0; text-transform: uppercase;">
-                Setup Instructions</h4>
-              <ol style="font-size: 11px; color: var(--ink-mid); margin: 0; padding-left: 16px; line-height: 1.6;">
-                <li style="margin-bottom: 4px;">Create a new Google Sheet at sheets.google.com</li>
-                <li style="margin-bottom: 4px;">Copy the Sheet ID from the URL (between /d/ and /edit)</li>
-                <li style="margin-bottom: 4px;">Enter the Sheet ID above and click "Test Connection"</li>
-                <li style="margin-bottom: 4px;">Click "Setup Sheet" to create the data structure</li>
-                <li>Share the sheet with others (Editor = full access, Viewer = read-only)</li>
-              </ol>
-              <p style="font-size: 11px; color: var(--ink-light); margin: 8px 0 0 0; font-style: italic;">
-                Note: Backend proxy server must be running. See BACKEND_PROXY_SETUP.md for details.
-              </p>
-            </div>
+          <div
+            style="margin-top: 16px; padding: 12px; background: rgba(26, 79, 139, 0.1); border-radius: 6px; border: 1px solid var(--blue);">
+            <h4
+              style="font-size: 11px; font-weight: 600; color: var(--blue); margin: 0 0 8px 0; text-transform: uppercase;">
+              How it works</h4>
+            <p style="font-size: 11px; color: var(--ink-mid); margin: 0; line-height: 1.6;">
+              This app uses a direct Google Apps Script API for real-time sync. Data is automatically saved to Google
+              Sheets when you make changes, and the app polls for updates every 5 seconds to sync changes from other
+              devices.
+            </p>
           </div>
         </div>
       </div>
@@ -2499,11 +2476,6 @@
     const STORAGE_KEY = 'bbTimeline_v5';
     const ASSIGNEE_KEY = 'bbAssignees';
 
-    // Backend Proxy Configuration (Secure approach)
-    const PROXY_API_URL = 'http://localhost:3000/api';
-    const PROXY_API_KEY = 'da4e53877124bfd346c8839762985ed7ecb18e15094f471dbfb04da9a2c13250';
-
-    let sheetId = localStorage.getItem('bbSheetId') || '';
     let useCloudSync = localStorage.getItem('bbUseCloudSync') !== 'false'; // Enable by default
 
     const ACTIVITY_TYPES = [
@@ -2574,40 +2546,6 @@
     let isDraggingActivity = false;
     let dragEndTime = 0;
     let disableToggle = false;
-
-    // ─── BACKEND PROXY FUNCTIONS ─────────────────────────────────────────────────────────────
-
-    async function proxyRequest(endpoint, data = null) {
-      const headers = {
-        'Content-Type': 'application/json',
-        'X-Proxy-Secret-Key': PROXY_API_KEY
-      };
-
-      const config = {
-        method: data ? 'POST' : 'GET',
-        headers: headers,
-      };
-
-      if (data) {
-        config.body = JSON.stringify(data);
-      }
-
-      const url = `${PROXY_API_URL}${endpoint}${data ? '' : '?sheetId=' + encodeURIComponent(sheetId)}`;
-
-      try {
-        const response = await fetch(url, config);
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Proxy request failed');
-        }
-
-        return result;
-      } catch (error) {
-        console.error('Proxy request error:', error);
-        throw error;
-      }
-    }
 
     async function saveToGoogleSheets() {
       if (!useCloudSync) {
@@ -2686,129 +2624,6 @@
       } catch (err) {
         console.error('Google Sheets load error:', err);
         loadFromLocal();
-      }
-    }
-
-    async function setupGoogleSheetsStructure() {
-      if (sheetId === '') {
-        showToast('Please set Sheet ID first', 'error');
-        return;
-      }
-
-      try {
-        const result = await proxyRequest('/sheets/setup', { sheetId: sheetId });
-
-        if (result.success) {
-          showToast('Google Sheets structure created!');
-        }
-      } catch (err) {
-        console.error('Setup error:', err);
-        showToast('Failed to setup Google Sheets structure', 'error');
-      }
-    }
-
-    async function authenticateGoogle() {
-      // With backend proxy, no Google OAuth needed - just test connectivity
-      if (sheetId === '') {
-        showToast('Please enter a Google Sheet ID first', 'error');
-        return;
-      }
-
-      try {
-        const result = await proxyRequest('/sheets/load');
-        if (result.success) {
-          showToast('Backend proxy connected successfully!');
-        } else {
-          throw new Error(result.error || 'Connection failed');
-        }
-      } catch (err) {
-        console.error('Proxy connection test failed:', err);
-        showToast('Failed to connect to backend proxy. Is the server running?', 'error');
-      }
-    }
-
-    // ─── LOCAL STORAGE FALLBACK ─────────────────────────────────────────────────────────────
-    async function saveToGoogleSheets() {
-      if (!useCloudSync || sheetId === '') {
-        // Fallback to localStorage
-        saveToLocal();
-        return;
-      }
-
-      try {
-        const itemsData = [['id', 'type', 'title', 'date', 'fixtureId', 'assignees', 'data']];
-        S.items.forEach(item => {
-          itemsData.push([
-            item.id,
-            item.type,
-            item.title,
-            item.date,
-            item.fixtureId || '',
-            JSON.stringify(item.assignees || []),
-            JSON.stringify(item)
-          ]);
-        });
-
-        const result = await proxyRequest('/sheets/save', {
-          sheetId: sheetId,
-          items: S.items,
-          savedAssignees: S.savedAssignees || []
-        });
-
-        if (result.success) {
-          showToast('Saved to Google Sheets!');
-        } else {
-          throw new Error(result.error || 'Save failed');
-        }
-      } catch (err) {
-        console.error('Google Sheets save error:', err);
-        showToast('Failed to save to Google Sheets. Using local storage.', 'error');
-        saveToLocal();
-      }
-    }
-
-    async function loadFromGoogleSheets() {
-      if (!useCloudSync || sheetId === '') {
-        // Fallback to localStorage
-        loadFromLocal();
-        return;
-      }
-
-      try {
-        const result = await proxyRequest('/sheets/load');
-
-        if (result.success) {
-          S.items = result.data.items;
-          S.savedAssignees = result.data.savedAssignees;
-          render();
-          showToast('Loaded from Google Sheets!');
-        } else {
-          throw new Error(result.error || 'Load failed');
-        }
-      } catch (err) {
-        console.error('Google Sheets load error:', err);
-        showToast('Failed to load from Google Sheets. Using local storage.', 'error');
-        loadFromLocal();
-      }
-    }
-
-    async function setupGoogleSheetsStructure() {
-      if (sheetId === '') {
-        showToast('Please set Sheet ID first', 'error');
-        return;
-      }
-
-      try {
-        const result = await proxyRequest('/sheets/setup', { sheetId: sheetId });
-
-        if (result.success) {
-          showToast('Google Sheets structure created successfully!');
-        } else {
-          throw new Error(result.error || 'Setup failed');
-        }
-      } catch (err) {
-        console.error('Setup error:', err);
-        showToast('Failed to setup Google Sheets structure', 'error');
       }
     }
 
@@ -4023,8 +3838,7 @@
 
       // Set cloud sync toggle state
       document.getElementById('cloud-sync-toggle').checked = useCloudSync;
-      document.getElementById('sheet-id-input').value = sheetId;
-      toggleCloudSync();
+      updateSyncStatus();
 
       // Initialize assignee names functionality
       renderSettingsNames();
@@ -4143,101 +3957,53 @@
       document.getElementById('settings-overlay').style.display = 'none';
     }
 
-    function toggleCloudSync() {
-      const enabled = document.getElementById('cloud-sync-toggle').checked;
-      document.getElementById('cloud-sync-config').style.display = enabled ? 'block' : 'none';
-    }
-
-    function confirmCloudSyncToggle() {
+    function toggleCloudSyncSetting() {
       const checkbox = document.getElementById('cloud-sync-toggle');
       const newState = checkbox.checked;
       const currentState = useCloudSync;
 
-      // If state hasn't actually changed, just toggle UI
+      // If state hasn't actually changed, do nothing
       if (newState === currentState) {
-        toggleCloudSync();
         return;
       }
 
       const message = newState
-        ? '⚠️ Are you sure you want to enable cloud sync?\n\nThis will allow your timeline data to be synced with Google Sheets. Make sure you have configured your Sheet ID correctly before enabling.'
+        ? '⚠️ Are you sure you want to enable cloud sync?\n\nThis will allow your timeline data to be synced with Google Sheets.'
         : '⚠️ Are you sure you want to disable cloud sync?\n\nYour timeline data will no longer be synced with Google Sheets. Local changes will not be saved to the cloud.';
 
       if (confirm(message)) {
-        toggleCloudSync();
+        useCloudSync = newState;
+        localStorage.setItem('bbUseCloudSync', newState);
+
+        // Update sync status
+        updateSyncStatus();
+
+        // Reload data if cloud sync was enabled
+        if (newState) {
+          load();
+        }
+
+        showToast(newState ? 'Cloud sync enabled' : 'Cloud sync disabled');
       } else {
         // Revert checkbox to original state
         checkbox.checked = currentState;
       }
     }
 
-    function confirmSheetIdChange() {
-      const input = document.getElementById('sheet-id-input');
-      const newValue = input.value.trim();
-      const currentValue = sheetId;
+    function updateSyncStatus() {
+      const statusEl = document.getElementById('sync-status');
+      if (!statusEl) return;
 
-      // If value hasn't changed, do nothing
-      if (newValue === currentValue) {
-        return;
-      }
-
-      if (newValue === '') {
-        // Allowing empty is fine (clearing the field)
-        return;
-      }
-
-      const message = '⚠️ Are you sure you want to change the Google Sheet ID?\n\nThis will redirect your data sync to a different Google Sheet. Make sure this is the correct Sheet ID from your Google Sheets URL.\n\nCurrent: ' + (currentValue || '(none)') + '\nNew: ' + newValue;
-
-      if (confirm(message)) {
-        // Allow the change
+      if (useCloudSync) {
+        statusEl.textContent = '✓ Cloud sync is active - data will be saved to Google Sheets';
+        statusEl.style.color = 'var(--green)';
+        statusEl.style.background = 'rgba(46, 125, 50, 0.1)';
+        statusEl.style.borderColor = 'var(--green)';
       } else {
-        // Revert to original value
-        input.value = currentValue;
-      }
-    }
-
-    function confirmSaveConfiguration() {
-      const newSheetId = document.getElementById('sheet-id-input').value.trim();
-      const newUseCloudSync = document.getElementById('cloud-sync-toggle').checked;
-      const currentSheetId = sheetId;
-      const currentUseCloudSync = useCloudSync;
-
-      // Check if anything actually changed
-      if (newSheetId === currentSheetId && newUseCloudSync === currentUseCloudSync) {
-        showToast('No changes to save');
-        return;
-      }
-
-      let message = '⚠️ Are you sure you want to save these cloud sync configuration changes?\n\n';
-
-      if (newUseCloudSync !== currentUseCloudSync) {
-        message += newUseCloudSync ? '- Cloud sync will be ENABLED\n' : '- Cloud sync will be DISABLED\n';
-      }
-
-      if (newSheetId !== currentSheetId) {
-        message += '- Google Sheet ID will be changed\n';
-        message += '  From: ' + (currentSheetId || '(none)') + '\n';
-        message += '  To: ' + (newSheetId || '(none)') + '\n';
-      }
-
-      message += '\nThese changes will affect how your timeline data is synced.';
-
-      if (confirm(message)) {
-        saveFromSettings();
-      }
-    }
-
-    function saveFromSettings() {
-      sheetId = document.getElementById('sheet-id-input').value.trim();
-      useCloudSync = document.getElementById('cloud-sync-toggle').checked;
-
-      localStorage.setItem('bbSheetId', sheetId);
-      localStorage.setItem('bbUseCloudSync', useCloudSync);
-
-      if (useCloudSync && sheetId) {
-        saveToGoogleSheets();
-      } else {
-        showToast('Configuration saved');
+        statusEl.textContent = 'Cloud sync is disabled - using local storage only';
+        statusEl.style.color = 'var(--ink-mid)';
+        statusEl.style.background = 'rgba(247, 245, 242, 0.5)';
+        statusEl.style.borderColor = 'var(--line)';
       }
     }
 
