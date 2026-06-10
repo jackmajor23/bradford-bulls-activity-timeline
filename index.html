@@ -1755,7 +1755,109 @@
       font-weight: 700;
       cursor: pointer;
     }
-
+/* ─── DATE POPUP MODAL ─── */
+#date-popup-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+#date-popup-modal {
+  background: var(--card);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-hover);
+  width: 90%;
+  max-width: 400px;
+  padding: 24px;
+  animation: popupFadeIn 0.2s ease;
+}
+@keyframes popupFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.popup-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--ink);
+  letter-spacing: 0.05em;
+}
+.popup-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--ink-light);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.popup-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+}
+.popup-section {
+  margin-bottom: 20px;
+}
+.popup-section:last-child {
+  margin-bottom: 0;
+}
+.popup-label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.popup-date-display {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.popup-date-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.popup-date-input:focus {
+  border-color: var(--red);
+}
+.popup-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+.popup-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
     /* ─── DELETE CONFIRM MODAL ─── */
     #delete-confirm-overlay,
     #complete-confirm-overlay {
@@ -2394,8 +2496,8 @@
     </div>
   </div>
 
-  <div id="date-popup-overlay">
-    <div id="date-popup-modal">
+<div id="date-popup-overlay" style="display:none;">
+      <div id="date-popup-modal">
       <div class="popup-header">
         <div class="popup-title">Go to Date</div>
         <button class="popup-close" onclick="closeDatePopup()">✕</button>
@@ -2464,7 +2566,40 @@
   </div>
 
   <div id="toast-container"></div>
-
+<div id="auth-gate" style="
+  position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:none;align-items:center;justify-content:center;">
+  <div style="background:var(--card);border-radius:12px;padding:32px 32px 28px;
+               width:320px;box-shadow:var(--shadow-hover);text-align:center;">
+    <img src="https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg"
+         style="width:56px;margin-bottom:14px;">
+    <div style="font-family:var(--font-display);font-size:26px;
+                letter-spacing:.06em;margin-bottom:2px;">BRADFORD BULLS</div>
+    <div style="font-size:11px;color:var(--ink-light);text-transform:uppercase;
+                letter-spacing:.1em;margin-bottom:24px;">Activity Timeline</div>
+    <input id="auth-password" type="password" placeholder="Enter password"
+      autocomplete="current-password"
+      style="width:100%;padding:10px 13px;border:1.5px solid var(--line);
+             border-radius:8px;font-family:var(--font-body);font-size:14px;
+             margin-bottom:10px;box-sizing:border-box;outline:none;
+             transition:border-color .15s;"
+      onfocus="this.style.borderColor='var(--red)'"
+      onblur="this.style.borderColor='var(--line)'"
+      onkeydown="if(event.key==='Enter') submitPassword()">
+    <button onclick="submitPassword()"
+      style="width:100%;padding:11px;background:var(--red);color:#fff;
+             border:none;border-radius:8px;font-family:var(--font-body);
+             font-size:13px;font-weight:700;text-transform:uppercase;
+             letter-spacing:.08em;cursor:pointer;transition:background .15s;"
+      onmouseover="this.style.background='var(--red-dark)'"
+      onmouseout="this.style.background='var(--red)'">
+      Access Timeline
+    </button>
+    <div id="auth-error"
+      style="font-size:12px;color:var(--red);margin-top:10px;
+             min-height:18px;transition:opacity .2s;"></div>
+  </div>
+</div>
   <script>
   // ─── CONSTANTS ─────────────────────────────────────────────────
   const STORAGE_KEY  = 'bbTimeline_v5';
@@ -2606,7 +2741,77 @@
       return null;
     }
   }
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+// Password is never stored in plain text — only its SHA-256 hash lives here.
+// Replace the string below with the hash you generated in Step 2.
+const PASSWORD_HASH = 'a568a40f9f6913d1acc69b86999c55b44913da2740390a87b52cac3d37db5272';
 
+// Session lasts 30 days from last successful login.
+const SESSION_KEY     = 'bbTimeline_auth';
+const SESSION_DAYS    = 30;
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function hasValidSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return false;
+    const { expiry } = JSON.parse(raw);
+    return Date.now() < expiry;
+  } catch (e) { return false; }
+}
+
+function writeSession() {
+  const expiry = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ expiry }));
+}
+
+function initAuth() {
+  if (hasValidSession()) {
+    dismissAuthGate();
+    return;
+  }
+  document.getElementById('auth-gate').style.display = 'flex';
+  // Focus the password field automatically
+  setTimeout(() => document.getElementById('auth-password')?.focus(), 50);
+}
+
+function dismissAuthGate() {
+  const gate = document.getElementById('auth-gate');
+  if (gate) gate.style.display = 'none';
+  load();
+  setupRealtime();
+}
+
+async function submitPassword() {
+  const input = document.getElementById('auth-password');
+  const errorEl = document.getElementById('auth-error');
+  const entered = (input.value || '').trim();
+
+  if (!entered) {
+    errorEl.textContent = 'Please enter the password.';
+    return;
+  }
+
+  const hash = await sha256(entered);
+
+  if (hash === PASSWORD_HASH) {
+    writeSession();        // Saves 30-day session to localStorage
+    input.value = '';
+    dismissAuthGate();
+  } else {
+    errorEl.textContent = 'Incorrect password.';
+    input.value = '';
+    input.focus();
+    // Brief red border shake for feedback
+    input.style.borderColor = 'var(--red)';
+    input.style.animation = 'none';
+    setTimeout(() => { input.style.borderColor = 'var(--line)'; }, 1200);
+  }
+}
   // ─── LOAD FROM SUPABASE ────────────────────────────────────────
   // FIX: Now orders by `date` (the canonical column) instead of
   // `kickoff_at` which may not exist on all installs.
@@ -3632,18 +3837,17 @@
     });
   }
 
-  // ─── BOOTSTRAP ────────────────────────────────────────────────
-  document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+// ─── BOOTSTRAP ────────────────────────────────────────────────
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-  const _baseRender = render;
-  render = function() { _baseRender.apply(this,arguments); setTimeout(setupDotHoverAnimations,100); };
+const _baseRender = render;
+render = function() { _baseRender.apply(this, arguments); setTimeout(setupDotHoverAnimations, 100); };
 
-  load();
-  setupRealtime(); // FIX: Extracted from inline code; called once at bootstrap.
+document.getElementById('brand-logo-wrap').addEventListener('click', () => {
+  document.getElementById('today-marker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
 
-  document.getElementById('brand-logo-wrap').addEventListener('click', () => {
-    document.getElementById('today-marker')?.scrollIntoView({behavior:'smooth',block:'center'});
-  });
+initAuth(); // load() and setupRealtime() fire only after password confirmed
 </script>
 </body>
 
