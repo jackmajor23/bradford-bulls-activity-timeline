@@ -3403,8 +3403,14 @@ async function submitPassword() {
       else if (item.type==='activity')  itemsHtml += renderActivityGroup(item, s, isPast);
       itemSide++;
     });
-    return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="copyDateLink('${g.date}')" ondblclick="showDatePopup('${g.date}')">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
-  }
+    return `<div class="date-group"><div
+  class="date-label"
+  data-date="${g.date}"
+  onclick="handleDateLabelClick('${g.date}')"
+>
+  ${fmtDisplay(g.date)}
+</div>
+}
 
   function renderFixtureGroup(g, side, isPast) {
     const f = g.fixture, acts = g.activities;
@@ -3947,7 +3953,30 @@ document.querySelectorAll('.date-group').forEach(group => {
   // ─── DATE POPUP ───────────────────────────────────────────────
   let currentPopupDate = null;
 
-  function copyDateLink(dateStr) {
+let lastDateClicked = null;
+let lastDateClickTime = 0;
+
+function handleDateLabelClick(dateStr) {
+  const now = Date.now();
+
+  if (
+    lastDateClicked === dateStr &&
+    now - lastDateClickTime < 1500
+  ) {
+    showDatePopup(dateStr);
+
+    lastDateClicked = null;
+    lastDateClickTime = 0;
+    return;
+  }
+
+  copyDateLink(dateStr);
+
+  lastDateClicked = dateStr;
+  lastDateClickTime = now;
+}
+
+function copyDateLink(dateStr) {
     document.querySelectorAll('.date-label').forEach(label => {
       if (label.dataset.date!==dateStr) return;
       const dg = label.closest('.date-group');
