@@ -2670,34 +2670,162 @@
     return name.split(' ').map(w => w[0]).join('').slice(0,3).toUpperCase();
   }
 
-  function getTeamLogo(name) {
-    if (!name) return null;
-    const teamLogos = {
-      'Halifax Panthers':     'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png',
-      'Featherstone Rovers':  'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png',
-      'York Knights':         'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png',
-      'Toulouse Olympique':   'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png',
-      'Sheffield Eagles':     'https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png',
-      'Leigh Leopards':       'https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Leigh_Leopards_logo.svg/200px-Leigh_Leopards_logo.svg.png',
-      'London Broncos':       'https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png',
-      'Wakefield Trinity':    'https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png',
-      'Castleford Tigers':    'https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png',
-      'Huddersfield Giants':  'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png',
-      'Warrington Wolves':    'https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png',
-      'Wigan Warriors':       'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png',
-      'St Helens':            'https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png',
-      'Leeds Rhinos':         'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png',
-      'Hull KR':              'https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png',
-      'Hull FC':              'https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png',
-      'Catalans Dragons':     'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png',
-      'Salford Red Devils':   'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png',
-    };
-    const lower = name.toLowerCase();
-    for (const [team, logo] of Object.entries(teamLogos)) {
-      if (team.toLowerCase() === lower) return logo;
-    }
-    return null;
+  // ─── LOGO CACHE ───────────────────────────────────────────────
+// Persists discovered logos across sessions so we don't re-fetch
+const LOGO_CACHE_KEY = 'bbLogoCache_v1';
+let logoCache = {};
+try {
+  logoCache = JSON.parse(localStorage.getItem(LOGO_CACHE_KEY) || '{}');
+} catch(e) { logoCache = {}; }
+
+function saveLogoCache() {
+  try { localStorage.setItem(LOGO_CACHE_KEY, JSON.stringify(logoCache)); } catch(e) {}
+}
+
+// ─── STATIC LOGO MAP ──────────────────────────────────────────
+// Known logos — skips the async lookup entirely for these teams
+const KNOWN_LOGOS = {
+  'Bradford Bulls':       'https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg',
+  'Leigh Leopards':       'https://upload.wikimedia.org/wikipedia/en/thumb/5/5c/Leigh_Leopards_2023_logo.svg/200px-Leigh_Leopards_2023_logo.svg.png',
+  'Catalans Dragons':     'https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png',
+  'St Helens':            'https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png',
+  'Leeds Rhinos':         'https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png',
+  'Huddersfield Giants':  'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png',
+  'Wakefield Trinity':    'https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png',
+  'Hull KR':              'https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png',
+  'Warrington Wolves':    'https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png',
+  'Wigan Warriors':       'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png',
+  'Hull FC':              'https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png',
+  'Salford Red Devils':   'https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png',
+  'Halifax Panthers':     'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png',
+  'Featherstone Rovers':  'https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png',
+  'York Knights':         'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png',
+  'York RLFC':            'https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png',
+  'Toulouse Olympique':   'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png',
+  'Sheffield Eagles':     'https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png',
+  'London Broncos':       'https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png',
+  'Castleford Tigers':    'https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png',
+  'Dewsbury Rams':        'https://upload.wikimedia.org/wikipedia/en/thumb/6/6e/Dewsbury_Rams_logo.svg/200px-Dewsbury_Rams_logo.svg.png',
+  'Batley Bulldogs':      'https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Batley_Bulldogs_logo.svg/200px-Batley_Bulldogs_logo.svg.png',
+  'Widnes Vikings':       'https://upload.wikimedia.org/wikipedia/en/thumb/7/73/Widnes_Vikings_logo.svg/200px-Widnes_Vikings_logo.svg.png',
+  'Barrow Raiders':       'https://upload.wikimedia.org/wikipedia/en/thumb/4/46/Barrow_Raiders_logo.svg/200px-Barrow_Raiders_logo.svg.png',
+  'Whitehaven':           'https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Whitehaven_RLFC_logo.svg/200px-Whitehaven_RLFC_logo.svg.png',
+  'Workington Town':      'https://upload.wikimedia.org/wikipedia/en/thumb/9/91/Workington_Town_RLFC_badge.svg/200px-Workington_Town_RLFC_badge.svg.png',
+  'Keighley Cougars':     'https://upload.wikimedia.org/wikipedia/en/thumb/8/8e/Keighley_Cougars_logo.svg/200px-Keighley_Cougars_logo.svg.png',
+  'Swinton Lions':        'https://upload.wikimedia.org/wikipedia/en/thumb/d/d1/Swinton_Lions_logo.svg/200px-Swinton_Lions_logo.svg.png',
+  'Doncaster':            'https://upload.wikimedia.org/wikipedia/en/thumb/a/a3/Doncaster_RLFC_logo.svg/200px-Doncaster_RLFC_logo.svg.png',
+  'Oldham':               'https://upload.wikimedia.org/wikipedia/en/thumb/5/57/Oldham_RLFC_logo.svg/200px-Oldham_RLFC_logo.svg.png',
+  'Rochdale Hornets':     'https://upload.wikimedia.org/wikipedia/en/thumb/5/54/Rochdale_Hornets_logo.svg/200px-Rochdale_Hornets_logo.svg.png',
+  'Hunslet':              'https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Hunslet_RLFC_logo.svg/200px-Hunslet_RLFC_logo.svg.png',
+  'North Wales Crusaders':'https://upload.wikimedia.org/wikipedia/en/thumb/1/1f/North_Wales_Crusaders_logo.svg/200px-North_Wales_Crusaders_logo.svg.png',
+};
+
+// ─── SYNCHRONOUS LOOKUP ───────────────────────────────────────
+// Used during render — returns known/cached URL or null immediately
+function getTeamLogo(name) {
+  if (!name) return null;
+  const lower = name.toLowerCase().trim();
+
+  // 1. Check static map
+  for (const [team, url] of Object.entries(KNOWN_LOGOS)) {
+    if (team.toLowerCase() === lower) return url;
   }
+
+  // 2. Check runtime cache (previously discovered logos)
+  if (logoCache[lower] === 'NOT_FOUND') return null; // confirmed no logo
+  if (logoCache[lower]) return logoCache[lower];
+
+  // 3. Trigger async discovery in background — returns null for now,
+  //    the img tag will update itself when the fetch completes
+  discoverLogoAsync(name);
+  return null;
+}
+
+// ─── ASYNC LOGO DISCOVERY ─────────────────────────────────────
+// Tries Wikipedia's API to find an image for the team.
+// Updates any matching img tags in the DOM when found.
+const pendingDiscovery = new Set();
+
+async function discoverLogoAsync(name) {
+  const lower = name.toLowerCase().trim();
+  if (pendingDiscovery.has(lower)) return; // already in flight
+  pendingDiscovery.add(lower);
+
+  const queries = [
+    `${name} rugby league`,
+    `${name} RLFC`,
+    `${name}`,
+  ];
+
+  for (const query of queries) {
+    try {
+      // Wikipedia opensearch to find the right article title
+      const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=3&format=json&origin=*`;
+      const searchRes = await fetch(searchUrl);
+      const searchData = await searchRes.json();
+      const titles = searchData[1] || [];
+
+      for (const title of titles) {
+        // Skip obviously wrong articles
+        if (!title.toLowerCase().includes(name.toLowerCase().split(' ')[0].toLowerCase())) continue;
+
+        // Fetch the page images
+        const imgUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&pithumbsize=200&format=json&origin=*`;
+        const imgRes  = await fetch(imgUrl);
+        const imgData = await imgRes.json();
+        const pages   = Object.values(imgData.query?.pages || {});
+        const thumb   = pages[0]?.thumbnail?.source;
+
+        if (thumb) {
+          // Validate it looks like a logo (not a photo of a person/stadium)
+          const isLikelyLogo = thumb.includes('logo') || thumb.includes('badge') ||
+                               thumb.includes('crest') || thumb.includes('svg') ||
+                               thumb.includes('Logo') || thumb.includes('Badge');
+          if (isLikelyLogo) {
+            logoCache[lower] = thumb;
+            saveLogoCache();
+            updateLogoInDOM(name, thumb);
+            pendingDiscovery.delete(lower);
+            return;
+          }
+        }
+      }
+    } catch(e) {
+      // Network error — silently skip, shield fallback stays
+    }
+  }
+
+  // Nothing found — mark as NOT_FOUND so we don't keep retrying
+  logoCache[lower] = 'NOT_FOUND';
+  saveLogoCache();
+  pendingDiscovery.delete(lower);
+}
+
+// ─── DOM UPDATER ──────────────────────────────────────────────
+// When async discovery finds a logo, inject it into any visible
+// fixture cards for that team without re-rendering the whole page
+function updateLogoInDOM(name, url) {
+  document.querySelectorAll('.fixture-logo-wrap').forEach(wrap => {
+    const card     = wrap.closest('.fixture-card');
+    const opponent = card?.querySelector('.fixture-opponent')?.textContent?.trim();
+    if (!opponent || opponent.toLowerCase() !== name.toLowerCase().trim()) return;
+
+    const img = wrap.querySelector('img');
+    const fallback = wrap.querySelector('.fixture-logo-initials');
+
+    if (img) {
+      img.src = url;
+      img.style.display = '';
+      if (fallback) fallback.style.display = 'none';
+    } else {
+      // No img tag yet — insert one
+      wrap.innerHTML = `
+        <img src="${url}" alt="${esc(name)}"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="fixture-logo-initials" style="display:none">${shieldSVG(name)}</div>`;
+    }
+  });
+}
 
   // ─── SUPABASE RECORD CONVERTER ─────────────────────────────────
   // FIX: Centralised converter used by both loadFromSupabase and the
@@ -3516,6 +3644,54 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         const after = getDragAfterElement(cluster,e.clientY);
         after==null ? cluster.appendChild(dragging) : cluster.insertBefore(dragging,after);
       });
+    // ─── DRAG WITHIN DATE GROUP ───────────────────────────────────
+document.querySelectorAll('.date-group').forEach(group => {
+  group.addEventListener('dragover', e => {
+    e.preventDefault();
+    const dragging = document.querySelector('.dragging');
+    if (!dragging) return;
+
+    // Only handle standalone activities (not ones inside a cluster)
+    if (dragging.closest('.activity-cluster')) return;
+
+    const rows = [...group.querySelectorAll('.tl-row:not(.activity-cluster .tl-row)')];
+    const afterRow = rows.reduce((closest, row) => {
+      const box    = row.getBoundingClientRect();
+      const offset = e.clientY - box.top - box.height / 2;
+      return (offset < 0 && offset > closest.offset)
+        ? { offset, element: row }
+        : closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+
+    const wrap = group.querySelector('#timeline-content') || group.parentElement;
+    afterRow == null
+      ? group.appendChild(dragging.closest('.tl-row'))
+      : group.insertBefore(dragging.closest('.tl-row'), afterRow);
+  });
+
+  group.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dragging = document.querySelector('.dragging');
+    if (!dragging || dragging.closest('.activity-cluster')) return;
+
+    // Persist the new order for this date group
+    const date = group.querySelector('.date-label')?.dataset.date;
+    if (!date) return;
+
+    const orderedIds = [...group.querySelectorAll('.tl-row[data-id]')]
+      .map(row => row.dataset.id)
+      .filter(Boolean);
+
+    // Re-sort S.items so items within this date appear in dragged order
+    const dateItems  = orderedIds.map(id => S.items.find(i => i.id === id)).filter(Boolean);
+    const otherItems = S.items.filter(i => !orderedIds.includes(i.id));
+
+    S.items = [...otherItems, ...dateItems];
+    save();
+  });
+});  
       cluster.addEventListener('drop', e => {
         e.preventDefault(); e.stopPropagation();
         const fixtureId = cluster.id.replace('cluster-','');
