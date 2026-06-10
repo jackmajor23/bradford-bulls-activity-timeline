@@ -375,11 +375,16 @@
     }
 
     .tl-row.dragging {
-      margin-bottom: 10px;
+      margin-bottom: 10px !important;
+      z-index: 100;
     }
 
     .tl-row + .tl-row.dragging {
-      margin-top: 10px;
+      margin-top: 10px !important;
+    }
+
+    .tl-row.prev-to-dragging {
+      margin-bottom: 10px !important;
     }
 
     .tl-row.side-left .tl-card-wrap {
@@ -1308,6 +1313,18 @@
     .note-card:hover .activity-btns,
     .milestone-card:hover .activity-btns {
       opacity: 1;
+    }
+
+    /* Center drag handle vertically on milestone cards (desktop) */
+    .milestone-card .act-row {
+      justify-content: center;
+    }
+
+    .milestone-card .drag-handle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
     }
 
     /* ─── MONTH DIVIDER ─── */
@@ -2442,6 +2459,16 @@
         max-width: 100%;
       }
 
+      /* Left align drag handle on milestone cards (mobile) */
+      .milestone-card .act-row {
+        justify-content: flex-start;
+      }
+
+      .milestone-card .drag-handle {
+        position: static;
+        transform: none;
+      }
+
       .mobile-add-btn {
         display: inline-flex !important;
         width: 40px;
@@ -3087,7 +3114,7 @@ function updateLogoInDOM(name, url) {
             // FIX: Support both `date` (new) and `kickoff_at` (legacy column).
             date:      (record.date || record.kickoff_at || '').split('T')[0],
             opponent:  record.opponent || record.away_team || '',
-            venue:     record.venue || '',
+            venue:     record['venue type'] || '',
             venueType: record.match_venue || 'home',
             matchType: record.competition || 'League',
             // FIX: Was hardcoded "Men's" regardless of stored value.
@@ -3272,7 +3299,7 @@ async function submitPassword() {
           fixtures.map(f => ({
             id:          f.id,
             opponent:    f.opponent    || '',
-            venue:       f.venue       || '',
+            "venue type": f.venue       || '',
             match_venue: f.venueType   || 'home',
             competition: f.matchType   || 'League',
             team_type:   f.teamType    || "Men's",
@@ -3762,7 +3789,13 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         e.dataTransfer.effectAllowed = 'move';
         el.classList.add('dragging');
         const tlRow = el.closest('.tl-row');
-        if (tlRow) tlRow.classList.add('dragging');
+        if (tlRow) {
+          tlRow.classList.add('dragging');
+          const prevRow = tlRow.previousElementSibling;
+          if (prevRow && prevRow.classList.contains('tl-row')) {
+            prevRow.classList.add('prev-to-dragging');
+          }
+        }
         document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
           btn.dataset.originalOnclick = btn.getAttribute('onclick');
           btn.removeAttribute('onclick');
@@ -3771,12 +3804,19 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       el.addEventListener('dragend', () => {
         el.classList.remove('dragging');
         const tlRow = el.closest('.tl-row');
-        if (tlRow) tlRow.classList.remove('dragging');
+        if (tlRow) {
+          tlRow.classList.remove('dragging');
+          const prevRow = tlRow.previousElementSibling;
+          if (prevRow && prevRow.classList.contains('tl-row')) {
+            prevRow.classList.remove('prev-to-dragging');
+          }
+        }
         document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
         isDraggingActivity = false;
         dragEndTime = Date.now();
-        // Clean up any remaining placeholders
+        // Clean up any remaining placeholders and prev-to-dragging classes
         document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
+        document.querySelectorAll('.prev-to-dragging').forEach(r => r.classList.remove('prev-to-dragging'));
         setTimeout(() => {
           disableToggle = false;
           document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
@@ -3795,7 +3835,13 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         isDraggingActivity = true; disableToggle = true;
         el.classList.add('dragging');
         const tlRow = el.closest('.tl-row');
-        if (tlRow) tlRow.classList.add('dragging');
+        if (tlRow) {
+          tlRow.classList.add('dragging');
+          const prevRow = tlRow.previousElementSibling;
+          if (prevRow && prevRow.classList.contains('tl-row')) {
+            prevRow.classList.add('prev-to-dragging');
+          }
+        }
         document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
           btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick');
         });
@@ -3822,9 +3868,18 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         if (!isDraggingActivity||touchElement!==el) return;
         el.classList.remove('dragging');
         const tlRow = el.closest('.tl-row');
-        if (tlRow) tlRow.classList.remove('dragging');
+        if (tlRow) {
+          tlRow.classList.remove('dragging');
+          const prevRow = tlRow.previousElementSibling;
+          if (prevRow && prevRow.classList.contains('tl-row')) {
+            prevRow.classList.remove('prev-to-dragging');
+          }
+        }
         document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
         isDraggingActivity = false; dragEndTime = Date.now();
+        // Clean up any remaining placeholders and prev-to-dragging classes
+        document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
+        document.querySelectorAll('.prev-to-dragging').forEach(r => r.classList.remove('prev-to-dragging'));
         const touch  = e.changedTouches[0];
         const target = document.elementFromPoint(touch.clientX,touch.clientY);
         const fc = target?.closest('.fixture-card');
@@ -3913,6 +3968,14 @@ function showSyncToast(msg = '🔄 Synced from another device') {
           .map(row => row.dataset.id).filter(Boolean);
         const dateItems  = orderedIds.map(id => S.items.find(i => i.id === id)).filter(Boolean);
         const otherItems = S.items.filter(i => !orderedIds.includes(i.id));
+        
+        // Update the date for items that were moved to a different date group
+        dateItems.forEach(item => {
+          if (item.date !== date) {
+            item.date = date;
+          }
+        });
+        
         S.items = [...otherItems, ...dateItems];
         save();
       });
