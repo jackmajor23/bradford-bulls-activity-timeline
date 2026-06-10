@@ -790,6 +790,16 @@
       border-top: 1px solid var(--line);
       background: #fdfdfd;
       min-height: 10px;
+      position: relative;
+    }
+
+    .drag-placeholder {
+      background: rgba(26, 79, 139, 0.08);
+      border: 2px dashed var(--blue);
+      border-radius: 7px;
+      min-height: 44px;
+      margin: 3px 0;
+      transition: all 0.2s ease;
     }
 
     /* ─── DATE GROUP ─── */
@@ -3611,7 +3621,7 @@ async function submitPassword() {
 
   function renderNoteGroup(g, side, isPast) {
     const n = g.item, pastCls = isPast?' past':'';
-    return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast?' past-dot':''}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}"><div class="act-row"><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
+    return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast?' past-dot':''}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}" draggable="true"><div class="act-row"><div class="drag-handle">⋮⋮</div><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
   }
 
   function togglePasswordVisibility() {
@@ -3728,7 +3738,7 @@ function showSyncToast(msg = '🔄 Synced from another device') {
 
   // ─── DRAG & DROP ──────────────────────────────────────────────
   function attachEvents() {
-    document.querySelectorAll('.activity-card,.mini-activity').forEach(el => {
+    document.querySelectorAll('.activity-card,.mini-activity,.note-card').forEach(el => {
       el.addEventListener('dragstart', e => {
         dragActivityId = el.dataset.id;
         isDraggingActivity = true;
@@ -3745,6 +3755,8 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
         isDraggingActivity = false;
         dragEndTime = Date.now();
+        // Clean up any remaining placeholders
+        document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
         setTimeout(() => {
           disableToggle = false;
           document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
@@ -3773,7 +3785,16 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         e.preventDefault();
         const target  = document.elementFromPoint(touch.clientX,touch.clientY);
         const cluster = target?.closest('.activity-cluster');
-        if (cluster) { const after=getDragAfterElement(cluster,touch.clientY); after==null?cluster.appendChild(el):cluster.insertBefore(el,after); }
+        if (cluster) {
+          // Remove existing placeholder
+          const existingPlaceholder = cluster.querySelector('.drag-placeholder');
+          if (existingPlaceholder) existingPlaceholder.remove();
+          
+          // Create and insert placeholder at fixed position
+          const placeholder = createDragPlaceholder();
+          const after = getDragAfterElement(cluster, touch.clientY);
+          after == null ? cluster.appendChild(placeholder) : cluster.insertBefore(placeholder, after);
+        }
       }, {passive:false});
       el.addEventListener('touchend', e => {
         if (!isDraggingActivity||touchElement!==el) return;
@@ -3789,6 +3810,14 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         }
         const cluster = target?.closest('.activity-cluster');
         if (cluster) {
+          // Remove placeholder and move actual element to fixed position
+          const placeholder = cluster.querySelector('.drag-placeholder');
+          if (placeholder) {
+            placeholder.replaceWith(el);
+          } else {
+            cluster.appendChild(el);
+          }
+          
           const fixtureId = cluster.id.replace('cluster-','');
           const order = Array.from(cluster.querySelectorAll('.mini-activity')).map(e=>e.dataset.id);
           const acts  = S.items.filter(i=>i.fixtureId===fixtureId&&i.type==='activity');
@@ -3797,6 +3826,8 @@ function showSyncToast(msg = '🔄 Synced from another device') {
           sorted.forEach(a=>S.items.push(a));
           save(); ensureDropdownOpen(fixtureId);
         }
+        // Clean up any remaining placeholders
+        document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
         setTimeout(()=>{
           disableToggle=false;
           document.querySelectorAll('.fixture-acts-toggle').forEach(btn=>{
@@ -3868,11 +3899,29 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         e.preventDefault();
         const dragging = document.querySelector('.dragging');
         if (!dragging) return;
-        const after = getDragAfterElement(cluster,e.clientY);
-        after==null ? cluster.appendChild(dragging) : cluster.insertBefore(dragging,after);
+        
+        // Remove existing placeholder
+        const existingPlaceholder = cluster.querySelector('.drag-placeholder');
+        if (existingPlaceholder) existingPlaceholder.remove();
+        
+        // Create and insert placeholder at fixed position
+        const placeholder = createDragPlaceholder();
+        const after = getDragAfterElement(cluster, e.clientY);
+        after == null ? cluster.appendChild(placeholder) : cluster.insertBefore(placeholder, after);
       });
       cluster.addEventListener('drop', e => {
         e.preventDefault(); e.stopPropagation();
+        const dragging = document.querySelector('.dragging');
+        if (!dragging) return;
+        
+        // Remove placeholder and move actual element to fixed position
+        const placeholder = cluster.querySelector('.drag-placeholder');
+        if (placeholder) {
+          placeholder.replaceWith(dragging);
+        } else {
+          cluster.appendChild(dragging);
+        }
+        
         const fixtureId = cluster.id.replace('cluster-','');
         const order = Array.from(cluster.querySelectorAll('.mini-activity')).map(e=>e.dataset.id);
         const acts  = S.items.filter(i=>i.fixtureId===fixtureId&&i.type==='activity');
@@ -3884,15 +3933,34 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         if (btn) { const orig=btn.getAttribute('onclick'); btn.removeAttribute('onclick'); btn.style.pointerEvents='none'; setTimeout(()=>{btn.setAttribute('onclick',orig);btn.style.pointerEvents='';},500); }
         ensureDropdownOpen(fixtureId);
       });
+      cluster.addEventListener('dragleave', e => {
+        // Remove placeholder when leaving the cluster
+        const placeholder = cluster.querySelector('.drag-placeholder');
+        if (placeholder && !cluster.contains(e.relatedTarget)) {
+          placeholder.remove();
+        }
+      });
     });
   }
 
   function getDragAfterElement(container, y) {
-    return [...container.querySelectorAll('.mini-activity:not(.dragging)')].reduce((closest,child) => {
+    const draggableElements = [...container.querySelectorAll('.mini-activity:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
       const box = child.getBoundingClientRect();
-      const offset = y-box.top-box.height/2;
-      return (offset<0&&offset>closest.offset) ? {offset,element:child} : closest;
-    }, {offset:Number.NEGATIVE_INFINITY}).element;
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: child };
+      } else {
+        return closest;
+      }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+
+  function createDragPlaceholder() {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'drag-placeholder';
+    return placeholder;
   }
 
   // ─── MODAL CONTROLS ───────────────────────────────────────────
