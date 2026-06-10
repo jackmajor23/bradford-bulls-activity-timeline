@@ -374,6 +374,14 @@
       margin-bottom: -10px;
     }
 
+    .tl-row.dragging {
+      margin-bottom: 10px;
+    }
+
+    .tl-row + .tl-row.dragging {
+      margin-top: 10px;
+    }
+
     .tl-row.side-left .tl-card-wrap {
       grid-column: 1;
       grid-row: 1;
@@ -797,9 +805,11 @@
       background: rgba(26, 79, 139, 0.08);
       border: 2px dashed var(--blue);
       border-radius: 7px;
-      min-height: 44px;
-      margin: 3px 0;
+      min-height: 46px;
+      height: 46px;
+      margin: 0;
       transition: all 0.2s ease;
+      flex-shrink: 0;
     }
 
     /* ─── DATE GROUP ─── */
@@ -1076,7 +1086,9 @@
       transition: opacity 0.15s, color 0.15s;
     }
 
-    .mini-activity:hover .drag-handle {
+    .mini-activity:hover .drag-handle,
+    .fixture-card:hover .drag-handle,
+    .milestone-card:hover .drag-handle {
       opacity: 1;
       color: var(--ink-mid);
     }
@@ -1962,12 +1974,16 @@
       background: rgba(212, 175, 55, 0.03);
     }
 
-    .mini-activity.dragging {
+    .mini-activity.dragging,
+    .fixture-card.dragging,
+    .milestone-card.dragging {
       opacity: 0.5;
       cursor: grabbing;
     }
 
-    .mini-activity.drag-over {
+    .mini-activity.drag-over,
+    .fixture-card.drag-over,
+    .milestone-card.drag-over {
       border: 2px dashed var(--blue);
       background: rgba(26, 79, 139, 0.05);
     }
@@ -3595,7 +3611,7 @@ async function submitPassword() {
       : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
     const teamBadge = f.teamType ? `<span class="team-badge">${esc(f.teamType)}</span>` : '';
     const actsHtml = acts.map(a => renderMiniActivity(a)).join('');
-    return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast?' past':''}" id="fc-${f.id}" data-fixture-id="${f.id}"><div class="fixture-header"><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue?`<span>📍 ${esc(f.venue)}</span>`:''}<span>🏉 ${esc(f.matchType||'')}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length>0?`<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>`:''}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length>0?`<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>`:''}</div></div></div>`;
+    return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast?' past':''}" id="fc-${f.id}" data-id="${f.id}" draggable="true"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue?`<span>📍 ${esc(f.venue)}</span>`:''}<span>🏉 ${esc(f.matchType||'')}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length>0?`<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>`:''}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length>0?`<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>`:''}</div></div></div>`;
   }
 
   function renderMiniActivity(a) {
@@ -3616,7 +3632,7 @@ async function submitPassword() {
 
   function renderMilestoneGroup(g, side, isPast) {
     const m = g.item, style = m.style||'red', pastCls = isPast?' past':'';
-    return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}"><div class="act-row"><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes?' · '+esc(m.notes):''}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
+    return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes?' · '+esc(m.notes):''}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
   }
 
   function renderNoteGroup(g, side, isPast) {
@@ -3738,13 +3754,15 @@ function showSyncToast(msg = '🔄 Synced from another device') {
 
   // ─── DRAG & DROP ──────────────────────────────────────────────
   function attachEvents() {
-    document.querySelectorAll('.activity-card,.mini-activity,.note-card').forEach(el => {
+    document.querySelectorAll('.activity-card,.mini-activity,.note-card,.fixture-card,.milestone-card').forEach(el => {
       el.addEventListener('dragstart', e => {
         dragActivityId = el.dataset.id;
         isDraggingActivity = true;
         disableToggle = true;
         e.dataTransfer.effectAllowed = 'move';
         el.classList.add('dragging');
+        const tlRow = el.closest('.tl-row');
+        if (tlRow) tlRow.classList.add('dragging');
         document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
           btn.dataset.originalOnclick = btn.getAttribute('onclick');
           btn.removeAttribute('onclick');
@@ -3752,6 +3770,8 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       });
       el.addEventListener('dragend', () => {
         el.classList.remove('dragging');
+        const tlRow = el.closest('.tl-row');
+        if (tlRow) tlRow.classList.remove('dragging');
         document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
         isDraggingActivity = false;
         dragEndTime = Date.now();
@@ -3774,6 +3794,8 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         dragActivityId = el.dataset.id;
         isDraggingActivity = true; disableToggle = true;
         el.classList.add('dragging');
+        const tlRow = el.closest('.tl-row');
+        if (tlRow) tlRow.classList.add('dragging');
         document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
           btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick');
         });
@@ -3799,6 +3821,8 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       el.addEventListener('touchend', e => {
         if (!isDraggingActivity||touchElement!==el) return;
         el.classList.remove('dragging');
+        const tlRow = el.closest('.tl-row');
+        if (tlRow) tlRow.classList.remove('dragging');
         document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
         isDraggingActivity = false; dragEndTime = Date.now();
         const touch  = e.changedTouches[0];
