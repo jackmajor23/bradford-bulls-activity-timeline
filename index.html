@@ -2158,6 +2158,38 @@
     }
 
     @media (max-width: 700px) {
+      /* Centre date labels, month labels and past toggle with today badge */
+.date-header {
+  justify-content: center;
+  padding-left: 0;
+}
+
+.date-label {
+  margin-left: 0;
+}
+
+.month-divider {
+  justify-content: center;
+  padding-left: 0;
+}
+
+.month-divider-label {
+  margin-left: 0;
+}
+
+#today-marker {
+  justify-content: center;
+  padding: 0 12px;
+}
+
+#past-accordion {
+  align-items: center;
+}
+
+#past-toggle {
+  margin-left: 0;
+  text-align: center;
+}
       #timeline-wrap::before {
         left: 36px;
         transform: none;
@@ -3450,20 +3482,19 @@ function showSyncToast(msg = '🔄 Synced from another device') {
   function isMobile() { return window.innerWidth<=768||('ontouchstart' in window); }
 
   function toggleComplete(id) {
-    const item = S.items.find(i=>i.id===id);
-    if (!item) return;
-    if (isMobile()) { showCompleteConfirm(id); return; }
-    const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster'))
-      .filter(el=>el.style.display!=='none').map(el=>el.id.replace('cluster-',''));
-    item.complete = !item.complete;
-    save(); render();
-    openDropdowns.forEach(fid => {
-      const cluster = document.getElementById('cluster-'+fid);
-      const btn     = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
-      if (cluster) { cluster.style.display=''; if(btn) btn.textContent='▾ '+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities'; }
-    });
-    showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
-  }
+  const item = S.items.find(i=>i.id===id);
+  if (!item) return;
+  const openDropdowns = Array.from(document.querySelectorAll('.activity-cluster'))
+    .filter(el=>el.style.display!=='none').map(el=>el.id.replace('cluster-',''));
+  item.complete = !item.complete;
+  save(); render();
+  openDropdowns.forEach(fid => {
+    const cluster = document.getElementById('cluster-'+fid);
+    const btn     = document.querySelector(`[onclick="toggleActCluster('${fid}')"]`);
+    if (cluster) { cluster.style.display=''; if(btn) btn.textContent='▾ '+cluster.querySelectorAll('.mini-activity').length+' Matchday Activities'; }
+  });
+  showToast(item.complete ? '✓ Marked complete' : 'Marked incomplete');
+}
 
   function moveToTimeline(id) {
     const item = S.items.find(i=>i.id===id);
@@ -3945,9 +3976,6 @@ document.querySelectorAll('.date-group').forEach(group => {
   document.getElementById('date-popup-overlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeDatePopup(); });
 
   // ─── SETTINGS MODAL ───────────────────────────────────────────
-  // FIX: updateSyncStatus was called but never defined.
-  // FIX: openSettingsModal was crashing immediately on a null reference
-  // to `cloud-sync-toggle` which does not exist in the HTML.
   function updateSyncStatus() {
     const el = document.getElementById('sync-status');
     if (!el) return;
