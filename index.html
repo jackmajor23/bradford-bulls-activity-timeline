@@ -2926,30 +2926,30 @@ async function submitPassword() {
         if (error) throw new Error(JSON.stringify(error));
       }
 
-      if (milestones.length) {
-        const { error } = await supabaseClient.from('milestones').upsert(
-          milestones.map(m => ({
-            id:    m.id,
-            title: m.title || '',
-            color: m.style || 'red',
-            date:  m.date,
-          })),
-          { onConflict: 'id' }
-        );
-        if (error) throw new Error(JSON.stringify(error));
-      }
+     if (milestones.length) {
+       const { error } = await supabaseClient.from('milestones').upsert(
+        milestones.map(m => ({
+          id:    m.id,
+          title: m.title || '',
+          color: m.style || 'red',
+          date:  m.date,
+        })),
+        { onConflict: 'id' }
+      );
+      if (error) { console.error('Milestones error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
+}
 
-      if (notes.length) {
-        const { error } = await supabaseClient.from('notes').upsert(
-          notes.map(n => ({
-            id:      n.id,
-            content: n.content || '',
-            date:    n.date,
-          })),
-          { onConflict: 'id' }
-        );
-        if (error) throw new Error(JSON.stringify(error));
-      }
+    if (notes.length) {
+      const { error } = await supabaseClient.from('notes').upsert(
+        notes.map(n => ({
+          id:      n.id,
+          content: n.content || '',
+          date:    n.date,
+        })),
+        { onConflict: 'id' }
+  );
+  if (error) { console.error('Notes error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
+}
 
       console.log('✓ Saved to Supabase');
       updateSyncStatus();
