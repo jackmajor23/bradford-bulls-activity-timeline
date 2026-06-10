@@ -2360,7 +2360,7 @@
       /* Centre date labels, month labels and past toggle with today badge */
 .date-header {
   justify-content: center;
-  padding-left: 0;
+  padding-left: 60px;
 }
 
 .date-label {
@@ -3870,6 +3870,25 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       }, {passive:false});
       el.addEventListener('touchend', e => {
         if (!isDraggingActivity||touchElement!==el) return;
+        // Only process as a drop if we actually moved beyond the threshold
+        if (!isTouchDrag) {
+          isDraggingActivity = false;
+          touchElement = null;
+          el.classList.remove('dragging');
+          const tlRow = el.closest('.tl-row');
+          if (tlRow) {
+            tlRow.classList.remove('dragging');
+            const prevRow = tlRow.previousElementSibling;
+            if (prevRow && prevRow.classList.contains('tl-row')) {
+              prevRow.classList.remove('prev-to-dragging');
+            }
+          }
+          document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
+            if (btn.dataset.originalOnclick) { btn.setAttribute('onclick',btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; }
+          });
+          disableToggle = false;
+          return;
+        }
         el.classList.remove('dragging');
         const tlRow = el.closest('.tl-row');
         if (tlRow) {
@@ -3918,6 +3937,7 @@ function showSyncToast(msg = '🔄 Synced from another device') {
           });
         }, 500);
         touchElement = null;
+        isTouchDrag = false;
       });
     });
 
