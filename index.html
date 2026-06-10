@@ -2369,7 +2369,7 @@
 
 .month-divider {
   justify-content: center;
-  padding-left: 0;
+  padding-left: 60px;
 }
 
 .month-divider-label {
@@ -3825,11 +3825,12 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         }, 500);
       });
 
-      let touchStartX, touchStartY, touchElement;
+      let touchStartX, touchStartY, touchElement, isTouchDrag = false;
       el.addEventListener('touchstart', e => {
         const touch = e.touches[0];
-        touchStartX = touch.clientX; touchStartY = touch.clientY; touchElement = el;
+        touchStartX = touch.clientX; touchStartY = touch.clientY; touchElement = el; isTouchDrag = false;
         const isMob = window.innerWidth<=700;
+        // On mobile, allow drag from anywhere; on desktop, require drag handle
         if (!isMob && !e.target.closest('.drag-handle')) return;
         dragActivityId = el.dataset.id;
         isDraggingActivity = true; disableToggle = true;
@@ -3849,7 +3850,10 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       el.addEventListener('touchmove', e => {
         if (!isDraggingActivity||touchElement!==el) return;
         const touch = e.touches[0];
-        if (Math.abs(touch.clientX-touchStartX)<10&&Math.abs(touch.clientY-touchStartY)<10) return;
+        const deltaX = Math.abs(touch.clientX-touchStartX);
+        const deltaY = Math.abs(touch.clientY-touchStartY);
+        if (deltaX<10&&deltaY<10) return;
+        isTouchDrag = true;
         e.preventDefault();
         const target  = document.elementFromPoint(touch.clientX,touch.clientY);
         const cluster = target?.closest('.activity-cluster');
