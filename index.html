@@ -2191,12 +2191,22 @@
   text-align: center;
 }
       #timeline-wrap::before {
-        left: 36px;
+        left: 28px;
         transform: none;
       }
 
       #today-marker {
-        padding: 0 12px 0 60px;
+        padding: 0 12px 0 28px;
+        justify-content: flex-start;
+      }
+
+      #today-marker .today-badge {
+        margin-left: 16px;
+      }
+
+      #today-marker .today-line {
+        flex: 0 0 0;
+        display: none;
       }
 
       .month-divider {
@@ -2899,7 +2909,7 @@ function updateLogoInDOM(name, url) {
             date:      (record.date || '').split('T')[0],
             title:     record.title || '',
             style:     record.color || 'red',
-            notes:     '',
+            notes:     record.notes || '',
             assignees: [],
           };
         case 'note':
@@ -3087,17 +3097,18 @@ async function submitPassword() {
       }
 
      if (milestones.length) {
-       const { error } = await supabaseClient.from('milestones').upsert(
-        milestones.map(m => ({
-          id:    m.id,
-          title: m.title || '',
-          color: m.style || 'red',
-          date:  m.date,
-        })),
-        { onConflict: 'id' }
-      );
-      if (error) { console.error('Milestones error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
-}
+        const { error } = await supabaseClient.from('milestones').upsert(
+          milestones.map(m => ({
+            id:    m.id,
+            title: m.title || '',
+            color: m.style || 'red',
+            date:  m.date,
+            notes: m.notes || '',
+          })),
+          { onConflict: 'id' }
+        );
+        if (error) { console.error('Milestones error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
+      }
 
     if (notes.length) {
       const { error } = await supabaseClient.from('notes').upsert(
@@ -3145,7 +3156,7 @@ async function submitPassword() {
   // the save → realtime → reload → save loop.
   function handleRealtimeEvent(payload, itemType) {
     // Suppress events that we ourselves triggered
-    if (Date.now() - lastWriteTime < 3000) return;
+    if (Date.now() - lastWriteTime < 1500) return;
 
     const { eventType, new: newRecord, old: oldRecord } = payload;
 
@@ -3403,7 +3414,7 @@ async function submitPassword() {
       else if (item.type==='activity')  itemsHtml += renderActivityGroup(item, s, isPast);
       itemSide++;
     });
-    return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="copyDateLink('${g.date}')" ondblclick="showDatePopup('${g.date}')">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
+    return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="handleDateLabelClick('${g.date}',this)">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
   }
 
   function renderFixtureGroup(g, side, isPast) {
@@ -3667,6 +3678,40 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       }, true);
     });
 
+    document.querySelectorAll('.date-group').forEach(group => {
+      group.addEventListener('dragover', e => {
+        e.preventDefault();
+        const dragging = document.querySelector('.dragging');
+        if (!dragging || dragging.closest('.activity-cluster')) return;
+        const rows = [...group.querySelectorAll('.tl-row')].filter(r => !r.closest('.activity-cluster'));
+        const afterRow = rows.reduce((closest, row) => {
+          const box    = row.getBoundingClientRect();
+          const offset = e.clientY - box.top - box.height / 2;
+          return (offset < 0 && offset > closest.offset) ? { offset, element: row } : closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+        const draggedRow = dragging.closest('.tl-row');
+        if (!draggedRow) return;
+        afterRow == null
+          ? group.appendChild(draggedRow)
+          : group.insertBefore(draggedRow, afterRow);
+      });
+
+      group.addEventListener('drop', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dragging = document.querySelector('.dragging');
+        if (!dragging || dragging.closest('.activity-cluster')) return;
+        const date = group.querySelector('.date-label')?.dataset.date;
+        if (!date) return;
+        const orderedIds = [...group.querySelectorAll('.tl-row[data-id]')]
+          .map(row => row.dataset.id).filter(Boolean);
+        const dateItems  = orderedIds.map(id => S.items.find(i => i.id === id)).filter(Boolean);
+        const otherItems = S.items.filter(i => !orderedIds.includes(i.id));
+        S.items = [...otherItems, ...dateItems];
+        save();
+      });
+    });
+
     document.querySelectorAll('.activity-cluster').forEach(cluster => {
       cluster.addEventListener('dragover', e => {
         e.preventDefault();
@@ -3675,54 +3720,6 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         const after = getDragAfterElement(cluster,e.clientY);
         after==null ? cluster.appendChild(dragging) : cluster.insertBefore(dragging,after);
       });
-    // ─── DRAG WITHIN DATE GROUP ───────────────────────────────────
-document.querySelectorAll('.date-group').forEach(group => {
-  group.addEventListener('dragover', e => {
-    e.preventDefault();
-    const dragging = document.querySelector('.dragging');
-    if (!dragging) return;
-
-    // Only handle standalone activities (not ones inside a cluster)
-    if (dragging.closest('.activity-cluster')) return;
-
-    const rows = [...group.querySelectorAll('.tl-row:not(.activity-cluster .tl-row)')];
-    const afterRow = rows.reduce((closest, row) => {
-      const box    = row.getBoundingClientRect();
-      const offset = e.clientY - box.top - box.height / 2;
-      return (offset < 0 && offset > closest.offset)
-        ? { offset, element: row }
-        : closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-
-    const wrap = group.querySelector('#timeline-content') || group.parentElement;
-    afterRow == null
-      ? group.appendChild(dragging.closest('.tl-row'))
-      : group.insertBefore(dragging.closest('.tl-row'), afterRow);
-  });
-
-  group.addEventListener('drop', e => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const dragging = document.querySelector('.dragging');
-    if (!dragging || dragging.closest('.activity-cluster')) return;
-
-    // Persist the new order for this date group
-    const date = group.querySelector('.date-label')?.dataset.date;
-    if (!date) return;
-
-    const orderedIds = [...group.querySelectorAll('.tl-row[data-id]')]
-      .map(row => row.dataset.id)
-      .filter(Boolean);
-
-    // Re-sort S.items so items within this date appear in dragged order
-    const dateItems  = orderedIds.map(id => S.items.find(i => i.id === id)).filter(Boolean);
-    const otherItems = S.items.filter(i => !orderedIds.includes(i.id));
-
-    S.items = [...otherItems, ...dateItems];
-    save();
-  });
-});  
       cluster.addEventListener('drop', e => {
         e.preventDefault(); e.stopPropagation();
         const fixtureId = cluster.id.replace('cluster-','');
@@ -3785,7 +3782,7 @@ document.querySelectorAll('.date-group').forEach(group => {
 
     if (type==='fixture') {
       const f = data||{};
-      body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent||'')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date||todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League','Cup','Playoff','Friendly'].map(t=>`<option ${f.matchType===t?'selected':''}>${t}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map(t=>`<div class="team-opt ${f.teamType===t||(!f.teamType&&t==="Men's")?'selected':''}" data-value="${t}">${t}</div>`).join('')}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue||'')}"></div><div class="form-group"><label class="form-label">Venue Type</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType==='home'?'selected':''}" data-value="home">Home</div><div class="venue-opt away ${f.venueType==='away'?'selected':''}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType==='neutral'?'selected':''}" data-value="neutral">Neutral</div></div></div>`;
+      body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent||'')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date||todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League','Cup','Playoff','Friendly'].map(t=>`<option ${f.matchType===t?'selected':''}>${t}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map(t=>`<div class="team-opt ${f.teamType===t||(!f.teamType&&t==="Men's")?'selected':''}" data-value="${t}">${t}</te>`).join('')}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue||'')}"></div><div class="form-group"><label class="form-label">Venue Type</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType==='home'?'selected':''}" data-value="home">Home</div><div class="venue-opt away ${f.venueType==='away'?'selected':''}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType==='neutral'?'selected':''}" data-value="neutral">Neutral</div></div></div>`;
       document.querySelectorAll('#f-vtype .venue-opt').forEach(opt=>opt.addEventListener('click',function(){document.querySelectorAll('#f-vtype .venue-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected');}));
       document.querySelectorAll('#f-teamtype .team-opt').forEach(opt=>opt.addEventListener('click',function(){document.querySelectorAll('#f-teamtype .team-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected');}));
     } else if (type==='activity') {
@@ -3946,6 +3943,23 @@ document.querySelectorAll('.date-group').forEach(group => {
 
   // ─── DATE POPUP ───────────────────────────────────────────────
   let currentPopupDate = null;
+
+  let _lastClickedDate = null;
+
+  function handleDateLabelClick(dateStr, el) {
+    if (_lastClickedDate === dateStr) {
+      // Second click on the same label — open popup
+      _lastClickedDate = null;
+      showDatePopup(dateStr);
+    } else {
+      // First click — scroll to date
+      _lastClickedDate = dateStr;
+      const dg = el.closest('.date-group');
+      if (dg) window.scrollTo({ top: window.pageYOffset + dg.getBoundingClientRect().top - 80, behavior: 'smooth' });
+      // Reset after 2 s so a long pause starts the sequence over
+      setTimeout(() => { if (_lastClickedDate === dateStr) _lastClickedDate = null; }, 2000);
+    }
+  }
 
   function copyDateLink(dateStr) {
     document.querySelectorAll('.date-label').forEach(label => {
