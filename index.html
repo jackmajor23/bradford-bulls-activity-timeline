@@ -2157,6 +2157,162 @@
       margin-bottom: 10px;
     }
 
+    /* ─── SKELETON LOADING SCREEN ─── */
+    #skeleton-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 5000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 80px;
+    }
+
+    .skeleton-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+      background: linear-gradient(to bottom, rgba(247, 245, 242, 0.96) 0%, rgba(247, 245, 242, 0.85) 100%);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .skeleton-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #e8e4df 25%, #f0eee9 50%, #e8e4df 75%);
+      background-size: 200% 100%;
+      animation: skeletonPulse 2.5s ease-in-out infinite;
+    }
+
+    .skeleton-title {
+      width: 160px;
+      height: 20px;
+      background: linear-gradient(90deg, #e8e4df 25%, #f0eee9 50%, #e8e4df 75%);
+      background-size: 200% 100%;
+      animation: skeletonPulse 2.5s ease-in-out infinite;
+      border-radius: 4px;
+    }
+
+    .skeleton-timeline-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      padding: 40px 0;
+    }
+
+    .skeleton-spine {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, transparent 0%, #e8e4df 3%, #e8e4df 97%, transparent 100%);
+      transform: translateX(-50%);
+    }
+
+    .skeleton-row {
+      display: grid;
+      grid-template-columns: 1fr 32px 1fr;
+      align-items: start;
+      padding: 0 40px;
+      margin-bottom: 24px;
+    }
+
+    .skeleton-row.side-left .skeleton-card {
+      grid-column: 1;
+      justify-self: end;
+    }
+
+    .skeleton-row.side-left .skeleton-node {
+      grid-column: 2;
+      justify-self: center;
+    }
+
+    .skeleton-row.side-right .skeleton-card {
+      grid-column: 3;
+      justify-self: start;
+    }
+
+    .skeleton-row.side-right .skeleton-node {
+      grid-column: 2;
+      justify-self: center;
+    }
+
+    .skeleton-node {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(90deg, #e8e4df 25%, #f0eee9 50%, #e8e4df 75%);
+      background-size: 200% 100%;
+      animation: skeletonPulse 2.5s ease-in-out infinite;
+      margin-top: 20px;
+    }
+
+    .skeleton-node.fixture {
+      width: 18px;
+      height: 18px;
+      margin-top: 16px;
+    }
+
+    .skeleton-card {
+      width: 280px;
+      height: 90px;
+      background: linear-gradient(90deg, #e8e4df 25%, #f0eee9 50%, #e8e4df 75%);
+      background-size: 200% 100%;
+      animation: skeletonPulse 2.5s ease-in-out infinite;
+      border-radius: var(--card-radius);
+    }
+
+    .skeleton-card.short {
+      height: 60px;
+      width: 240px;
+    }
+
+    .skeleton-card.milestone {
+      height: 70px;
+      width: 260px;
+    }
+
+    @keyframes skeletonPulse {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    .skeleton-loading-text {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: #999;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      animation: textPulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes textPulse {
+      0%, 100% {
+        opacity: 0.4;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+
     @media (max-width: 700px) {
       /* Centre date labels, month labels and past toggle with today badge */
 .date-header {
@@ -2380,6 +2536,38 @@
 </head>
 
 <body>
+
+  <!-- Skeleton Loading Screen -->
+  <div id="skeleton-screen">
+    <div class="skeleton-header">
+      <div class="skeleton-logo"></div>
+      <div class="skeleton-title"></div>
+    </div>
+    <div class="skeleton-timeline-wrap">
+      <div class="skeleton-spine"></div>
+      <div class="skeleton-row side-left">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-node fixture"></div>
+      </div>
+      <div class="skeleton-row side-right">
+        <div class="skeleton-node"></div>
+        <div class="skeleton-card short"></div>
+      </div>
+      <div class="skeleton-row side-left">
+        <div class="skeleton-card milestone"></div>
+        <div class="skeleton-node"></div>
+      </div>
+      <div class="skeleton-row side-right">
+        <div class="skeleton-node fixture"></div>
+        <div class="skeleton-card"></div>
+      </div>
+      <div class="skeleton-row side-left">
+        <div class="skeleton-card short"></div>
+        <div class="skeleton-node"></div>
+      </div>
+    </div>
+    <div class="skeleton-loading-text">Syncing from cloud...</div>
+  </div>
 
   <header id="header">
     <div id="header-brand">
@@ -3108,9 +3296,9 @@ async function submitPassword() {
           date:    n.date,
         })),
         { onConflict: 'id' }
-  );
-  if (error) { console.error('Notes error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
-}
+      );
+      if (error) { console.error('Notes error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
+    }
 
       console.log('✓ Saved to Supabase');
       updateSyncStatus();
@@ -3205,10 +3393,6 @@ async function submitPassword() {
       console.warn('localStorage parse failed, starting fresh:', e);
     }
 
-    if (!Array.isArray(S.items) || S.items.length === 0) {
-      seedDemo();
-    }
-
     // Ensure all items have assignees array
     S.items.forEach(i => { if (!i.assignees) i.assignees = []; });
 
@@ -3227,7 +3411,7 @@ async function submitPassword() {
   //      demo data being pushed to Supabase after cloud data arrives).
   //   2. Pushes local state to Supabase when the DB is empty on first run.
   async function loadFromCloud() {
-    if (!useCloudSync) { loadFromLocal(); render(); return; }
+    if (!useCloudSync) { loadFromLocal(); render(); hideSkeleton(); return; }
 
     loadFromLocal();
     render();
@@ -3238,25 +3422,39 @@ async function submitPassword() {
       if (data === null) {
         // Network/DB error — keep local data, don't clobber it.
         console.warn('Cloud load failed; using local data.');
+        hideSkeleton();
         return;
       }
 
       if (data.items.length > 0) {
         // Cloud has data — it is the source of truth.
-        clearTimeout(saveDebounceTimer); // Cancel any pending seedDemo save
+        clearTimeout(saveDebounceTimer); // Cancel any pending save
         S.items          = data.items;
         S.savedAssignees = data.savedAssignees.length ? data.savedAssignees : S.savedAssignees;
         saveToLocal();
         render();
         showToast('✓ Synced from cloud');
       } else {
-        // Cloud is empty (first run) — push local/demo data up.
+        // Cloud is empty (first run) — push local data up.
         console.log('Cloud empty — pushing local data to Supabase.');
         await saveToSupabase();
       }
+      hideSkeleton();
     } catch (e) {
   console.error('Supabase save failed:', e.message || e);
+  hideSkeleton();
 }
+  }
+
+  function hideSkeleton() {
+    const skeleton = document.getElementById('skeleton-screen');
+    if (skeleton) {
+      skeleton.style.opacity = '0';
+      skeleton.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => {
+        skeleton.style.display = 'none';
+      }, 300);
+    }
   }
 
   // FIX: save() debounces Supabase writes to avoid a write per keypress
@@ -3271,43 +3469,6 @@ async function submitPassword() {
 
   function saveAssignees() { save(); }
   function load()          { loadFromCloud(); }
-
-  // ─── SEED DATA ────────────────────────────────────────────────
-  // FIX: seedDemo now calls saveToLocal() only.  It must NOT call save()
-  // because that would debounce a Supabase write that might fire before the
-  // cloud load returns, overwriting real production data.
-  function seedDemo() {
-    const today = new Date();
-    const fixtures = [
-      { opponent:'Halifax Panthers',    offset:-15, venue:'Odsal Stadium',       matchType:'League', home:true,  team:"Men's" },
-      { opponent:'Featherstone Rovers', offset: -5, venue:'Millenium Stadium',   matchType:'League', home:false, team:"Men's" },
-      { opponent:'York Knights',        offset:  4, venue:'Odsal Stadium',       matchType:'League', home:true,  team:"Men's" },
-      { opponent:'Toulouse Olympique',  offset: 14, venue:'Stade Ernest-Wallon', matchType:'League', home:false, team:"Men's" },
-      { opponent:'Sheffield Eagles',    offset: 25, venue:'Odsal Stadium',       matchType:'League', home:true,  team:"Men's" },
-    ];
-    fixtures.forEach(f => {
-      const fid   = uid();
-      const fdate = offsetDate(today, f.offset);
-      S.items.push({ id:fid, type:'fixture', date:fmtDate(fdate), opponent:f.opponent, venue:f.venue, matchType:f.matchType, venueType:f.home?'home':'away', teamType:f.team, notes:'', assignees:[] });
-      const count = Math.floor(Math.random()*3)+1;
-      for (let i=0;i<count;i++) {
-        S.items.push({ id:uid(), type:'activity', date:fmtDate(offsetDate(fdate,-Math.floor(Math.random()*4))), title:randomActivity(), actType:ACTIVITY_TYPES[Math.floor(Math.random()*ACTIVITY_TYPES.length)].id, fixtureId:fid, notes:'', assignees:[], complete:Math.random()>0.5 });
-      }
-    });
-    S.items.push({ id:uid(), type:'milestone', date:fmtDate(offsetDate(today,-20)), title:'Mid-Season Launch',  style:'gold', notes:'Media Day Arena Reveal',        assignees:[] });
-    S.items.push({ id:uid(), type:'milestone', date:fmtDate(offsetDate(today, 30)), title:'Playoffs Kick-off', style:'red',  notes:'Championship Bracket Matchup',   assignees:[] });
-    S.items.push({ id:uid(), type:'note',      date:fmtDate(offsetDate(today,  7)), content:'Key sponsor wants increased signage on east stand. Follow up by end of week with deck.', assignees:[] });
-    S.items.push({ id:uid(), type:'note',      date:fmtDate(offsetDate(today, -3)), content:'Season ticket sales ahead of target. Digital reach up 18% YoY. Action: produce mid-season report.', assignees:[] });
-    if (!S.savedAssignees || !S.savedAssignees.length) {
-      S.savedAssignees = ['Sarah Mitchell','Tom Bradley','Jake Whitfield','Emma Clarke','Dave Sutton'];
-    }
-    saveToLocal(); // FIX: local only — not save() which would write to Supabase
-  }
-
-  function randomActivity() {
-    const acts = ['Instagram Post','Facebook Reel','Press Release','Matchday Programme','TikTok Video','Twitter Thread','Sponsor Video'];
-    return acts[Math.floor(Math.random()*acts.length)];
-  }
 
   // ─── UTILITY ──────────────────────────────────────────────────
   function offsetDate(d, days) { const r = new Date(d); r.setDate(r.getDate()+days); return r; }
@@ -3772,7 +3933,7 @@ function showSyncToast(msg = '🔄 Synced from another device') {
 
     if (type==='fixture') {
       const f = data||{};
-      body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent||'')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date||todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League','Cup','Playoff','Friendly'].map(t=>`<option ${f.matchType===t?'selected':''}>${t}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map(t=>`<div class="team-opt ${f.teamType===t||(!f.teamType&&t==="Men's")?'selected':''}" data-value="${t}">${t}</te>`).join('')}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue||'')}"></div><div class="form-group"><label class="form-label">Venue Type</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType==='home'?'selected':''}" data-value="home">Home</div><div class="venue-opt away ${f.venueType==='away'?'selected':''}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType==='neutral'?'selected':''}" data-value="neutral">Neutral</div></div></div>`;
+      body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent||'')}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date||todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${['League','Cup','Playoff','Friendly'].map(t=>`<option ${f.matchType===t?'selected':''}>${t}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map(t=>`<div class="team-opt ${f.teamType===t||(!f.teamType&&t==="Men's")?'selected':''}" data-value="${t}">${t}</div>`).join('')}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue||'')}"></div><div class="form-group"><label class="form-label">Venue Type</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType==='home'?'selected':''}" data-value="home">Home</div><div class="venue-opt away ${f.venueType==='away'?'selected':''}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType==='neutral'?'selected':''}" data-value="neutral">Neutral</div></div></div>`;
       document.querySelectorAll('#f-vtype .venue-opt').forEach(opt=>opt.addEventListener('click',function(){document.querySelectorAll('#f-vtype .venue-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected');}));
       document.querySelectorAll('#f-teamtype .team-opt').forEach(opt=>opt.addEventListener('click',function(){document.querySelectorAll('#f-teamtype .team-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected');}));
     } else if (type==='activity') {
