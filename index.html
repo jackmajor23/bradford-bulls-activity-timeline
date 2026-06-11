@@ -2023,184 +2023,6 @@
       opacity: 0.5;
     }
 
-    /* Settings Modal Styles */
-    .settings-modal {
-      background: var(--card);
-      border-radius: var(--card-radius);
-      max-width: 400px;
-      width: 100%;
-      max-height: 80vh;
-      box-shadow: var(--shadow-hover);
-      animation: scaleIn 0.2s ease;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .settings-header {
-      background: linear-gradient(135deg, #f7ba3e 0%, #e8cb6a 100%);
-      padding: 20px 24px;
-      text-align: center;
-    }
-
-    .settings-title {
-      font-family: var(--font-display);
-      font-size: 24px;
-      letter-spacing: 0.08em;
-      color: var(--ink);
-      text-transform: uppercase;
-    }
-
-    .settings-body {
-      padding: 20px 24px;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    .settings-input-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .settings-input {
-      flex: 1;
-      padding: 10px 14px;
-      border: 1.5px solid var(--line);
-      border-radius: 7px;
-      font-family: var(--font-body);
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .settings-input:focus {
-      border-color: var(--gold);
-    }
-
-    .settings-names-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .settings-name-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      background: #fafafa;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      transition: all 0.15s;
-    }
-
-    .settings-name-item:hover {
-      border-color: var(--ink-light);
-      background: #f5f5f5;
-    }
-
-    .settings-name-item:hover .settings-name-edit {
-      opacity: 1;
-    }
-
-    .settings-name-item:hover .settings-name-delete {
-      opacity: 1;
-    }
-
-    .settings-section {
-      margin-bottom: 24px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .settings-toggle-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .settings-toggle-row input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: var(--red);
-    }
-
-    .settings-toggle-row label {
-      font-size: 13px;
-      color: var(--ink);
-      cursor: pointer;
-      user-select: none;
-    }
-
-    #cloud-sync-config {
-      animation: fadeIn 0.2s ease;
-    }
-
-    #auth-status {
-      font-size: 12px;
-      color: var(--ink-mid);
-      margin-bottom: 12px;
-      padding: 8px 12px;
-      background: rgba(247, 245, 242, 0.5);
-      border-radius: 6px;
-      border: 1px solid var(--line);
-    }
-
-    #auth-status.authenticated {
-      color: var(--green);
-      background: rgba(46, 125, 50, 0.1);
-      border-color: var(--green);
-    }
-
-    #auth-status.error {
-      color: var(--red);
-      background: rgba(242, 12, 35, 0.1);
-      border-color: var(--red);
-    }
-
-    .settings-name-text {
-      flex: 1;
-      font-size: 13px;
-      color: var(--ink);
-      font-weight: 500;
-    }
-
-    .settings-name-edit {
-      opacity: 0.5;
-      padding: 5px;
-      cursor: pointer;
-      color: var(--ink-mid);
-      transition: opacity 0.15s;
-    }
-
-    .settings-name-edit:hover {
-      color: var(--blue);
-      opacity: 1;
-    }
-
-    .settings-name-delete {
-      opacity: 0.5;
-      padding: 5px;
-      cursor: pointer;
-      color: var(--red);
-      transition: opacity 0.15s;
-    }
-
-    .settings-name-delete:hover {
-      opacity: 1;
-    }
-
-    .settings-footer {
-      padding: 16px 24px;
-      border-top: 1px solid var(--line);
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-
     /* Inline Settings Panel Styles */
     .inline-settings-panel {
       background: var(--card);
@@ -2718,21 +2540,7 @@
       </div>
       <div>
         <h1>BRADFORD BULLS</h1>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span>Activity Timeline</span>
-          <button onclick="openSettingsModal()"
-            style="background: none; border: none; cursor: pointer; padding: 0; opacity: 0.3; transition: opacity 0.15s; display: flex; align-items: center;">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
-              style="width: 12px; height: 12px;">
-              <circle cx="8" cy="8" r="6" />
-              <circle cx="8" cy="8" r="2" />
-              <path d="M8 2 L8 4" />
-              <path d="M8 12 L8 14" />
-              <path d="M2 8 L4 8" />
-              <path d="M12 8 L14 8" />
-            </svg>
-          </button>
-        </div>
+        <span>Activity Timeline</span>
       </div>
     </div>
 
@@ -2874,31 +2682,6 @@
       <div class="popup-actions">
         <button class="btn btn-outline" onclick="closeDatePopup()">Cancel</button>
         <button class="btn btn-primary" onclick="goToDate()">Go to Date</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="settings-overlay" class="modal-overlay" style="display: none;">
-    <div class="settings-modal">
-      <div class="settings-header">
-        <div class="settings-title">Settings</div>
-      </div>
-      <div class="settings-body">
-        <div style="border: 1px solid var(--line); border-radius: 8px; padding: 16px;">
-          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Manage Names</h3>
-          <p style="color: var(--ink-mid); font-size: 13px; margin-bottom: 16px;">
-            Add, edit, or remove names that appear as quick options when assigning activities.
-          </p>
-          <div class="settings-input-row">
-            <input type="text" id="settings-name-input" placeholder="Enter a name..." class="settings-input">
-            <button class="btn btn-primary" onclick="addName()">Add</button>
-          </div>
-          <div id="settings-names-list" class="settings-names-list"></div>
-        </div>
-
-      </div>
-      <div class="settings-footer">
-        <button class="btn btn-outline" onclick="closeSettingsModal()">Done</button>
       </div>
     </div>
   </div>
@@ -4407,8 +4190,8 @@ function showSyncToast(msg = '🔄 Synced from another device') {
     if (type==='fixture') {
       const opponent = document.getElementById('f-opponent').value.trim();
       const date     = document.getElementById('f-date').value;
-      if (!opponent||!date) return alert('Opponent and date are required');
-      const venueType = document.querySelector('#f-vtype .venue-opt.selected')?.dataset.value||'home';
+      const venueType = document.querySelector('#f-vtype .venue-opt.selected')?.dataset.value;
+      if (!opponent||!date||!venueType) return alert('Opponent, date, and venue type are required');
       const teamType  = document.querySelector('#f-teamtype .team-opt.selected')?.dataset.value||"Men's";
       const obj = { id:editId||uid(), type:'fixture', date, opponent, venue:document.getElementById('f-venue').value, matchType:document.getElementById('f-type').value, venueType, teamType, assignees:[] };
       if (editId) S.items[S.items.findIndex(i=>i.id===editId)]=obj; else S.items.push(obj);
@@ -4561,66 +4344,6 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       el.style.cssText = 'color:var(--orange);background:rgba(232,102,10,0.1);border-color:var(--orange);font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid;margin-bottom:12px;';
     }
   }
-
-  function openSettingsModal() {
-    document.getElementById('settings-overlay').style.display='flex';
-    document.getElementById('settings-name-input').value='';
-    updateSyncStatus();         // FIX: was crashing; now a real function
-    renderSettingsNames();
-  }
-
-  function renderSettingsNames() {
-    const list = document.getElementById('settings-names-list');
-    if (!list) return;
-    list.innerHTML = S.savedAssignees.map((name,idx) => `
-      <div class="settings-name-item">
-        <span class="settings-name-text">${esc(name)}</span>
-        <span class="settings-name-edit"   onclick="editSettingsName(${idx})"   title="Edit">✎</span>
-        <span class="settings-name-delete" onclick="deleteSettingsName(${idx})" title="Delete">✕</span>
-      </div>`).join('');
-  }
-
-  function addName() {
-    const inp  = document.getElementById('settings-name-input');
-    const name = (inp.value||'').trim();
-    if (!name) return;
-    if (S.savedAssignees.includes(name)) { showToast('Name already exists'); return; }
-    S.savedAssignees.push(name);
-    saveAssignees(); inp.value=''; renderSettingsNames(); showToast('Name added');
-  }
-  function deleteSettingsName(idx) { S.savedAssignees.splice(idx,1); saveAssignees(); renderSettingsNames(); showToast('Name removed'); }
-  function editSettingsName(idx) {
-    const name = S.savedAssignees[idx];
-    const inp  = document.getElementById('settings-name-input');
-    inp.value = name; inp.focus();
-    S.savedAssignees.splice(idx,1); renderSettingsNames();
-    const addBtn  = document.querySelector('.settings-input-row .btn-primary');
-    const origCb  = addBtn.onclick;
-    addBtn.textContent = 'Update';
-    addBtn.onclick = () => {
-      const newName = (inp.value||'').trim();
-      if (!newName||S.savedAssignees.includes(newName)) {
-        S.savedAssignees.splice(idx,0,name); renderSettingsNames(); resetSettingsAddButton(addBtn,origCb);
-        if (!newName) return; showToast('Name already exists'); return;
-      }
-      S.items.forEach(item=>{ if(item.assignees){ const i=item.assignees.indexOf(name); if(i!==-1) item.assignees[i]=newName; } });
-      S.savedAssignees.splice(idx,0,newName);
-      S.savedAssignees.sort((a,b)=>a.localeCompare(b));
-      saveAssignees(); save(); render(); inp.value=''; renderSettingsNames();
-      resetSettingsAddButton(addBtn,origCb); showToast('Name updated');
-    };
-  }
-  function resetSettingsAddButton(btn,origCb) { btn.textContent='Add'; btn.onclick=origCb; }
-  function closeSettingsModal() { document.getElementById('settings-overlay').style.display='none'; }
-
-  document.addEventListener('keydown', e => {
-    const settingsOverlay = document.getElementById('settings-overlay');
-    if (settingsOverlay?.style.display==='flex' && e.key==='Enter') {
-      const inp    = document.getElementById('settings-name-input');
-      const addBtn = document.querySelector('.settings-input-row .btn-primary');
-      if (document.activeElement===inp) addBtn?.click();
-    }
-  });
 
   // ─── TOASTS ───────────────────────────────────────────────────
   function showToast(msg) {
