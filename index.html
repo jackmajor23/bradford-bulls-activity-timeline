@@ -3147,13 +3147,11 @@ function updateLogoInDOM(name, url) {
           return {
             id:        record.id,
             type:      'fixture',
-            // FIX: Support both `date` (new) and `kickoff_at` (legacy column).
-            date:      (record.date || record.kickoff_at || '').split('T')[0],
-            opponent:  record.opponent || record.away_team || '',
-            venue:     record['venue type'] || '',
-            venueType: record.match_venue || 'home',
-            matchType: record.competition || 'League',
-            // FIX: Was hardcoded "Men's" regardless of stored value.
+            date:      (record.date || '').split('T')[0],
+            opponent:  record.opponent || '',
+            venue:     record.venue || '',
+            venueType: record.venue_type || 'home',
+            matchType: record.match_type || 'League',
             teamType:  record.team_type || "Men's",
             assignees: [],
           };
@@ -3336,11 +3334,11 @@ async function submitPassword() {
           fixtures.map(f => ({
             id:          f.id,
             opponent:    f.opponent    || '',
-            "venue type": f.venue       || '',
-            match_venue: f.venueType   || 'home',
-            competition: f.matchType   || 'League',
-            team_type:   f.teamType    || "Men's",
             date:        f.date,
+            match_type:  f.matchType   || 'League',
+            team_type:   f.teamType    || "Men's",
+            venue:       f.venue       || '',
+            venue_type:  f.venueType   || 'home',
           })),
           { onConflict: 'id' }
         );
