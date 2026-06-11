@@ -566,11 +566,11 @@
       background: linear-gradient(135deg, #ffe8c0 0%, #ffd0d0 100%);
       border-radius: var(--card-radius);
       box-shadow: var(--shadow);
+      border: 1px solid var(--line);
       overflow: hidden;
       cursor: default;
       transition: box-shadow 0.2s, transform 0.2s;
       width: 100%;
-      padding: 9px 12px;
     }
 
     .fixture-card:hover {
@@ -1109,6 +1109,11 @@
       padding: 0 6px;
       opacity: 0.5;
       transition: opacity 0.15s, color 0.15s;
+    }
+
+    .fixture-card .drag-handle {
+      position: static;
+      transform: none;
     }
 
     .mini-activity:hover .drag-handle,
