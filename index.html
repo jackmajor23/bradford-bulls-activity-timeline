@@ -2904,13 +2904,14 @@
     { id: 'social',    label: 'Social',       icon: '📱', cls: 'type-social'    },
     { id: 'email',     label: 'Email',         icon: '📧', cls: 'type-email'     },
     { id: 'pr',        label: 'PR',            icon: '📰', cls: 'type-pr'        },
-    { id: 'matchday',  label: 'Matchday',      icon: '🏉', cls: 'type-matchday'  },
+    { id: 'training',  label: 'Training',     icon: '🏉', cls: 'type-training'  },
     { id: 'digital',   label: 'Digital',       icon: '💻', cls: 'type-digital'   },
     { id: 'print',     label: 'Print',         icon: '🖨️', cls: 'type-print'     },
     { id: 'event',     label: 'Event',         icon: '🎟️', cls: 'type-event'     },
     { id: 'photo',     label: 'Photography',   icon: '📷', cls: 'type-photo'     },
     { id: 'interview', label: 'Interview',     icon: '🎙️', cls: 'type-interview' },
     { id: 'website',   label: 'Website',       icon: '💻', cls: 'type-website'   },
+    { id: 'design',    label: 'Design',        icon: '🎨', cls: 'type-design'    },
     { id: 'other',     label: 'Other',         icon: '📌', cls: 'type-other'     },
   ];
 
@@ -4046,9 +4047,11 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         const otherItems = S.items.filter(i => !orderedIds.includes(i.id));
 
         // ── LIVE DATE UPDATE: assign the drop-target date ──
+        let dateChanged = false;
         dateItems.forEach(item => {
           if (item.date !== date) {
             item.date = date;
+            dateChanged = true;
           }
         });
 
@@ -4056,7 +4059,9 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         save();
         // Re-render so the card date label refreshes
         render();
-        showToast('📅 Date updated');
+        if (dateChanged) {
+          showToast('📅 Date updated');
+        }
       });
     });
 
