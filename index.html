@@ -2201,6 +2201,58 @@
       gap: 8px;
     }
 
+    /* Inline Settings Panel Styles */
+    .inline-settings-panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 12px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .inline-settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #f7ba3e 0%, #e8cb6a 100%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .inline-settings-header h3 {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+      margin: 0;
+    }
+
+    .inline-settings-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: var(--ink);
+      cursor: pointer;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    .inline-settings-close:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .inline-settings-body {
+      padding: 16px;
+    }
+
     .empty-state {
       text-align: center;
       padding: 80px 24px;
@@ -2844,29 +2896,6 @@
           <div id="settings-names-list" class="settings-names-list"></div>
         </div>
 
-        <div class="settings-section" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line);">
-          <h3 style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px;">Cloud Sync (Supabase)
-          </h3>
-          <p style="color: var(--ink-mid); font-size: 12px; margin-bottom: 16px; line-height: 1.5;">
-            Your timeline data is automatically synced to Supabase for sharing across devices and with others.
-          </p>
-
-          <div id="sync-status"
-            style="font-size: 12px; color: var(--green); margin-bottom: 12px; padding: 8px 12px; background: rgba(46,125,50,0.1); border-radius: 6px; border: 1px solid var(--green);">
-            ✓ Cloud sync active — saving to Supabase
-          </div>
-
-          <div
-            style="margin-top: 16px; padding: 12px; background: rgba(26,79,139,0.1); border-radius: 6px; border: 1px solid var(--blue);">
-            <h4
-              style="font-size: 11px; font-weight: 600; color: var(--blue); margin: 0 0 8px 0; text-transform: uppercase;">
-              How it works</h4>
-            <p style="font-size: 11px; color: var(--ink-mid); margin: 0; line-height: 1.6;">
-              This app uses Supabase for real-time sync. Data is automatically saved to Supabase when you make changes,
-              and the app uses real-time subscriptions to sync changes from other devices instantly.
-            </p>
-          </div>
-        </div>
       </div>
       <div class="settings-footer">
         <button class="btn btn-outline" onclick="closeSettingsModal()">Done</button>
@@ -4200,7 +4229,7 @@ function showSyncToast(msg = '🔄 Synced from another device') {
     const assigneeSection = () => {
       const chips     = (currentModal.assignees||[]).map((p,i)=>`<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`).join('');
       const quickPills= S.savedAssignees.filter(n=>!(currentModal.assignees||[]).includes(n)).slice(0,8).map(n=>`<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
-      return `<div class="form-group"><div class="quick-add-row" id="quick-add-row"><span class="quick-add-label">Quick Add:</span>${quickPills}</div><div class="custom-assignee-row"><input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()"><button class="btn btn-outline" onclick="addCustomAssignee()">Add</button></div><div class="assignee-list" id="assignee-list">${chips}</div></div>`;
+      return `<div class="form-group"><div class="quick-add-row" id="quick-add-row"><span class="quick-add-label">Quick Add:</span>${quickPills}<button class="quick-add-settings-btn" onclick="openInlineSettings()" title="Manage names"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"></circle><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"></path></svg></button></div><div class="custom-assignee-row"><input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()"><button class="btn btn-outline" onclick="addCustomAssignee()">Add</button></div><div class="assignee-list" id="assignee-list">${chips}</div></div>`;
     };
 
     if (type==='fixture') {
@@ -4248,8 +4277,97 @@ function showSyncToast(msg = '🔄 Synced from another device') {
     if (quickRow) {
       const pills = S.savedAssignees.filter(n=>!currentModal.assignees.includes(n)).slice(0,8).map(n=>`<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`).join('');
       quickRow.style.display = pills?'':'none';
-      if (pills) quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}`;
+      if (pills) quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}<button class="quick-add-settings-btn" onclick="openInlineSettings()" title="Manage names"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"></circle><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"></path></svg></button>`;
     }
+  }
+
+  function openInlineSettings() {
+    const modalBody = document.getElementById('modal-body');
+    if (!modalBody) return;
+    
+    const namesList = S.savedAssignees.map((name, idx) => `
+      <div class="settings-name-item">
+        <span class="settings-name-text">${esc(name)}</span>
+        <span class="settings-name-edit" onclick="editInlineName(${idx})" title="Edit">✎</span>
+        <span class="settings-name-delete" onclick="deleteInlineName(${idx})" title="Delete">✕</span>
+      </div>
+    `).join('');
+    
+    const settingsHTML = `
+      <div class="inline-settings-panel" id="inline-settings-panel">
+        <div class="inline-settings-header">
+          <h3>Manage Names</h3>
+          <button class="inline-settings-close" onclick="closeInlineSettings()">✕</button>
+        </div>
+        <div class="inline-settings-body">
+          <div class="settings-input-row">
+            <input type="text" id="inline-name-input" placeholder="Enter a name..." class="settings-input">
+            <button class="btn btn-primary" onclick="addInlineName()">Add</button>
+          </div>
+          <div id="inline-names-list" class="settings-names-list">${namesList}</div>
+        </div>
+      </div>
+    `;
+    
+    // Insert the settings panel after the quick-add row
+    const quickRow = document.getElementById('quick-add-row');
+    if (quickRow) {
+      quickRow.insertAdjacentHTML('afterend', settingsHTML);
+    }
+    
+    document.getElementById('inline-name-input').value = '';
+    document.getElementById('inline-name-input').focus();
+  }
+
+  function closeInlineSettings() {
+    const panel = document.getElementById('inline-settings-panel');
+    if (panel) panel.remove();
+  }
+
+  function addInlineName() {
+    const inp = document.getElementById('inline-name-input');
+    const name = (inp.value || '').trim();
+    if (!name) return;
+    if (S.savedAssignees.includes(name)) {
+      showToast('Name already exists');
+      return;
+    }
+    S.savedAssignees.push(name);
+    saveAssignees();
+    inp.value = '';
+    renderInlineNames();
+    refreshAssigneeUI();
+    showToast('Name added');
+  }
+
+  function deleteInlineName(idx) {
+    S.savedAssignees.splice(idx, 1);
+    saveAssignees();
+    renderInlineNames();
+    refreshAssigneeUI();
+    showToast('Name removed');
+  }
+
+  function editInlineName(idx) {
+    const name = S.savedAssignees[idx];
+    const inp = document.getElementById('inline-name-input');
+    inp.value = name;
+    inp.focus();
+    S.savedAssignees.splice(idx, 1);
+    renderInlineNames();
+    refreshAssigneeUI();
+  }
+
+  function renderInlineNames() {
+    const list = document.getElementById('inline-names-list');
+    if (!list) return;
+    list.innerHTML = S.savedAssignees.map((name, idx) => `
+      <div class="settings-name-item">
+        <span class="settings-name-text">${esc(name)}</span>
+        <span class="settings-name-edit" onclick="editInlineName(${idx})" title="Edit">✎</span>
+        <span class="settings-name-delete" onclick="deleteInlineName(${idx})" title="Delete">✕</span>
+      </div>
+    `).join('');
   }
   function showAssigneeSuggestions(query) {
     const dropdown = document.getElementById('autocomplete-dropdown');
