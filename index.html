@@ -65,49 +65,51 @@
                 overflow-x: hidden;
             }
 
-            /* ─── SYNC BANNER ─── */
+            /* ─── SYNC POPUP NOTIFICATION ─── */
             #sync-banner {
                 position: fixed;
-                top: 56px;
-                left: 0;
-                right: 0;
-                z-index: 190;
-                background: var(--orange);
+                bottom: 88px;
+                right: 20px;
+                z-index: 500;
+                background: var(--ink);
                 color: #fff;
                 font-family: var(--font-body);
                 font-size: 12px;
                 font-weight: 600;
-                text-align: center;
-                padding: 7px 16px;
-                letter-spacing: 0.03em;
-                display: none;
+                padding: 10px 16px;
+                border-radius: 24px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
+                display: flex;
                 align-items: center;
-                justify-content: center;
                 gap: 8px;
+                pointer-events: none;
+                transform: translateX(calc(100% + 28px));
+                transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+                max-width: 260px;
+                white-space: nowrap;
             }
             #sync-banner.show {
-                display: flex;
+                transform: translateX(0);
             }
             #sync-banner.connected {
                 background: var(--green);
-                animation: bannerFade 2.5s ease forwards;
+                animation: syncPopOut 2.8s ease forwards;
             }
-            @keyframes bannerFade {
-                0% {
-                    opacity: 1;
-                }
-                60% {
+            @keyframes syncPopOut {
+                0%,
+                55% {
+                    transform: translateX(0);
                     opacity: 1;
                 }
                 100% {
+                    transform: translateX(calc(100% + 28px));
                     opacity: 0;
-                    pointer-events: none;
                 }
             }
             .sync-spinner {
-                width: 12px;
-                height: 12px;
-                border: 2px solid rgba(255, 255, 255, 0.4);
+                width: 11px;
+                height: 11px;
+                border: 2px solid rgba(255, 255, 255, 0.35);
                 border-top-color: #fff;
                 border-radius: 50%;
                 animation: spin 0.8s linear infinite;
@@ -2205,27 +2207,18 @@
                     width: 100%;
                 }
 
-                /* FIX: true flex centering — eliminates asymmetric left-whitespace on mobile */
                 #past-toggle {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 5px;
-                    padding: 8px 20px;
-                    width: max-content;
-                    margin: 0 auto;
-                    text-align: center;
+                    padding: 8px 20px 8px 36px;
+                    text-align: left;
+                    width: auto;
+                    margin: 0;
                 }
                 #past-toggle.open {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 5px;
                     padding: 8px 20px;
+                    text-align: center;
                     left: 50%;
                     transform: translateX(-50%);
                     margin-left: 0;
-                    text-align: center;
                 }
 
                 #timeline-wrap::before {
@@ -2388,9 +2381,11 @@
                     max-width: 85vw;
                 }
                 .drag-handle {
-                    opacity: 0.8 !important;
-                    padding: 0 12px !important;
+                    opacity: 1 !important;
+                    padding: 0 14px !important;
                     font-size: 20px !important;
+                    touch-action: none; /* prevents browser from intercepting as scroll */
+                    cursor: grab;
                 }
                 .mini-activity,
                 .activity-card,
@@ -2999,7 +2994,7 @@
             // ═══════════════════════════════════════════════════════════════
             // LOGO SYSTEM (FIX: robust fallback chain)
             // ═══════════════════════════════════════════════════════════════
-            const LOGO_CACHE_KEY = "bbLogoCache_v1";
+            const LOGO_CACHE_KEY = "bbLogoCache_v2";
             let logoCache = {};
             try {
                 logoCache = JSON.parse(
@@ -3017,72 +3012,15 @@
                 } catch (e) {}
             }
 
+            // Confirmed working URLs (verified via Wikipedia File API).
+            // All other clubs are resolved asynchronously by discoverLogoAsync.
             const KNOWN_LOGOS = {
                 "Bradford Bulls":
-                    "https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/logo-bradford-bulls.svg",
-                "Leigh Leopards":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/5/5c/Leigh_Leopards_2023_logo.svg/200px-Leigh_Leopards_2023_logo.svg.png",
-                "Catalans Dragons":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/6/6c/Catalans_Dragons_logo.svg/200px-Catalans_Dragons_logo.svg.png",
-                "St Helens":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/4/42/St_Helens_RLFC_logo.svg/200px-St_Helens_RLFC_logo.svg.png",
+                    "https://upload.wikimedia.org/wikipedia/en/1/1f/2025_Bradford_Bulls_Logo.png",
                 "Leeds Rhinos":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Leeds_Rhinos_logo.svg/200px-Leeds_Rhinos_logo.svg.png",
-                "Huddersfield Giants":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Huddersfield_Giants_logo.svg/200px-Huddersfield_Giants_logo.svg.png",
-                "Wakefield Trinity":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/a/aa/Wakefield_Trinity_logo.svg/200px-Wakefield_Trinity_logo.svg.png",
-                "Hull KR":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/9/97/Hull_KR_logo.svg/200px-Hull_KR_logo.svg.png",
-                "Warrington Wolves":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/3/3d/Warrington_Wolves_logo.svg/200px-Warrington_Wolves_logo.svg.png",
+                    "https://upload.wikimedia.org/wikipedia/en/6/6f/Leeds_Rhinos_logo.svg",
                 "Wigan Warriors":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/8/86/Wigan_Warriors_logo.svg/200px-Wigan_Warriors_logo.svg.png",
-                "Hull FC":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/6/6d/Hull_FC_logo.svg/200px-Hull_FC_logo.svg.png",
-                "Salford Red Devils":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Salford_Red_Devils_logo.svg/200px-Salford_Red_Devils_logo.svg.png",
-                "Halifax Panthers":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Halifax_Panthers_RLFC_logo.svg/200px-Halifax_Panthers_RLFC_logo.svg.png",
-                "Featherstone Rovers":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/2/2c/Featherstone_Rovers_logo.svg/200px-Featherstone_Rovers_logo.svg.png",
-                "York Knights":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png",
-                "York RLFC":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/8/85/York_Knights_RLFC_logo.svg/200px-York_Knights_RLFC_logo.svg.png",
-                "Toulouse Olympique":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Toulouse_Olympique_XIII_logo.svg/200px-Toulouse_Olympique_XIII_logo.svg.png",
-                "Sheffield Eagles":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/9/9c/Sheffield_Eagles_RLFC_logo.svg/200px-Sheffield_Eagles_RLFC_logo.svg.png",
-                "London Broncos":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/6/66/London_Broncos_logo.svg/200px-London_Broncos_logo.svg.png",
-                "Castleford Tigers":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/0/06/Castleford_Tigers_logo.svg/200px-Castleford_Tigers_logo.svg.png",
-                "Dewsbury Rams":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/6/6e/Dewsbury_Rams_logo.svg/200px-Dewsbury_Rams_logo.svg.png",
-                "Batley Bulldogs":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Batley_Bulldogs_logo.svg/200px-Batley_Bulldogs_logo.svg.png",
-                "Widnes Vikings":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/7/73/Widnes_Vikings_logo.svg/200px-Widnes_Vikings_logo.svg.png",
-                "Barrow Raiders":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/4/46/Barrow_Raiders_logo.svg/200px-Barrow_Raiders_logo.svg.png",
-                Whitehaven:
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Whitehaven_RLFC_logo.svg/200px-Whitehaven_RLFC_logo.svg.png",
-                "Workington Town":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/9/91/Workington_Town_RLFC_badge.svg/200px-Workington_Town_RLFC_badge.svg.png",
-                "Keighley Cougars":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/8/8e/Keighley_Cougars_logo.svg/200px-Keighley_Cougars_logo.svg.png",
-                "Swinton Lions":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/d/d1/Swinton_Lions_logo.svg/200px-Swinton_Lions_logo.svg.png",
-                Doncaster:
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/a/a3/Doncaster_RLFC_logo.svg/200px-Doncaster_RLFC_logo.svg.png",
-                Oldham: "https://upload.wikimedia.org/wikipedia/en/thumb/5/57/Oldham_RLFC_logo.svg/200px-Oldham_RLFC_logo.svg.png",
-                "Rochdale Hornets":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/5/54/Rochdale_Hornets_logo.svg/200px-Rochdale_Hornets_logo.svg.png",
-                Hunslet:
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/4/44/Hunslet_RLFC_logo.svg/200px-Hunslet_RLFC_logo.svg.png",
-                "North Wales Crusaders":
-                    "https://upload.wikimedia.org/wikipedia/en/thumb/1/1f/North_Wales_Crusaders_logo.svg/200px-North_Wales_Crusaders_logo.svg.png",
+                    "https://upload.wikimedia.org/wikipedia/en/d/d7/Wigan_Warriors_Logo%2C_November_2020.svg",
             };
 
             // Lowercase-keyed map for fast, case-insensitive logo lookups
@@ -3109,17 +3047,15 @@
     </svg>`;
             }
 
-            // FIX: onerror attribute string that handles multi-level fallback safely
+            // Robust img fallback: shows shield on error AND triggers async re-discovery
             function logoImgWithFallback(url, name) {
                 const escaped = esc(name);
-                const initials = esc(teamInitials(name));
-                // Use a data attribute to avoid triggering onerror recursively
                 return `<img
       src="${url}"
       alt="${escaped}"
       data-team="${escaped}"
       onload="this.style.display='block';this.nextElementSibling&&(this.nextElementSibling.style.display='none')"
-      onerror="this.style.display='none';var fb=this.nextElementSibling;if(fb){fb.style.display='flex';}"
+      onerror="this.style.display='none';var fb=this.nextElementSibling;if(fb){fb.style.display='flex';}discoverLogoAsync(this.dataset.team);"
     ><div class="logo-shield-wrap" style="display:none">${shieldSVG(name)}</div>`;
             }
 
@@ -3171,27 +3107,75 @@
                 if (pendingDiscovery.has(lower)) return;
                 pendingDiscovery.add(lower);
 
-                const queries = [`${name} rugby league`, `${name} RLFC`, name];
+                // ── Strategy 1: Search Wikipedia File namespace directly ──────────
+                // This is far more reliable than pageimages (which returns article
+                // featured images, not logos).
+                const fileQueries = [
+                    `${name} logo`,
+                    `${name} RLFC logo`,
+                    `${name} rugby league logo`,
+                ];
+                const firstWord = lower.split(" ")[0];
 
-                for (const query of queries) {
+                for (const query of fileQueries) {
+                    try {
+                        const searchRes = await fetch(
+                            `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&srlimit=5&format=json&origin=*`,
+                        );
+                        const searchData = await searchRes.json();
+                        const files = searchData.query?.search || [];
+
+                        for (const file of files) {
+                            const tl = file.title.toLowerCase();
+                            if (!tl.includes(firstWord)) continue;
+                            const isLogoFile =
+                                tl.includes("logo") ||
+                                tl.includes("badge") ||
+                                tl.includes("crest");
+                            const isPhoto =
+                                tl.includes("stadium") ||
+                                tl.includes("ground") ||
+                                tl.includes("portrait") ||
+                                tl.includes("player");
+                            if (!isLogoFile || isPhoto) continue;
+
+                            const imgRes = await fetch(
+                                `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(file.title)}&prop=imageinfo&iiprop=url&format=json&origin=*`,
+                            );
+                            const imgData = await imgRes.json();
+                            const pages = Object.values(
+                                imgData.query?.pages || {},
+                            );
+                            const imageUrl = pages[0]?.imageinfo?.[0]?.url;
+                            if (imageUrl && !pages[0].missing) {
+                                logoCache[lower] = imageUrl;
+                                saveLogoCache();
+                                logoLookupMemo.delete(lower);
+                                updateLogoInDOM(name, imageUrl);
+                                pendingDiscovery.delete(lower);
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        /* network error — silent */
+                    }
+                }
+
+                // ── Strategy 2: Fallback to pageimages API ───────────────────────
+                const articleQueries = [
+                    `${name} rugby league`,
+                    `${name} RLFC`,
+                    name,
+                ];
+                for (const query of articleQueries) {
                     try {
                         const searchRes = await fetch(
                             `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=3&format=json&origin=*`,
                         );
                         const searchData = await searchRes.json();
                         const titles = searchData[1] || [];
-
                         for (const title of titles) {
-                            if (
-                                !title
-                                    .toLowerCase()
-                                    .includes(
-                                        name
-                                            .toLowerCase()
-                                            .split(" ")[0]
-                                            .toLowerCase(),
-                                    )
-                            )
+                            if (!title.toLowerCase().includes(firstWord))
                                 continue;
                             const imgRes = await fetch(
                                 `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&pithumbsize=200&format=json&origin=*`,
@@ -3201,9 +3185,7 @@
                                 imgData.query?.pages || {},
                             );
                             const thumb = pages[0]?.thumbnail?.source;
-
                             if (thumb) {
-                                // FIX: stricter logo detection — reject anything that looks like a photo
                                 const tl = thumb.toLowerCase();
                                 const isLogo =
                                     tl.includes("logo") ||
@@ -3218,6 +3200,7 @@
                                 if (isLogo && !isPhoto) {
                                     logoCache[lower] = thumb;
                                     saveLogoCache();
+                                    logoLookupMemo.delete(lower);
                                     updateLogoInDOM(name, thumb);
                                     pendingDiscovery.delete(lower);
                                     return;
@@ -3235,6 +3218,8 @@
             }
 
             function updateLogoInDOM(name, url) {
+                // Invalidate memo so the corrected URL is used on the next render()
+                logoLookupMemo.delete(name.toLowerCase().trim());
                 document
                     .querySelectorAll(".fixture-logo-wrap")
                     .forEach((wrap) => {
@@ -3247,7 +3232,6 @@
                             opponent.toLowerCase() !== name.toLowerCase().trim()
                         )
                             return;
-                        // Replace entire logo-wrap content with the robust img + shield fallback
                         wrap.innerHTML = logoImgWithFallback(url, name);
                     });
             }
@@ -4324,7 +4308,12 @@
                             e.dataTransfer.setData("text/plain", el.dataset.id);
                             el.classList.add("dragging");
                             const tlRow = el.closest(".tl-row");
-                            if (tlRow) tlRow.classList.add("dragging");
+                            // Don't mark the outer fixture tl-row as .dragging when
+                            // dragging a mini-activity — it lives inside the fixture's
+                            // row, so we only mark it for top-level cards.
+                            if (tlRow && !el.closest(".activity-cluster")) {
+                                tlRow.classList.add("dragging");
+                            }
                             document
                                 .querySelectorAll(".fixture-acts-toggle")
                                 .forEach((btn) => {
