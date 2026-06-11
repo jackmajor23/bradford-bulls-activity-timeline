@@ -3298,17 +3298,19 @@ async function submitPassword() {
   async function loadFromSupabase() {
     if (!supabaseClient || !useCloudSync) return null;
     try {
-      const [fixturesRes, activitiesRes, milestonesRes, notesRes] = await Promise.all([
+      const [fixturesRes, activitiesRes, milestonesRes, notesRes, savedAssigneesRes] = await Promise.all([
         supabaseClient.from('fixtures')  .select('*').order('date',  { ascending: true }),
         supabaseClient.from('activities').select('*').order('date',  { ascending: true }),
         supabaseClient.from('milestones').select('*').order('date',  { ascending: true }),
         supabaseClient.from('notes')     .select('*').order('date',  { ascending: true }),
+        supabaseClient.from('saved_assignees').select('name'),
       ]);
 
       if (fixturesRes.error)   throw fixturesRes.error;
       if (activitiesRes.error) throw activitiesRes.error;
       if (milestonesRes.error) throw milestonesRes.error;
       if (notesRes.error)      throw notesRes.error;
+      if (savedAssigneesRes.error) throw savedAssigneesRes.error;
 
       const items = [
         ...(fixturesRes.data   || []).map(r => convertSupabaseRecord(r, 'fixture')),
@@ -3317,7 +3319,9 @@ async function submitPassword() {
         ...(notesRes.data      || []).map(r => convertSupabaseRecord(r, 'note')),
       ].filter(Boolean);
 
-      return { items, savedAssignees: [] };
+      const savedAssignees = (savedAssigneesRes.data || []).map(r => r.name);
+
+      return { items, savedAssignees };
     } catch (e) {
       console.error('loadFromSupabase failed:', e.message || e);
       return null;
@@ -3421,6 +3425,18 @@ async function submitPassword() {
       );
       if (error) { console.error('Notes error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
     }
+
+      // Sync saved assignees
+      if (S.savedAssignees && S.savedAssignees.length > 0) {
+        // Delete all existing saved_assignees and re-insert current ones
+        const { error: deleteError } = await supabaseClient.from('saved_assignees').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        if (deleteError) { console.error('Saved assignees delete error:', JSON.stringify(deleteError)); throw new Error(JSON.stringify(deleteError)); }
+
+        const { error: insertError } = await supabaseClient.from('saved_assignees').insert(
+          S.savedAssignees.map(name => ({ name }))
+        );
+        if (insertError) { console.error('Saved assignees insert error:', JSON.stringify(insertError)); throw new Error(JSON.stringify(insertError)); }
+      }
 
       console.log('✓ Saved to Supabase');
       updateSyncStatus();
