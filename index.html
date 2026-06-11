@@ -983,58 +983,52 @@ function updateLogoInDOM(name, url) {
   // FIX: Centralised converter used by both loadFromSupabase and the
   // realtime handler, ensuring consistent mapping in both code paths.
   function convertSupabaseRecord(r, type) {
-  if (type === 'fixture') {
-    return {
-      id: r.id,
-      type: 'fixture',
-
-      opponent: r.opponent || '',
-
-      venue: r.venue || '',
-
-      venueType: r.match_venue || 'home',
-
-      matchType: r.competition || 'League',
-
-      teamType: r.team_type || "Men's",
-
-      date: r.date,
-    };
+    switch (type) {
+      case 'fixture':
+        return {
+          id: r.id,
+          type: 'fixture',
+          opponent: r.opponent || '',
+          venue: r.venue || '',
+          venueType: r.match_venue || 'home',
+          matchType: r.competition || 'League',
+          teamType: r.team_type || "Men's",
+          date: r.date,
+        };
+      case 'activity':
+        return {
+          id:        r.id,
+          type:      'activity',
+          date:      (r.date || '').split('T')[0],
+          title:     r.title || '',
+          actType:   r.type || 'other',
+          assignees: Array.isArray(r.assignees) ? r.assignees : [],
+          notes:     r.notes || '',
+          complete:  r.completed || false,
+          fixtureId: r.fixture_id || null,
+        };
+      case 'milestone':
+        return {
+          id:        r.id,
+          type:      'milestone',
+          date:      (r.date || '').split('T')[0],
+          title:     r.title || '',
+          style:     r.color || 'red',
+          notes:     r.notes || '',
+          assignees: [],
+        };
+      case 'note':
+        return {
+          id:        r.id,
+          type:      'note',
+          date:      (r.date || '').split('T')[0],
+          content:   r.content || '',
+          assignees: [],
+        };
+      default:
+        return null;
+    }
   }
-}
-        case 'activity':
-          return {
-            id:        record.id,
-            type:      'activity',
-            date:      (record.date || '').split('T')[0],
-            title:     record.title || '',
-            actType:   record.type || 'other',
-            assignees: Array.isArray(record.assignees) ? record.assignees : [],
-            notes:     record.notes || '',
-            complete:  record.completed || false,
-            fixtureId: record.fixture_id || null,
-          };
-        case 'milestone':
-          return {
-            id:        record.id,
-            type:      'milestone',
-            date:      (record.date || '').split('T')[0],
-            title:     record.title || '',
-            style:     record.color || 'red',
-            notes:     record.notes || '',
-            assignees: [],
-          };
-        case 'note':
-          return {
-            id:        record.id,
-            type:      'note',
-            date:      (record.date || '').split('T')[0],
-            content:   record.content || '',
-            assignees: [],
-          };
-        default:
-          return null;
-      }
     } catch (e) {
   console.error('Supabase save failed:', e.message || e);
 }
