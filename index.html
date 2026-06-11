@@ -982,24 +982,26 @@ function updateLogoInDOM(name, url) {
   // ─── SUPABASE RECORD CONVERTER ─────────────────────────────────
   // FIX: Centralised converter used by both loadFromSupabase and the
   // realtime handler, ensuring consistent mapping in both code paths.
-  function convertSupabaseRecord(record, itemType) {
-    if (!record) return null;
-    try {
-      switch (itemType) {
-        case 'fixture':
-          return {
-            id:        record.id,
-            type:      'fixture',
-            // FIX: Support both `date` (new) and `kickoff_at` (legacy column).
-            date:      (record.date || record.kickoff_at || '').split('T')[0],
-            opponent:  record.opponent || record.away_team || '',
-            venue:     record['venue type'] || '',
-            venueType: record.match_venue || 'home',
-            matchType: record.competition || 'League',
-            // FIX: Was hardcoded "Men's" regardless of stored value.
-            teamType:  record.team_type || "Men's",
-            assignees: [],
-          };
+  function convertSupabaseRecord(r, type) {
+  if (type === 'fixture') {
+    return {
+      id: r.id,
+      type: 'fixture',
+
+      opponent: r.opponent || '',
+
+      venue: r.venue || '',
+
+      venueType: r.match_venue || 'home',
+
+      matchType: r.competition || 'League',
+
+      teamType: r.team_type || "Men's",
+
+      date: r.date,
+    };
+  }
+}
         case 'activity':
           return {
             id:        record.id,
@@ -1175,20 +1177,34 @@ async function submitPassword() {
       const notes      = S.items.filter(i => i.type === 'note');
 
       if (fixtures.length) {
-        const { error } = await supabaseClient.from('fixtures').upsert(
-          fixtures.map(f => ({
-            id:          f.id,
-            opponent:    f.opponent    || '',
-            "venue type": f.venue       || '',
-            match_venue: f.venueType   || 'home',
-            competition: f.matchType   || 'League',
-            team_type:   f.teamType    || "Men's",
-            date:        f.date,
-          })),
-          { onConflict: 'id' }
-        );
-        if (error) throw new Error(JSON.stringify(error));
-      }
+
+  const rows = fixtures.map(f => {
+
+    console.log('fixture id:', f.id);
+    console.log('fixture date:', f.date);
+    console.log('fixture object:', f);
+
+    return {
+      id:          f.id,
+      opponent:    f.opponent || '',
+      venue:       f.venue || '',
+      match_venue: f.venueType || 'home',
+      competition: f.matchType || 'League',
+      team_type:   f.teamType || "Men's",
+      date:        f.date,
+    };
+  });
+
+  console.log('fixtures being sent to Supabase:', rows);
+
+  const { error } = await supabaseClient
+    .from('fixtures')
+    .upsert(rows, { onConflict: 'id' });
+
+  console.log('fixtures upsert error:', error);
+
+  if (error) throw error;
+}
 
       if (activities.length) {
         const { error } = await supabaseClient.from('activities').upsert(
