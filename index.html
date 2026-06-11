@@ -371,20 +371,17 @@
       padding: 0 40px;
       position: relative;
       z-index: 3;
-      margin-bottom: -10px;
+      margin-bottom: 16px;
     }
 
     .tl-row.dragging {
-      margin-bottom: 10px !important;
       z-index: 100;
     }
 
     .tl-row + .tl-row.dragging {
-      margin-top: 10px !important;
     }
 
     .tl-row.prev-to-dragging {
-      margin-bottom: 10px !important;
     }
 
     .tl-row.side-left .tl-card-wrap {
@@ -815,6 +812,24 @@
       margin: 0;
       transition: all 0.2s ease;
       flex-shrink: 0;
+    }
+
+    /* Drop indicator line shown between timeline rows */
+    .tl-drop-indicator {
+      position: relative;
+      height: 4px;
+      margin: 0 40px;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .tl-drop-indicator::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; top: 1px;
+      height: 2px;
+      background: var(--blue);
+      border-radius: 2px;
+      box-shadow: 0 0 0 3px rgba(26,79,139,0.15);
     }
 
     /* ─── DATE GROUP ─── */
@@ -1315,16 +1330,14 @@
       opacity: 1;
     }
 
-    /* Center drag handle vertically on milestone cards (desktop) */
+    /* Drag handle sits left in the act-row for milestone/note cards */
     .milestone-card .act-row {
-      justify-content: center;
+      justify-content: flex-start;
     }
 
     .milestone-card .drag-handle {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
+      position: static;
+      transform: none;
     }
 
     /* ─── MONTH DIVIDER ─── */
@@ -2564,6 +2577,19 @@
         position: relative;
       }
 
+      /* Mobile ghost element during touch drag */
+      .touch-drag-ghost {
+        position: fixed;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.85;
+        transform: scale(1.03);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        border-radius: var(--card-radius);
+        transition: none;
+        max-width: 85vw;
+      }
+
       /* Mobile drag improvements */
       .drag-handle {
         opacity: 0.8 !important;
@@ -2576,18 +2602,23 @@
       .note-card,
       .fixture-card,
       .milestone-card {
-        touch-action: none;
+        touch-action: pan-y;
       }
 
       .mini-activity.dragging {
-        opacity: 0.7;
-        transform: scale(1.02);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        opacity: 0.4;
+        transform: scale(1.0);
       }
 
       .mini-activity.drag-over {
         border: 2px dashed var(--blue);
         background: rgba(26, 79, 139, 0.08);
+      }
+
+      /* Drop highlight for timeline rows on mobile */
+      .tl-row.touch-drop-target .tl-card-wrap > * {
+        outline: 2px dashed var(--blue);
+        outline-offset: 2px;
       }
     }
   </style>
@@ -3261,8 +3292,9 @@ async function submitPassword() {
 
       return { items, savedAssignees: [] };
     } catch (e) {
-  console.error('Supabase save failed:', e.message || e);
-}
+      console.error('loadFromSupabase failed:', e.message || e);
+      return null;
+    }
   }
 
   // ─── SAVE TO SUPABASE ──────────────────────────────────────────
@@ -3317,19 +3349,24 @@ async function submitPassword() {
 
       if (activities.length) {
         const { error } = await supabaseClient.from('activities').upsert(
-          activities.map(a => ({
-            id:         a.id,
-            title:      a.title      || '',
-            type:       a.actType    || 'other',
-            date:       a.date,
-            completed:  a.complete   || false,
-            assignees:  a.assignees  || [],
-            notes:      a.notes      || '',
-            fixture_id: a.fixtureId  || null,
-          })),
+          activities.map(a => {
+            const row = {
+              id:        a.id,
+              title:     a.title      || '',
+              type:      a.actType    || 'other',
+              date:      a.date,
+              completed: a.complete   || false,
+              assignees: a.assignees  || [],
+              notes:     a.notes      || '',
+            };
+            // Only include fixture_id when it has a value — omitting avoids
+            // FK constraint violations on tables that don't allow NULL here.
+            if (a.fixtureId) row.fixture_id = a.fixtureId;
+            return row;
+          }),
           { onConflict: 'id' }
         );
-        if (error) throw new Error(JSON.stringify(error));
+        if (error) { console.error('Activities upsert error:', JSON.stringify(error)); throw new Error(JSON.stringify(error)); }
       }
 
      if (milestones.length) {
@@ -3643,7 +3680,7 @@ async function submitPassword() {
       : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
     const teamBadge = f.teamType ? `<span class="team-badge">${esc(f.teamType)}</span>` : '';
     const actsHtml = acts.map(a => renderMiniActivity(a)).join('');
-    return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast?' past':''}" id="fc-${f.id}" data-id="${f.id}" draggable="true"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue?`<span>📍 ${esc(f.venue)}</span>`:''}<span>🏉 ${esc(f.matchType||'')}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length>0?`<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>`:''}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length>0?`<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>`:''}</div></div></div>`;
+    return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast?' past':''}" id="fc-${f.id}" data-id="${f.id}" data-fixture-id="${f.id}" draggable="true"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue?`<span>📍 ${esc(f.venue)}</span>`:''}<span>🏉 ${esc(f.matchType||'')}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length>0?`<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>`:''}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length>0?`<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>`:''}</div></div></div>`;
   }
 
   function renderMiniActivity(a) {
@@ -3659,7 +3696,7 @@ async function submitPassword() {
     const completeCls = a.complete?' complete':'';
     const pastCls     = isPast?' past':'';
     const assigneesHtml = (a.assignees||[]).map(p=>`<span class="assignee-chip">👤 ${esc(p)}</span>`).join('');
-    return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete?' complete-dot':''}${isPast&&!a.complete?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}"><div class="act-row" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete?' complete-meta':''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete?' · ✓ Done':''}${a.notes?' · '+esc(a.notes):''}</div>${assigneesHtml?`<div class="assignees-row">${assigneesHtml}</div>`:''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete?' done':''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
+    return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete?' complete-dot':''}${isPast&&!a.complete?' past-dot':''}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete?' complete-meta':''}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete?' · ✓ Done':''}${a.notes?' · '+esc(a.notes):''}</div>${assigneesHtml?`<div class="assignees-row">${assigneesHtml}</div>`:''}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete?' done':''}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
   }
 
   function renderMilestoneGroup(g, side, isPast) {
@@ -3792,15 +3829,10 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         isDraggingActivity = true;
         disableToggle = true;
         e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', el.dataset.id);
         el.classList.add('dragging');
         const tlRow = el.closest('.tl-row');
-        if (tlRow) {
-          tlRow.classList.add('dragging');
-          const prevRow = tlRow.previousElementSibling;
-          if (prevRow && prevRow.classList.contains('tl-row')) {
-            prevRow.classList.add('prev-to-dragging');
-          }
-        }
+        if (tlRow) tlRow.classList.add('dragging');
         document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
           btn.dataset.originalOnclick = btn.getAttribute('onclick');
           btn.removeAttribute('onclick');
@@ -3808,20 +3840,13 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       });
       el.addEventListener('dragend', () => {
         el.classList.remove('dragging');
-        const tlRow = el.closest('.tl-row');
-        if (tlRow) {
-          tlRow.classList.remove('dragging');
-          const prevRow = tlRow.previousElementSibling;
-          if (prevRow && prevRow.classList.contains('tl-row')) {
-            prevRow.classList.remove('prev-to-dragging');
-          }
-        }
-        document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
         isDraggingActivity = false;
         dragEndTime = Date.now();
-        // Clean up any remaining placeholders and prev-to-dragging classes
+        // Remove all indicators and dragging classes
+        document.querySelectorAll('.tl-drop-indicator').forEach(i => i.remove());
+        document.querySelectorAll('.tl-row.dragging').forEach(r => r.classList.remove('dragging'));
         document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
-        document.querySelectorAll('.prev-to-dragging').forEach(r => r.classList.remove('prev-to-dragging'));
+        document.querySelectorAll('.fixture-card.drop-active').forEach(fc => fc.classList.remove('drop-active'));
         setTimeout(() => {
           disableToggle = false;
           document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
@@ -3834,20 +3859,11 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       el.addEventListener('touchstart', e => {
         const touch = e.touches[0];
         touchStartX = touch.clientX; touchStartY = touch.clientY; touchElement = el; isTouchDrag = false;
-        const isMob = window.innerWidth<=700;
-        // On mobile, allow drag from anywhere; on desktop, require drag handle
-        if (!isMob && !e.target.closest('.drag-handle')) return;
+        // Only initiate drag from the drag handle
+        if (!e.target.closest('.drag-handle')) return;
         dragActivityId = el.dataset.id;
         isDraggingActivity = true; disableToggle = true;
         el.classList.add('dragging');
-        const tlRow = el.closest('.tl-row');
-        if (tlRow) {
-          tlRow.classList.add('dragging');
-          const prevRow = tlRow.previousElementSibling;
-          if (prevRow && prevRow.classList.contains('tl-row')) {
-            prevRow.classList.add('prev-to-dragging');
-          }
-        }
         document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
           btn.dataset.originalOnclick = btn.getAttribute('onclick'); btn.removeAttribute('onclick');
         });
@@ -3858,36 +3874,54 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         const deltaX = Math.abs(touch.clientX-touchStartX);
         const deltaY = Math.abs(touch.clientY-touchStartY);
         if (deltaX<10&&deltaY<10) return;
-        isTouchDrag = true;
+        if (!isTouchDrag) {
+          isTouchDrag = true;
+          // Create ghost clone
+          const ghost = el.cloneNode(true);
+          ghost.id = 'touch-drag-ghost';
+          ghost.className = (ghost.className || '') + ' touch-drag-ghost';
+          ghost.style.width = el.offsetWidth + 'px';
+          ghost.style.left = (touch.clientX - el.offsetWidth/2) + 'px';
+          ghost.style.top  = (touch.clientY - 30) + 'px';
+          document.body.appendChild(ghost);
+        }
         e.preventDefault();
-        const target  = document.elementFromPoint(touch.clientX,touch.clientY);
+        // Move ghost
+        const ghost = document.getElementById('touch-drag-ghost');
+        if (ghost) {
+          ghost.style.left = (touch.clientX - ghost.offsetWidth/2) + 'px';
+          ghost.style.top  = (touch.clientY - 30) + 'px';
+        }
+        // Highlight drop target row
+        document.querySelectorAll('.tl-row.touch-drop-target').forEach(r => r.classList.remove('touch-drop-target'));
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetRow = target?.closest('.tl-row');
+        if (targetRow && targetRow !== el.closest('.tl-row')) {
+          targetRow.classList.add('touch-drop-target');
+        }
+        // Cluster placeholder
         const cluster = target?.closest('.activity-cluster');
         if (cluster) {
-          // Remove existing placeholder
           const existingPlaceholder = cluster.querySelector('.drag-placeholder');
           if (existingPlaceholder) existingPlaceholder.remove();
-          
-          // Create and insert placeholder at fixed position
           const placeholder = createDragPlaceholder();
           const after = getDragAfterElement(cluster, touch.clientY);
           after == null ? cluster.appendChild(placeholder) : cluster.insertBefore(placeholder, after);
+        } else {
+          document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
         }
       }, {passive:false});
       el.addEventListener('touchend', e => {
         if (!isDraggingActivity||touchElement!==el) return;
-        // Only process as a drop if we actually moved beyond the threshold
+        // Remove ghost
+        const ghost = document.getElementById('touch-drag-ghost');
+        if (ghost) ghost.remove();
+        // Remove drop highlights
+        document.querySelectorAll('.tl-row.touch-drop-target').forEach(r => r.classList.remove('touch-drop-target'));
         if (!isTouchDrag) {
           isDraggingActivity = false;
           touchElement = null;
           el.classList.remove('dragging');
-          const tlRow = el.closest('.tl-row');
-          if (tlRow) {
-            tlRow.classList.remove('dragging');
-            const prevRow = tlRow.previousElementSibling;
-            if (prevRow && prevRow.classList.contains('tl-row')) {
-              prevRow.classList.remove('prev-to-dragging');
-            }
-          }
           document.querySelectorAll('.fixture-acts-toggle').forEach(btn => {
             if (btn.dataset.originalOnclick) { btn.setAttribute('onclick',btn.dataset.originalOnclick); delete btn.dataset.originalOnclick; }
           });
@@ -3895,36 +3929,24 @@ function showSyncToast(msg = '🔄 Synced from another device') {
           return;
         }
         el.classList.remove('dragging');
-        const tlRow = el.closest('.tl-row');
-        if (tlRow) {
-          tlRow.classList.remove('dragging');
-          const prevRow = tlRow.previousElementSibling;
-          if (prevRow && prevRow.classList.contains('tl-row')) {
-            prevRow.classList.remove('prev-to-dragging');
-          }
-        }
         document.querySelectorAll('.mini-activity').forEach(i=>i.classList.remove('drag-over'));
-        isDraggingActivity = false; dragEndTime = Date.now();
-        // Clean up any remaining placeholders and prev-to-dragging classes
         document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
-        document.querySelectorAll('.prev-to-dragging').forEach(r => r.classList.remove('prev-to-dragging'));
+        isDraggingActivity = false; dragEndTime = Date.now();
         const touch  = e.changedTouches[0];
         const target = document.elementFromPoint(touch.clientX,touch.clientY);
         const fc = target?.closest('.fixture-card');
         if (fc) {
           const act = S.items.find(i=>i.id===dragActivityId);
-          if (act&&act.type==='activity') { act.fixtureId=fc.dataset.fixtureId; save(); render(); showToast('🏉 Activity linked to match!'); }
+          if (act&&act.type==='activity') { act.fixtureId=fc.dataset.fixtureId||fc.dataset.id; save(); render(); showToast('🏉 Activity linked to match!'); }
         }
         const cluster = target?.closest('.activity-cluster');
         if (cluster) {
-          // Remove placeholder and move actual element to fixed position
           const placeholder = cluster.querySelector('.drag-placeholder');
           if (placeholder) {
             placeholder.replaceWith(el);
           } else {
             cluster.appendChild(el);
           }
-          
           const fixtureId = cluster.id.replace('cluster-','');
           const order = Array.from(cluster.querySelectorAll('.mini-activity')).map(e=>e.dataset.id);
           const acts  = S.items.filter(i=>i.fixtureId===fixtureId&&i.type==='activity');
@@ -3932,8 +3954,21 @@ function showSyncToast(msg = '🔄 Synced from another device') {
           S.items = S.items.filter(i=>!order.includes(i.id));
           sorted.forEach(a=>S.items.push(a));
           save(); ensureDropdownOpen(fixtureId);
+        } else {
+          // Drop onto a timeline date group — update the date
+          const dateGroup = target?.closest('.date-group');
+          if (dateGroup) {
+            const date = dateGroup.querySelector('.date-label')?.dataset.date;
+            if (date) {
+              const item = S.items.find(i=>i.id===dragActivityId);
+              if (item && item.date !== date) {
+                item.date = date;
+                save(); render();
+                showToast('📅 Date updated');
+              }
+            }
+          }
         }
-        // Clean up any remaining placeholders
         document.querySelectorAll('.drag-placeholder').forEach(p => p.remove());
         setTimeout(()=>{
           disableToggle=false;
@@ -3968,45 +4003,104 @@ function showSyncToast(msg = '🔄 Synced from another device') {
       }, true);
     });
 
+    // ── Timeline-level drag: reorder rows and update date ──────────
     document.querySelectorAll('.date-group').forEach(group => {
       group.addEventListener('dragover', e => {
         e.preventDefault();
-        const dragging = document.querySelector('.dragging');
-        if (!dragging || dragging.closest('.activity-cluster')) return;
-        const rows = [...group.querySelectorAll('.tl-row')].filter(r => !r.closest('.activity-cluster'));
-        const afterRow = rows.reduce((closest, row) => {
-          const box    = row.getBoundingClientRect();
-          const offset = e.clientY - box.top - box.height / 2;
-          return (offset < 0 && offset > closest.offset) ? { offset, element: row } : closest;
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-        const draggedRow = dragging.closest('.tl-row');
-        if (!draggedRow) return;
-        afterRow == null
-          ? group.appendChild(draggedRow)
-          : group.insertBefore(draggedRow, afterRow);
+        const draggedRow = document.querySelector('.tl-row.dragging');
+        if (!draggedRow || draggedRow.closest('.activity-cluster')) return;
+
+        const date = group.querySelector('.date-label')?.dataset.date;
+        if (!date) return;
+
+        // Remove any existing indicator inside this group
+        group.querySelectorAll('.tl-drop-indicator').forEach(i => i.remove());
+
+        // Find insertion point among rows in this group
+        const rows = [...group.querySelectorAll(':scope > .tl-row')];
+        let afterRow = null;
+        let minAbsDist = Infinity;
+        for (const row of rows) {
+          if (row === draggedRow) continue;
+          const box = row.getBoundingClientRect();
+          const mid = box.top + box.height / 2;
+          const dist = e.clientY - mid;
+          if (dist > 0 && dist < minAbsDist) {
+            minAbsDist = dist;
+            afterRow = row;
+          }
+        }
+
+        // Insert indicator line
+        const indicator = document.createElement('div');
+        indicator.className = 'tl-drop-indicator';
+        if (afterRow) {
+          afterRow.insertAdjacentElement('afterend', indicator);
+        } else {
+          // Before all rows
+          const firstRow = group.querySelector(':scope > .tl-row');
+          if (firstRow) firstRow.insertAdjacentElement('beforebegin', indicator);
+          else group.appendChild(indicator);
+        }
+      });
+
+      group.addEventListener('dragleave', e => {
+        // Only remove if we're leaving the group entirely
+        if (!group.contains(e.relatedTarget)) {
+          group.querySelectorAll('.tl-drop-indicator').forEach(i => i.remove());
+        }
       });
 
       group.addEventListener('drop', e => {
         e.preventDefault();
         e.stopPropagation();
-        const dragging = document.querySelector('.dragging');
+        // Clean up indicators
+        document.querySelectorAll('.tl-drop-indicator').forEach(i => i.remove());
+
+        const dragging = document.querySelector('.tl-row.dragging');
         if (!dragging || dragging.closest('.activity-cluster')) return;
         const date = group.querySelector('.date-label')?.dataset.date;
         if (!date) return;
-        const orderedIds = [...group.querySelectorAll('.tl-row[data-id]')]
+
+        // Re-read rows after potential DOM re-order
+        const rows = [...group.querySelectorAll(':scope > .tl-row')].filter(r => r !== dragging);
+        let afterRow = null;
+        let minAbsDist = Infinity;
+        for (const row of rows) {
+          const box = row.getBoundingClientRect();
+          const mid = box.top + box.height / 2;
+          const dist = e.clientY - mid;
+          if (dist > 0 && dist < minAbsDist) {
+            minAbsDist = dist;
+            afterRow = row;
+          }
+        }
+        if (afterRow) {
+          afterRow.insertAdjacentElement('afterend', dragging);
+        } else {
+          const firstRow = group.querySelector(':scope > .tl-row');
+          if (firstRow) group.insertBefore(dragging, firstRow);
+          else group.appendChild(dragging);
+        }
+
+        // Collect the new order from the DOM and update dates + S.items order
+        const orderedIds = [...group.querySelectorAll(':scope > .tl-row[data-id]')]
           .map(row => row.dataset.id).filter(Boolean);
         const dateItems  = orderedIds.map(id => S.items.find(i => i.id === id)).filter(Boolean);
         const otherItems = S.items.filter(i => !orderedIds.includes(i.id));
-        
-        // Update the date for items that were moved to a different date group
+
+        // ── LIVE DATE UPDATE: assign the drop-target date ──
         dateItems.forEach(item => {
           if (item.date !== date) {
             item.date = date;
           }
         });
-        
+
         S.items = [...otherItems, ...dateItems];
         save();
+        // Re-render so the card date label refreshes
+        render();
+        showToast('📅 Date updated');
       });
     });
 
@@ -4016,11 +4110,9 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         const dragging = document.querySelector('.dragging');
         if (!dragging) return;
         
-        // Remove existing placeholder
         const existingPlaceholder = cluster.querySelector('.drag-placeholder');
         if (existingPlaceholder) existingPlaceholder.remove();
         
-        // Create and insert placeholder at fixed position
         const placeholder = createDragPlaceholder();
         const after = getDragAfterElement(cluster, e.clientY);
         after == null ? cluster.appendChild(placeholder) : cluster.insertBefore(placeholder, after);
@@ -4030,7 +4122,6 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         const dragging = document.querySelector('.dragging');
         if (!dragging) return;
         
-        // Remove placeholder and move actual element to fixed position
         const placeholder = cluster.querySelector('.drag-placeholder');
         if (placeholder) {
           placeholder.replaceWith(dragging);
@@ -4050,7 +4141,6 @@ function showSyncToast(msg = '🔄 Synced from another device') {
         ensureDropdownOpen(fixtureId);
       });
       cluster.addEventListener('dragleave', e => {
-        // Remove placeholder when leaving the cluster
         const placeholder = cluster.querySelector('.drag-placeholder');
         if (placeholder && !cluster.contains(e.relatedTarget)) {
           placeholder.remove();
