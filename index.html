@@ -727,6 +727,62 @@
             .fixture-meta {
                 flex: 1;
             }
+            .fixture-links-hint {
+                margin-top: 7px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 8px;
+                border-radius: 999px;
+                border: 1px solid rgba(26, 79, 139, 0.12);
+                background: rgba(26, 79, 139, 0.04);
+                color: var(--ink-mid);
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                cursor: pointer;
+                transition:
+                    background 0.15s,
+                    border-color 0.15s,
+                    color 0.15s,
+                    box-shadow 0.15s;
+            }
+            .fixture-links-hint:hover {
+                background: rgba(26, 79, 139, 0.08);
+                border-color: rgba(26, 79, 139, 0.18);
+                color: var(--blue);
+                box-shadow: 0 0 0 3px rgba(26, 79, 139, 0.08);
+            }
+            .fixture-links-hint-icon {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(26, 79, 139, 0.12);
+                color: var(--blue);
+                font-size: 10px;
+                line-height: 1;
+                flex-shrink: 0;
+            }
+            .fixture-links-hint-count {
+                min-width: 16px;
+                height: 16px;
+                padding: 0 4px;
+                border-radius: 999px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(26, 79, 139, 0.14);
+                color: var(--blue);
+                font-size: 9px;
+                line-height: 1;
+                flex-shrink: 0;
+            }
+            .fixture-links-hint-text {
+                white-space: nowrap;
+            }
             .fixture-opponent {
                 font-family: var(--font-display);
                 font-size: 22px;
@@ -816,7 +872,7 @@
                 margin-left: auto;
                 display: inline-flex;
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
                 font-size: 10px;
                 color: var(--ink-mid);
                 cursor: pointer;
@@ -824,7 +880,7 @@
                 background: rgba(26, 79, 139, 0.04);
                 border: 1px solid rgba(26, 79, 139, 0.09);
                 letter-spacing: 0.04em;
-                padding: 5px 10px;
+                padding: 5px 9px;
                 border-radius: 999px;
                 transition:
                     background 0.15s,
@@ -876,33 +932,6 @@
                 background: var(--blue);
                 transform: scale(1.08);
                 box-shadow: 0 0 0 4px rgba(26, 79, 139, 0.08);
-            }
-
-            .cluster-link-note {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                align-self: flex-start;
-                padding: 0 2px 6px;
-                font-size: 10px;
-                color: var(--ink-light);
-                font-weight: 600;
-                background: none;
-                border: none;
-                letter-spacing: 0.05em;
-                cursor: pointer;
-                transition: color 0.15s;
-            }
-            .cluster-link-note:hover {
-                color: var(--blue);
-            }
-            .cluster-link-note::before {
-                content: "";
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: rgba(26, 79, 139, 0.35);
-                flex-shrink: 0;
             }
 
             /* ─── ACTIVITY CLUSTER ─── */
@@ -1730,14 +1759,12 @@
                 border-color: var(--gold);
                 background: rgba(212, 175, 55, 0.1);
             }
-            .team-selector,
-            .placement-selector {
+            .team-selector {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
                 gap: 8px;
             }
-            .team-opt,
-            .placement-opt {
+            .team-opt {
                 border: 1.5px solid var(--line);
                 padding: 10px 8px;
                 border-radius: 6px;
@@ -1751,16 +1778,34 @@
                 transition: all 0.2s;
                 background: var(--bg);
             }
-            .team-opt:hover,
-            .placement-opt:hover {
+            .team-opt:hover {
                 border-color: var(--ink-mid);
                 background: rgba(0, 0, 0, 0.03);
             }
-            .team-opt.selected,
-            .placement-opt.selected {
+            .team-opt.selected {
                 border-color: var(--ink);
                 background: var(--ink);
                 color: #fff;
+            }
+            .compact-checkbox {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 10px;
+                border-radius: 8px;
+                border: 1.5px solid var(--line);
+                background: var(--bg);
+                color: var(--ink);
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            .compact-checkbox input {
+                width: 16px;
+                height: 16px;
+                accent-color: var(--blue);
+                cursor: pointer;
+                flex-shrink: 0;
             }
             .assignee-input-wrap {
                 display: flex;
@@ -2400,53 +2445,66 @@
 
             /* ─── MOBILE ─── */
             @media (max-width: 700px) {
-                /* Keep mobile headings aligned to the card column */
+                --mobile-timeline-left-gap: 60px;
+                --mobile-timeline-right-gap: 12px;
+                --mobile-timeline-center-shift: 24px;
+
+                /* Keep mobile date labels aligned to the same visual center as Today */
                 .date-header {
-                    justify-content: flex-start;
-                    padding: 10px 12px 15px 76px;
+                    justify-content: center;
+                    padding: 10px var(--mobile-timeline-right-gap) 15px
+                        var(--mobile-timeline-left-gap);
                 }
                 .date-label {
                     margin-left: 0;
                 }
                 .month-divider {
-                    justify-content: flex-start;
-                    padding: 20px 12px 10px 76px;
+                    justify-content: center;
+                    padding: 20px var(--mobile-timeline-right-gap) 10px
+                        var(--mobile-timeline-left-gap);
                 }
                 .month-divider-label {
                     margin-left: 0;
-                    padding-left: 0;
+                    padding: 2px 16px;
                 }
                 #today-marker {
                     justify-content: center;
-                    padding: 0 12px;
+                    padding: 0 var(--mobile-timeline-right-gap) 0
+                        var(--mobile-timeline-left-gap);
                 }
                 #past-accordion {
-                    align-items: flex-start;
+                    align-items: center;
                     width: 100%;
-                    padding-left: 76px;
-                    padding-right: 12px;
+                    padding: 20px 0 0;
+                    z-index: 5;
+                }
+                #past-items {
+                    width: 100%;
                 }
 
                 #past-toggle {
-                    padding: 8px 0;
-                    text-align: left;
+                    padding: 8px 16px;
+                    text-align: center;
                     width: auto;
                     margin: 0;
+                    position: relative;
+                    left: var(--mobile-timeline-center-shift);
+                    z-index: 980;
                 }
                 #past-toggle.open {
                     padding: 8px 20px;
                     text-align: center;
-                    left: 50%;
+                    left: calc(50% + var(--mobile-timeline-center-shift));
                     transform: translateX(-50%);
                     margin-left: 0;
+                    width: max-content;
+                    max-width: calc(100vw - 24px);
+                    z-index: 980;
                 }
 
                 #timeline-wrap::before {
                     left: 36px;
                     transform: none;
-                }
-                #today-marker {
-                    padding: 0 12px 0 60px;
                 }
                 .tl-row {
                     grid-template-columns: 48px 1fr;
@@ -4253,6 +4311,21 @@
                 return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="handleDateLabelClick('${g.date}',this)">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
             }
 
+            function getLinkedTimelineActivitiesForFixture(fixtureId) {
+                return S.items
+                    .filter(
+                        (item) =>
+                            item.type === "activity" &&
+                            item.linkedFixtureId === fixtureId &&
+                            item.fixtureId !== fixtureId,
+                    )
+                    .sort(
+                        (a, b) =>
+                            a.date.localeCompare(b.date) ||
+                            (a.title || "").localeCompare(b.title || ""),
+                    );
+            }
+
             function renderFixtureGroup(g, side, isPast) {
                 const f = g.fixture,
                     acts = g.activities;
@@ -4296,10 +4369,16 @@
                 const teamBadge = f.teamType
                     ? `<span class="team-badge">${esc(f.teamType)}</span>`
                     : "";
+                const linkedTimelineActs =
+                    getLinkedTimelineActivitiesForFixture(f.id);
+                const linkedTimelineHint = linkedTimelineActs.length
+                    ? `<button class="fixture-links-hint" type="button" onclick="highlightLinkedTimelineCards('${f.id}')" title="Show linked timeline cards for this match"><span class="fixture-links-hint-icon">↗</span><span class="fixture-links-hint-text">Lead-up cards</span><span class="fixture-links-hint-count">${linkedTimelineActs.length}</span></button>`
+                    : "";
                 const actsHtml = acts
                     .map((a) => renderMiniActivity(a))
                     .join("");
-                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-item-type="fixture" data-fixture-id="${f.id}"><div class="fixture-header"><div class="drag-handle" draggable="true" data-drag-handle="true">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" type="button" data-fixture-id="${f.id}" data-open="false" onclick="toggleActCluster('${f.id}', true)"><span class="fixture-acts-dot"></span><span class="fixture-acts-text">Matchday Activities</span><span class="fixture-acts-count">${acts.length}</span></button>` : ""}<div class="fixture-actions"><button class="activity-btn" title="Add matchday activity" onclick="openActivityForFixture('${f.id}')">＋</button><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none"><button type="button" class="cluster-link-note" onclick="highlightFixtureActivities('${f.id}')">Linked timeline cards for this match</button>${actsHtml}</div>` : ""}</div></div></div>`;
+                const activityCountLabel = acts.length;
+                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-item-type="fixture" data-fixture-id="${f.id}"><div class="fixture-header"><div class="drag-handle" draggable="true" data-drag-handle="true">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div>${linkedTimelineHint}</div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" type="button" data-fixture-id="${f.id}" data-open="false" onclick="toggleActCluster('${f.id}', true)" title="Matchday Activities" aria-label="Matchday Activities (${acts.length})"><span class="fixture-acts-dot"></span><span class="fixture-acts-count">${activityCountLabel}</span></button>` : ""}<div class="fixture-actions"><button class="activity-btn" title="Add matchday activity" onclick="openActivityForFixture('${f.id}')">＋</button><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ""}</div></div></div>`;
             }
 
             function renderMiniActivity(a) {
@@ -4603,13 +4682,31 @@
                 }
             }
 
+            function highlightLinkedTimelineCards(fid, scrollToFirst = true) {
+                const fixtureCard = document.getElementById("fc-" + fid);
+                const linkedCards = getLinkedTimelineActivitiesForFixture(fid)
+                    .map((activity) =>
+                        document.getElementById("act-" + activity.id),
+                    )
+                    .filter(Boolean);
+                ensurePastItemVisible(fixtureCard);
+                linkedCards.forEach((card) => ensurePastItemVisible(card));
+                flashRelationshipElements([fixtureCard, ...linkedCards]);
+                if (scrollToFirst && linkedCards[0]) {
+                    linkedCards[0].scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                }
+            }
+
             function focusLinkedFixture(fid, activityId = null) {
                 const fixtureCard = document.getElementById("fc-" + fid);
                 const sourceActivity = activityId
                     ? document.getElementById("act-" + activityId)
                     : null;
-                if (sourceActivity) flashRelationshipElements([sourceActivity]);
-                highlightFixtureActivities(fid);
+                ensurePastItemVisible(fixtureCard);
+                flashRelationshipElements([fixtureCard, sourceActivity]);
                 fixtureCard?.scrollIntoView({
                     behavior: "smooth",
                     block: "center",
@@ -4738,7 +4835,7 @@
                 const fixture = findFixtureById(selectedId);
                 container.innerHTML = fixture
                     ? `<span class="fixture-link-pill">🏉 ${esc(fixtureDisplayLabel(fixture))}<button class="fixture-link-clear" type="button" onclick="clearLinkedFixtureSelection()" title="Clear related match">✕</button></span>`
-                    : `<span class="fixture-link-empty">No match linked</span>`;
+                    : "";
             }
 
             function selectLinkedFixture(fixtureId) {
@@ -5024,6 +5121,29 @@
                         }
                     }
                 }
+                const targetCard = target.closest(
+                    ".fixture-card, .activity-card, .milestone-card, .note-card",
+                );
+                if (
+                    targetCard &&
+                    !activeDrag.itemEl?.classList.contains("mini-activity") &&
+                    targetCard.dataset.id !== activeDrag.id
+                ) {
+                    const beforeItem = S.items.find(
+                        (entry) => entry.id === targetCard.dataset.id,
+                    );
+                    if (
+                        beforeItem &&
+                        beforeItem.date === activeDrag.item.date
+                    ) {
+                        return {
+                            type: "timeline-reorder",
+                            beforeItemId: beforeItem.id,
+                            key: `timeline:${beforeItem.id}`,
+                            highlightEls: [targetCard],
+                        };
+                    }
+                }
                 return getDateDropInfo(target);
             }
 
@@ -5063,6 +5183,22 @@
                 );
             }
 
+            function reorderTimelineItemBefore(itemId, beforeItemId) {
+                const fromIndex = S.items.findIndex(
+                    (entry) => entry.id === itemId,
+                );
+                const toIndex = S.items.findIndex(
+                    (entry) => entry.id === beforeItemId,
+                );
+                if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+                    return false;
+                }
+                const [movedItem] = S.items.splice(fromIndex, 1);
+                const nextIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+                S.items.splice(nextIndex, 0, movedItem);
+                return true;
+            }
+
             function applyDragDrop(dropInfo) {
                 if (!activeDrag || !dropInfo) return false;
                 const item = S.items.find(
@@ -5074,7 +5210,15 @@
                 let toastMessage = "";
                 let highlightFixtureId = null;
 
-                if (dropInfo.type === "date") {
+                if (dropInfo.type === "timeline-reorder") {
+                    changed = reorderTimelineItemBefore(
+                        item.id,
+                        dropInfo.beforeItemId,
+                    );
+                    if (changed) {
+                        toastMessage = "Card reordered on this date";
+                    }
+                } else if (dropInfo.type === "date") {
                     if (item.date === dropInfo.date) return false;
                     item.date = dropInfo.date;
                     changed = true;
@@ -5364,29 +5508,7 @@
                     const placementMode =
                         a._placementMode ||
                         (a.fixtureId ? "fixture" : "timeline");
-                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Placement</label><div class="placement-selector" id="a-placement"><div class="placement-opt ${placementMode === "timeline" ? "selected" : ""}" data-value="timeline">Main Timeline</div><div class="placement-opt ${placementMode === "fixture" ? "selected" : ""}" data-value="fixture">Inside Match</div></div><div class="form-help">Choose whether this activity appears on the main timeline or inside a match's Matchday Activities list.</div></div><div class="form-group fixture-link-picker"><label class="form-label">Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div><div class="form-help" id="a-placement-help">${placementMode === "fixture" ? "Select the match this activity should sit under in Matchday Activities." : "Select a match if you want this timeline activity to stay visibly linked to it."}</div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
-                    document
-                        .querySelectorAll("#a-placement .placement-opt")
-                        .forEach((opt) =>
-                            opt.addEventListener("click", function () {
-                                document
-                                    .querySelectorAll(
-                                        "#a-placement .placement-opt",
-                                    )
-                                    .forEach((o) =>
-                                        o.classList.remove("selected"),
-                                    );
-                                this.classList.add("selected");
-                                const help =
-                                    document.getElementById("a-placement-help");
-                                if (help) {
-                                    help.textContent =
-                                        this.dataset.value === "fixture"
-                                            ? "Select the match this activity should sit under in Matchday Activities."
-                                            : "Select a match if you want this timeline activity to stay visibly linked to it.";
-                                }
-                            }),
-                        );
+                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Placement</label><label class="compact-checkbox"><input type="checkbox" id="a-inside-match" ${placementMode === "fixture" ? "checked" : ""}><span>Inside Matchday Activities</span></label></div><div class="form-group fixture-link-picker"><label class="form-label">Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
                     renderFixtureLinkSelection();
                 } else if (type === "milestone") {
                     const m = data || {};
@@ -5620,10 +5742,11 @@
                     const selectedLinkedFixtureId =
                         document.getElementById("a-linked-fixture-id")?.value ||
                         null;
-                    const placementMode =
-                        document.querySelector(
-                            "#a-placement .placement-opt.selected",
-                        )?.dataset.value || "timeline";
+                    const placementMode = document.getElementById(
+                        "a-inside-match",
+                    )?.checked
+                        ? "fixture"
+                        : "timeline";
                     if (
                         placementMode === "fixture" &&
                         !selectedLinkedFixtureId
