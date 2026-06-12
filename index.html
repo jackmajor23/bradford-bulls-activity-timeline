@@ -437,9 +437,7 @@
                 z-index: 3;
                 margin-bottom: 16px;
             }
-            .tl-row.dragging {
-                z-index: 100;
-            }
+
             .tl-row.side-left .tl-card-wrap {
                 grid-column: 1;
                 grid-row: 1;
@@ -479,27 +477,22 @@
                 transition: all 0.3s ease;
             }
 
-            /* ─── DRAG VISUALS (FIX: richer desktop drag state) ─── */
-            .mini-activity.dragging,
-            .fixture-card.dragging,
-            .milestone-card.dragging,
-            .activity-card.dragging,
-            .note-card.dragging {
-                opacity: 0.45;
-                cursor: grabbing;
-                transform: rotate(2deg) scale(1.03) !important;
+            .fixture-card.relationship-flash,
+            .activity-card.relationship-flash,
+            .mini-activity.relationship-flash {
+                border-color: rgba(26, 79, 139, 0.28);
                 box-shadow:
-                    0 20px 60px rgba(0, 0, 0, 0.22),
-                    0 4px 16px rgba(0, 0, 0, 0.12) !important;
-                border-color: var(--blue) !important;
-                transition: none !important;
-                pointer-events: none;
+                    0 0 0 3px rgba(26, 79, 139, 0.12),
+                    var(--shadow-hover);
             }
-            .mini-activity.drag-over,
-            .fixture-card.drag-over,
-            .milestone-card.drag-over {
-                border: 2px dashed var(--blue);
-                background: rgba(26, 79, 139, 0.05);
+            .activity-cluster.relationship-flash {
+                border-top-color: rgba(26, 79, 139, 0.24);
+                background: linear-gradient(
+                    180deg,
+                    rgba(26, 79, 139, 0.05) 0%,
+                    #fafcff 100%
+                );
+                box-shadow: inset 0 0 0 1px rgba(26, 79, 139, 0.08);
             }
 
             .node-dot {
@@ -821,61 +814,70 @@
             }
             .fixture-acts-toggle {
                 margin-left: auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
                 font-size: 10px;
-                color: var(--blue);
+                color: var(--ink-mid);
                 cursor: pointer;
                 font-weight: 600;
                 background: none;
                 border: none;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
+                letter-spacing: 0.04em;
                 padding: 4px 8px;
-                border-radius: 5px;
-                transition: background 0.15s;
+                border-radius: 999px;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
             }
             .fixture-acts-toggle:hover {
-                background: rgba(26, 79, 139, 0.08);
+                background: rgba(26, 79, 139, 0.06);
+                color: var(--ink);
             }
-            .linked-match-chip {
+            .fixture-acts-toggle[data-open="true"] {
+                background: rgba(26, 79, 139, 0.08);
+                color: var(--blue);
+            }
+            .fixture-acts-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: rgba(26, 79, 139, 0.45);
+                flex-shrink: 0;
+                transition:
+                    background 0.15s,
+                    transform 0.15s;
+            }
+            .fixture-acts-toggle:hover .fixture-acts-dot,
+            .fixture-acts-toggle[data-open="true"] .fixture-acts-dot {
+                background: var(--blue);
+                transform: scale(1.08);
+            }
+
+            .cluster-link-note {
                 display: inline-flex;
                 align-items: center;
-                gap: 4px;
-                font-size: 9px;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                padding: 2px 6px;
-                border-radius: 999px;
-                background: rgba(200, 16, 46, 0.07);
-                color: var(--red);
-                cursor: pointer;
-                border: 1px solid rgba(200, 16, 46, 0.15);
-                transition: background 0.15s;
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-            .linked-match-chip:hover {
-                background: rgba(200, 16, 46, 0.14);
-            }
-            .cluster-link-note {
-                display: flex;
-                align-items: center;
                 gap: 8px;
+                align-self: flex-start;
                 padding: 0 2px 6px;
                 font-size: 10px;
-                color: var(--ink-mid);
-                font-weight: 500;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
+                color: var(--ink-light);
+                font-weight: 600;
+                background: none;
+                border: none;
+                letter-spacing: 0.05em;
+                cursor: pointer;
+                transition: color 0.15s;
+            }
+            .cluster-link-note:hover {
+                color: var(--blue);
             }
             .cluster-link-note::before {
                 content: "";
-                width: 12px;
-                height: 12px;
+                width: 8px;
+                height: 8px;
                 border-radius: 50%;
-                background: rgba(26, 79, 139, 0.12);
-                border: 2px solid var(--blue);
-                box-shadow: 0 0 0 3px rgba(26, 79, 139, 0.08);
+                background: rgba(26, 79, 139, 0.35);
                 flex-shrink: 0;
             }
 
@@ -903,36 +905,6 @@
                     rgba(26, 79, 139, 0.04)
                 );
                 pointer-events: none;
-            }
-            .drag-placeholder {
-                background: rgba(26, 79, 139, 0.08);
-                border: 2px dashed var(--blue);
-                border-radius: 7px;
-                min-height: 46px;
-                height: 46px;
-                margin: 0;
-                transition: all 0.2s ease;
-                flex-shrink: 0;
-            }
-
-            /* Drop indicator line */
-            .tl-drop-indicator {
-                position: relative;
-                height: 4px;
-                margin: 0 40px;
-                pointer-events: none;
-                z-index: 50;
-            }
-            .tl-drop-indicator::after {
-                content: "";
-                position: absolute;
-                left: 0;
-                right: 0;
-                top: 1px;
-                height: 2px;
-                background: var(--blue);
-                border-radius: 2px;
-                box-shadow: 0 0 0 3px rgba(26, 79, 139, 0.15);
             }
 
             /* ─── DATE GROUP ─── */
@@ -1110,30 +1082,14 @@
                 border-color: rgba(46, 125, 50, 0.3);
             }
             .activity-card.pre-match-linked {
-                border-color: rgba(26, 79, 139, 0.3);
-                box-shadow:
-                    0 0 0 1px rgba(26, 79, 139, 0.08),
-                    var(--shadow);
                 position: relative;
                 background:
                     linear-gradient(
                         90deg,
-                        rgba(26, 79, 139, 0.08) 0 6px,
-                        transparent 6px
+                        rgba(26, 79, 139, 0.045) 0 4px,
+                        transparent 4px
                     ),
                     var(--card);
-            }
-            .activity-card.pre-match-linked::before {
-                content: "PRE-MATCH LINK";
-                position: absolute;
-                top: 7px;
-                right: 10px;
-                font-size: 8px;
-                font-weight: 700;
-                letter-spacing: 0.12em;
-                color: var(--blue);
-                opacity: 0.75;
-                pointer-events: none;
             }
 
             .act-row {
@@ -1208,63 +1164,72 @@
                 align-items: center;
                 gap: 6px;
                 flex-wrap: wrap;
-                margin-top: 6px;
-                padding: 6px 8px;
-                background: rgba(26, 79, 139, 0.06);
-                border: 1px solid rgba(26, 79, 139, 0.12);
-                border-radius: 8px;
+                margin-top: 4px;
+                padding: 0;
                 position: relative;
             }
             .activity-link-row::before {
                 content: "";
-                width: 16px;
-                height: 2px;
-                background: linear-gradient(
-                    to right,
-                    rgba(26, 79, 139, 0.22),
-                    rgba(26, 79, 139, 0.95)
-                );
-                border-radius: 999px;
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: rgba(26, 79, 139, 0.4);
                 flex-shrink: 0;
             }
             .activity-link-meta {
                 font-size: 9px;
+                font-weight: 500;
+                letter-spacing: 0.03em;
+                color: var(--ink-light);
+            }
+            .linked-match-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 10px;
                 font-weight: 600;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
+                padding: 0;
+                border-radius: 0;
+                background: none;
+                color: var(--ink-mid);
+                cursor: pointer;
+                border: none;
+                transition: color 0.15s;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            .linked-match-chip:hover {
+                background: none;
                 color: var(--blue);
-                opacity: 0.9;
             }
             .linked-match-unlink {
                 margin-left: auto;
-                border: 1px solid rgba(26, 79, 139, 0.18);
-                background: rgba(255, 255, 255, 0.8);
-                color: var(--ink-mid);
+                border: none;
+                background: none;
+                color: var(--ink-light);
                 border-radius: 999px;
-                padding: 2px 8px;
+                padding: 0;
                 font-size: 9px;
-                font-weight: 700;
-                letter-spacing: 0.06em;
-                text-transform: uppercase;
+                font-weight: 600;
+                letter-spacing: 0.04em;
                 cursor: pointer;
-                transition: all 0.15s ease;
+                transition: color 0.15s ease;
             }
             .linked-match-unlink:hover {
-                background: rgba(242, 12, 35, 0.08);
-                border-color: rgba(242, 12, 35, 0.26);
                 color: var(--red);
             }
 
             .drag-handle {
                 color: var(--ink-light);
                 font-size: 16px;
-                cursor: grab;
+                cursor: default;
                 flex-shrink: 0;
                 padding: 0 6px;
                 opacity: 0.5;
                 transition:
                     opacity 0.15s,
                     color 0.15s;
+                user-select: none;
             }
             .fixture-card .drag-handle {
                 position: static;
@@ -1276,9 +1241,6 @@
             .milestone-card:hover .drag-handle {
                 opacity: 1;
                 color: var(--ink-mid);
-            }
-            .drag-handle:active {
-                cursor: grabbing;
             }
 
             .activity-btns {
@@ -1485,13 +1447,6 @@
             .milestone-card .drag-handle {
                 position: static;
                 transform: none;
-            }
-
-            /* ─── NOTE NO-DROP VISUAL ─── */
-            .fixture-card.note-no-drop {
-                outline: 2px dashed var(--red);
-                outline-offset: 2px;
-                background: rgba(242, 12, 35, 0.04);
             }
 
             /* ─── MONTH DIVIDER ─── */
@@ -1713,12 +1668,14 @@
                 border-color: var(--gold);
                 background: rgba(212, 175, 55, 0.1);
             }
-            .team-selector {
+            .team-selector,
+            .placement-selector {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
                 gap: 8px;
             }
-            .team-opt {
+            .team-opt,
+            .placement-opt {
                 border: 1.5px solid var(--line);
                 padding: 10px 8px;
                 border-radius: 6px;
@@ -1732,11 +1689,13 @@
                 transition: all 0.2s;
                 background: var(--bg);
             }
-            .team-opt:hover {
+            .team-opt:hover,
+            .placement-opt:hover {
                 border-color: var(--ink-mid);
                 background: rgba(0, 0, 0, 0.03);
             }
-            .team-opt.selected {
+            .team-opt.selected,
+            .placement-opt.selected {
                 border-color: var(--ink);
                 background: var(--ink);
                 color: #fff;
@@ -2061,16 +2020,6 @@
                     transform: scale(1);
                     opacity: 1;
                 }
-            }
-
-            .fixture-card.drop-active {
-                outline: 2px dashed var(--gold);
-                outline-offset: 2px;
-                background: rgba(212, 175, 55, 0.03);
-            }
-            .fixture-acts-toggle.disabled {
-                pointer-events: none;
-                opacity: 0.5;
             }
 
             /* ─── INLINE SETTINGS ─── */
@@ -2573,43 +2522,10 @@
                     position: relative;
                 }
 
-                /* Mobile ghost */
-                .touch-drag-ghost {
-                    position: fixed;
-                    pointer-events: none;
-                    z-index: 9999;
-                    opacity: 0.88;
-                    transform: rotate(2deg) scale(1.04);
-                    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
-                    border-radius: var(--card-radius);
-                    transition: none;
-                    max-width: 85vw;
-                }
                 .drag-handle {
                     opacity: 1 !important;
                     padding: 0 14px !important;
                     font-size: 20px !important;
-                    touch-action: none; /* prevents browser from intercepting as scroll */
-                    cursor: grab;
-                }
-                .mini-activity,
-                .activity-card,
-                .note-card,
-                .fixture-card,
-                .milestone-card {
-                    touch-action: pan-y;
-                }
-                .mini-activity.dragging {
-                    opacity: 0.4;
-                    transform: scale(1);
-                }
-                .mini-activity.drag-over {
-                    border: 2px dashed var(--blue);
-                    background: rgba(26, 79, 139, 0.08);
-                }
-                .tl-row.touch-drop-target .tl-card-wrap > * {
-                    outline: 2px dashed var(--blue);
-                    outline-offset: 2px;
                 }
             }
         </style>
@@ -3944,11 +3860,6 @@
             // ═══════════════════════════════════════════════════════════════
             let S = { items: [], savedAssignees: [] };
             let currentModal = null;
-            let dragActivityId = null;
-            let dragItemType = null; // FIX: track type of dragged item for note restriction
-            let isDraggingActivity = false;
-            let dragEndTime = 0;
-            let disableToggle = false;
 
             // ═══════════════════════════════════════════════════════════════
             // PERSISTENCE
@@ -4324,7 +4235,8 @@
                 const actsHtml = acts
                     .map((a) => renderMiniActivity(a))
                     .join("");
-                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-fixture-id="${f.id}" draggable="true"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ""}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none"><div class="cluster-link-note">Linked activity cards for this match</div>${actsHtml}</div>` : ""}</div></div></div>`;
+                const activityCountLabel = `${acts.length} related activit${acts.length === 1 ? "y" : "ies"}`;
+                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-fixture-id="${f.id}"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" type="button" data-fixture-id="${f.id}" data-open="false" onclick="toggleActCluster('${f.id}', true)"><span class="fixture-acts-dot"></span><span class="fixture-acts-count">${activityCountLabel}</span></button>` : ""}<div class="fixture-actions"><button class="activity-btn" title="Add related activity" onclick="openActivityForFixture('${f.id}')">＋</button><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none"><button type="button" class="cluster-link-note" onclick="highlightFixtureActivities('${f.id}')">Related activity cards for this match</button>${actsHtml}</div>` : ""}</div></div></div>`;
             }
 
             function renderMiniActivity(a) {
@@ -4338,7 +4250,7 @@
                             `<span class="assignee-chip">👤 ${esc(p)}</span>`,
                     )
                     .join("");
-                return `<div class="mini-activity${completeCls}" data-id="${a.id}" data-type="activity" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div>`;
+                return `<div class="mini-activity${completeCls}" data-id="${a.id}"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn" title="Move up" onclick="moveClusterActivityOrder('${a.id}', -1)">↑</button><button class="activity-btn" title="Move down" onclick="moveClusterActivityOrder('${a.id}', 1)">↓</button><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div>`;
             }
 
             function renderActivityGroup(g, side, isPast) {
@@ -4360,30 +4272,27 @@
                     )
                     .join("");
                 const linkedRow = linkedFixture
-                    ? `<div class="activity-link-row"><span class="linked-match-chip" onclick="editFixture('${linkedFixture.id}')">🏉 ${esc(linkedFixture.opponent)}</span>${linkLeadText ? `<span class="activity-link-meta">${esc(linkLeadText)}</span>` : ""}<button class="linked-match-unlink" title="Remove match link" onclick="unlinkActivityMatch('${a.id}')">Unlink</button></div>`
+                    ? `<div class="activity-link-row"><button class="linked-match-chip" type="button" onclick="focusLinkedFixture('${linkedFixture.id}','${a.id}')">Related match: ${esc(linkedFixture.opponent)}</button>${linkLeadText ? `<span class="activity-link-meta">${esc(linkLeadText)}</span>` : ""}<button class="linked-match-unlink" type="button" title="Remove match link" onclick="unlinkActivityMatch('${a.id}')">Unlink</button></div>`
                     : "";
-                return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}${linkedCls}" data-id="${a.id}" data-type="activity" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}${linkedCls}" data-id="${a.id}" id="act-${a.id}"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
             }
 
             function renderMilestoneGroup(g, side, isPast) {
                 const m = g.item,
                     style = m.style || "red",
                     pastCls = isPast ? " past" : "";
-                return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" data-type="milestone" id="milestone-${m.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? " · " + esc(m.notes) : ""}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" data-type="milestone" id="milestone-${m.id}"><div class="act-row"><div class="drag-handle">⠿</div><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? " · " + esc(m.notes) : ""}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
             }
 
             function renderNoteGroup(g, side, isPast) {
                 const n = g.item,
                     pastCls = isPast ? " past" : "";
-                return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast ? " past-dot" : ""}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" data-type="note" id="note-${n.id}" draggable="true"><div class="act-row"><div class="drag-handle">⋮⋮</div><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast ? " past-dot" : ""}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" data-type="note" id="note-${n.id}"><div class="act-row"><div class="drag-handle">⋮⋮</div><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
             }
 
             // ═══════════════════════════════════════════════════════════════
             // INTERACTIONS
             // ═══════════════════════════════════════════════════════════════
-            function isMobile() {
-                return window.innerWidth <= 768 || "ontouchstart" in window;
-            }
 
             function toggleComplete(id) {
                 const item = S.items.find((i) => i.id === id);
@@ -4397,17 +4306,10 @@
                 save();
                 render();
                 openDropdowns.forEach((fid) => {
-                    const c = document.getElementById("cluster-" + fid),
-                        b = document.querySelector(
-                            `[onclick="toggleActCluster('${fid}')"]`,
-                        );
+                    const c = document.getElementById("cluster-" + fid);
                     if (c) {
                         c.style.display = "";
-                        if (b)
-                            b.textContent =
-                                "▾ " +
-                                c.querySelectorAll(".mini-activity").length +
-                                " Matchday Activities";
+                        updateFixtureActivitiesToggle(fid);
                     }
                 });
                 showToast(
@@ -4422,10 +4324,16 @@
                     showToast("Activity is already on the main timeline");
                     return;
                 }
+                const previousFixtureId = item.fixtureId;
+                const openClusterIds = getOpenClusterIds();
                 item.linkedFixtureId = item.fixtureId;
                 item.fixtureId = null;
+                normalizeFixtureClusterOrder(previousFixtureId);
                 save();
                 render();
+                restoreOpenClusters(
+                    openClusterIds.filter((fid) => fid !== previousFixtureId),
+                );
                 showToast("Activity moved to main timeline");
             }
 
@@ -4464,45 +4372,198 @@
                 }
             }
 
-            function toggleActCluster(fid) {
-                if (disableToggle) return;
+            function updateFixtureActivitiesToggle(fid) {
                 const cluster = document.getElementById("cluster-" + fid);
                 const btn = document.querySelector(
-                    `[onclick="toggleActCluster('${fid}')"]`,
+                    `.fixture-acts-toggle[data-fixture-id="${fid}"]`,
                 );
+                if (!cluster || !btn) return;
+                const count = cluster.querySelectorAll(".mini-activity").length;
+                btn.dataset.open =
+                    cluster.style.display === "none" ? "false" : "true";
+                const countEl = btn.querySelector(".fixture-acts-count");
+                const label = `${count} related activit${count === 1 ? "y" : "ies"}`;
+                if (countEl) countEl.textContent = label;
+                else btn.textContent = label;
+            }
+
+            function getOpenClusterIds() {
+                return Array.from(
+                    document.querySelectorAll(".activity-cluster"),
+                )
+                    .filter((cluster) => cluster.style.display !== "none")
+                    .map((cluster) => cluster.id.replace("cluster-", ""));
+            }
+
+            function restoreOpenClusters(ids = []) {
+                Array.from(new Set(ids.filter(Boolean))).forEach((fid) => {
+                    const cluster = document.getElementById("cluster-" + fid);
+                    if (cluster) {
+                        cluster.style.display = "";
+                        updateFixtureActivitiesToggle(fid);
+                    }
+                });
+            }
+
+            function getSortedFixtureActivities(fixtureId, excludeId = null) {
+                return S.items
+                    .filter(
+                        (i) =>
+                            i.type === "activity" &&
+                            i.fixtureId === fixtureId &&
+                            i.id !== excludeId,
+                    )
+                    .sort(
+                        (a, b) =>
+                            (a.clusterOrder || 0) - (b.clusterOrder || 0) ||
+                            a.date.localeCompare(b.date) ||
+                            (a.title || "").localeCompare(b.title || ""),
+                    );
+            }
+
+            function normalizeFixtureClusterOrder(fixtureId) {
+                if (!fixtureId) return;
+                getSortedFixtureActivities(fixtureId).forEach(
+                    (activity, index) => {
+                        activity.clusterOrder = index;
+                    },
+                );
+            }
+
+            function getNextClusterOrder(fixtureId, excludeId = null) {
+                return getSortedFixtureActivities(fixtureId, excludeId).length;
+            }
+
+            function moveClusterActivityOrder(activityId, direction) {
+                const activity = S.items.find(
+                    (i) => i.id === activityId && i.type === "activity",
+                );
+                if (!activity?.fixtureId) return;
+                const ordered = getSortedFixtureActivities(activity.fixtureId);
+                const index = ordered.findIndex(
+                    (entry) => entry.id === activityId,
+                );
+                if (index < 0) return;
+                const targetIndex = index + direction;
+                if (targetIndex < 0 || targetIndex >= ordered.length) {
+                    showToast(
+                        direction < 0
+                            ? "Already at the top"
+                            : "Already at the bottom",
+                    );
+                    return;
+                }
+                const openClusterIds = getOpenClusterIds();
+                const swap = ordered[targetIndex];
+                const currentOrder = activity.clusterOrder || 0;
+                activity.clusterOrder = swap.clusterOrder || 0;
+                swap.clusterOrder = currentOrder;
+                normalizeFixtureClusterOrder(activity.fixtureId);
+                save();
+                render();
+                restoreOpenClusters(openClusterIds);
+                highlightFixtureActivities(activity.fixtureId);
+            }
+
+            function openActivityForFixture(fixtureId) {
+                const fixture = findFixtureById(fixtureId);
+                currentModal = {
+                    type: "activity",
+                    editId: null,
+                    data: {
+                        date: fixture?.date || todayStr(),
+                        fixtureId: fixtureId || null,
+                        linkedFixtureId: fixtureId || null,
+                        _placementMode: "fixture",
+                    },
+                    assignees: [],
+                };
+                renderModal();
+                document.getElementById("modal-overlay").classList.add("open");
+            }
+
+            function flashRelationshipElements(elements = []) {
+                elements.filter(Boolean).forEach((el) => {
+                    el.classList.remove("relationship-flash");
+                    void el.offsetWidth;
+                    el.classList.add("relationship-flash");
+                    setTimeout(
+                        () => el.classList.remove("relationship-flash"),
+                        1600,
+                    );
+                });
+            }
+
+            function ensurePastItemVisible(element) {
+                const pastItems = document.getElementById("past-items");
+                const pastToggle = document.getElementById("past-toggle");
+                if (
+                    !element ||
+                    !pastItems ||
+                    !pastToggle ||
+                    !pastItems.contains(element) ||
+                    pastToggle.classList.contains("open")
+                ) {
+                    return;
+                }
+                pastItems.style.cssText =
+                    "max-height:none;opacity:1;overflow:visible;transition:none;";
+                pastToggle.classList.add("open");
+                pastToggle.textContent = "hide previous activity";
+            }
+
+            function ensureClusterOpen(fid) {
+                const fixtureCard = document.getElementById("fc-" + fid);
+                ensurePastItemVisible(fixtureCard);
+                const cluster = document.getElementById("cluster-" + fid);
+                if (!cluster) return null;
+                cluster.style.display = "";
+                updateFixtureActivitiesToggle(fid);
+                return cluster;
+            }
+
+            function highlightFixtureActivities(fid, scrollToCluster = false) {
+                const cluster = ensureClusterOpen(fid);
+                const fixtureCard = document.getElementById("fc-" + fid);
+                if (!fixtureCard) return;
+                const relatedCards = cluster
+                    ? Array.from(cluster.querySelectorAll(".mini-activity"))
+                    : [];
+                flashRelationshipElements([
+                    fixtureCard,
+                    cluster,
+                    ...relatedCards,
+                ]);
+                if (scrollToCluster && cluster) {
+                    cluster.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest",
+                    });
+                }
+            }
+
+            function focusLinkedFixture(fid, activityId = null) {
+                const fixtureCard = document.getElementById("fc-" + fid);
+                const sourceActivity = activityId
+                    ? document.getElementById("act-" + activityId)
+                    : null;
+                if (sourceActivity) flashRelationshipElements([sourceActivity]);
+                highlightFixtureActivities(fid);
+                fixtureCard?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            }
+
+            function toggleActCluster(fid, shouldSpotlight = false) {
+                const cluster = document.getElementById("cluster-" + fid);
                 if (!cluster) return;
                 const hidden = cluster.style.display === "none";
                 cluster.style.display = hidden ? "" : "none";
-                if (btn)
-                    btn.textContent =
-                        (hidden ? "▾ " : "▸ ") +
-                        cluster.querySelectorAll(".mini-activity").length +
-                        " Matchday Activities";
-            }
-
-            function ensureDropdownOpen(fid) {
-                const cluster = document.getElementById("cluster-" + fid);
-                const btn = document.querySelector(
-                    `[onclick="toggleActCluster('${fid}')"]`,
-                );
-                if (!cluster || !btn) return;
-                cluster.style.display = "";
-                btn.textContent =
-                    "▾ " +
-                    cluster.querySelectorAll(".mini-activity").length +
-                    " Matchday Activities";
-                let attempts = 0;
-                const iv = setInterval(() => {
-                    attempts++;
-                    if (cluster.style.display === "none") {
-                        cluster.style.display = "";
-                        btn.textContent =
-                            "▾ " +
-                            cluster.querySelectorAll(".mini-activity").length +
-                            " Matchday Activities";
-                    }
-                    if (attempts >= 60) clearInterval(iv);
-                }, 50);
+                updateFixtureActivitiesToggle(fid);
+                if (hidden && shouldSpotlight) {
+                    highlightFixtureActivities(fid, true);
+                }
             }
 
             function fixtureDisplayLabel(fixture) {
@@ -4729,179 +4790,6 @@
                 });
             }
 
-            function isTopLevelTimelineItem(item) {
-                return !!item && !(item.type === "activity" && item.fixtureId);
-            }
-
-            function getOpenClusterIds() {
-                return Array.from(
-                    document.querySelectorAll(".activity-cluster"),
-                )
-                    .filter((cluster) => cluster.style.display !== "none")
-                    .map((cluster) => cluster.id.replace("cluster-", ""));
-            }
-
-            function restoreOpenClusters(ids = []) {
-                Array.from(new Set(ids.filter(Boolean))).forEach((fid) =>
-                    ensureDropdownOpen(fid),
-                );
-            }
-
-            function getSortedFixtureActivities(fixtureId, excludeId = null) {
-                return S.items
-                    .filter(
-                        (i) =>
-                            i.type === "activity" &&
-                            i.fixtureId === fixtureId &&
-                            i.id !== excludeId,
-                    )
-                    .sort(
-                        (a, b) =>
-                            (a.clusterOrder || 0) - (b.clusterOrder || 0) ||
-                            a.date.localeCompare(b.date) ||
-                            (a.title || "").localeCompare(b.title || ""),
-                    );
-            }
-
-            function moveActivityToFixtureCluster(
-                activityId,
-                fixtureId,
-                beforeId,
-            ) {
-                const activity = S.items.find(
-                    (i) => i.id === activityId && i.type === "activity",
-                );
-                if (!activity) return { changed: false, linked: false };
-
-                const previousFixtureId = activity.fixtureId || null;
-                const ordered = getSortedFixtureActivities(
-                    fixtureId,
-                    activityId,
-                );
-                let insertIndex = ordered.length;
-
-                if (beforeId) {
-                    const beforeIndex = ordered.findIndex(
-                        (a) => a.id === beforeId,
-                    );
-                    if (beforeIndex >= 0) insertIndex = beforeIndex;
-                }
-
-                activity.fixtureId = fixtureId;
-                activity.linkedFixtureId = fixtureId;
-                ordered.splice(insertIndex, 0, activity);
-                ordered.forEach((a, idx) => {
-                    a.clusterOrder = idx;
-                });
-
-                return {
-                    changed: true,
-                    linked: previousFixtureId !== fixtureId,
-                    previousFixtureId,
-                };
-            }
-
-            function buildOrderedIdsForDateDrop(group, movedId, clientY) {
-                const ids = Array.from(
-                    group.querySelectorAll(":scope > .tl-row[data-id]"),
-                )
-                    .map((row) => row.dataset.id)
-                    .filter((id) => id && id !== movedId);
-
-                let insertIndex = ids.length;
-                const rows = Array.from(
-                    group.querySelectorAll(":scope > .tl-row[data-id]"),
-                ).filter((row) => row.dataset.id && row.dataset.id !== movedId);
-
-                for (let i = 0; i < rows.length; i++) {
-                    const box = rows[i].getBoundingClientRect();
-                    const midpoint = box.top + box.height / 2;
-                    if (clientY < midpoint) {
-                        insertIndex = i;
-                        break;
-                    }
-                }
-
-                ids.splice(insertIndex, 0, movedId);
-                return ids;
-            }
-
-            function moveItemToDateGroup(itemId, targetDate, orderedIds) {
-                const item = S.items.find((i) => i.id === itemId);
-                if (!item || !targetDate) {
-                    return {
-                        changed: false,
-                        dateChanged: false,
-                        unlinked: false,
-                    };
-                }
-
-                const previousDate = item.date;
-                const previousFixtureId =
-                    item.type === "activity" ? item.fixtureId : null;
-                const wasLinkedActivity =
-                    item.type === "activity" && !!item.fixtureId;
-
-                if (item.type === "activity") {
-                    if (item.fixtureId) item.linkedFixtureId = item.fixtureId;
-                    item.fixtureId = null;
-                }
-                item.date = targetDate;
-
-                const targetSet = new Set(orderedIds || []);
-                const reordered = (orderedIds || [])
-                    .map(
-                        (id) =>
-                            S.items.find((i) => i.id === id) ||
-                            (id === itemId ? item : null),
-                    )
-                    .filter(Boolean)
-                    .map((entry) => {
-                        if (entry.id === itemId) return item;
-                        return entry;
-                    });
-
-                const remainder = S.items.filter((candidate) => {
-                    if (candidate.id === itemId) return false;
-                    if (
-                        candidate.date === targetDate &&
-                        isTopLevelTimelineItem(candidate) &&
-                        targetSet.has(candidate.id)
-                    ) {
-                        return false;
-                    }
-                    return true;
-                });
-
-                S.items = [...remainder, ...reordered];
-
-                return {
-                    changed: true,
-                    dateChanged: previousDate !== targetDate,
-                    unlinked: wasLinkedActivity,
-                    previousFixtureId,
-                };
-            }
-
-            document.addEventListener(
-                "click",
-                (event) => {
-                    if (
-                        isDraggingActivity ||
-                        (dragEndTime && Date.now() - dragEndTime < 500)
-                    ) {
-                        const toggleBtn = event.target.closest(
-                            ".fixture-acts-toggle",
-                        );
-                        if (toggleBtn) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            return false;
-                        }
-                    }
-                },
-                true,
-            );
             document.addEventListener("click", (event) => {
                 const dropdown = document.getElementById(
                     "autocomplete-dropdown",
@@ -4930,698 +4818,7 @@
                 }
             });
 
-            // ═══════════════════════════════════════════════════════════════
-            // DRAG & DROP
-            // ═══════════════════════════════════════════════════════════════
-            function attachEvents() {
-                document
-                    .querySelectorAll(
-                        ".activity-card,.mini-activity,.note-card,.fixture-card,.milestone-card",
-                    )
-                    .forEach((el) => {
-                        // ── Desktop drag ──────────────────────────────────────────
-                        el.addEventListener("dragstart", (e) => {
-                            dragActivityId = el.dataset.id;
-                            dragItemType =
-                                el.dataset.type ||
-                                (el.classList.contains("fixture-card")
-                                    ? "fixture"
-                                    : el.classList.contains("note-card")
-                                      ? "note"
-                                      : el.classList.contains("milestone-card")
-                                        ? "milestone"
-                                        : "activity");
-                            isDraggingActivity = true;
-                            disableToggle = true;
-                            e.dataTransfer.effectAllowed = "move";
-                            e.dataTransfer.setData("text/plain", el.dataset.id);
-                            el.classList.add("dragging");
-                            const tlRow = el.closest(".tl-row");
-                            // Don't mark the outer fixture tl-row as .dragging when
-                            // dragging a mini-activity — it lives inside the fixture's
-                            // row, so we only mark it for top-level cards.
-                            if (tlRow && !el.closest(".activity-cluster")) {
-                                tlRow.classList.add("dragging");
-                            }
-                            document
-                                .querySelectorAll(".fixture-acts-toggle")
-                                .forEach((btn) => {
-                                    btn.dataset.originalOnclick =
-                                        btn.getAttribute("onclick");
-                                    btn.removeAttribute("onclick");
-                                });
-                        });
-
-                        el.addEventListener("dragend", () => {
-                            el.classList.remove("dragging");
-                            isDraggingActivity = false;
-                            dragEndTime = Date.now();
-                            document
-                                .querySelectorAll(".tl-drop-indicator")
-                                .forEach((i) => i.remove());
-                            document
-                                .querySelectorAll(".tl-row.dragging")
-                                .forEach((r) => r.classList.remove("dragging"));
-                            document
-                                .querySelectorAll(".drag-placeholder")
-                                .forEach((p) => p.remove());
-                            document
-                                .querySelectorAll(
-                                    ".fixture-card.drop-active,.fixture-card.note-no-drop",
-                                )
-                                .forEach((fc) => {
-                                    fc.classList.remove(
-                                        "drop-active",
-                                        "note-no-drop",
-                                    );
-                                });
-                            setTimeout(() => {
-                                disableToggle = false;
-                                document
-                                    .querySelectorAll(".fixture-acts-toggle")
-                                    .forEach((btn) => {
-                                        if (btn.dataset.originalOnclick) {
-                                            btn.setAttribute(
-                                                "onclick",
-                                                btn.dataset.originalOnclick,
-                                            );
-                                            delete btn.dataset.originalOnclick;
-                                        }
-                                    });
-                            }, 500);
-                        });
-
-                        // ── Mobile / Touch drag ───────────────────────────────────
-                        let touchStartX,
-                            touchStartY,
-                            touchElement,
-                            isTouchDrag = false;
-
-                        el.addEventListener(
-                            "touchstart",
-                            (e) => {
-                                const touch = e.touches[0];
-                                touchStartX = touch.clientX;
-                                touchStartY = touch.clientY;
-                                touchElement = el;
-                                isTouchDrag = false;
-                                // FIX: Only initiate drag from the drag-handle; also call preventDefault
-                                // to stop the page scrolling while dragging
-                                if (!e.target.closest(".drag-handle")) return;
-                                e.preventDefault(); // FIX: prevent scroll conflict on handle touch
-                                dragActivityId = el.dataset.id;
-                                dragItemType =
-                                    el.dataset.type ||
-                                    (el.classList.contains("fixture-card")
-                                        ? "fixture"
-                                        : el.classList.contains("note-card")
-                                          ? "note"
-                                          : el.classList.contains(
-                                                  "milestone-card",
-                                              )
-                                            ? "milestone"
-                                            : "activity");
-                                isDraggingActivity = true;
-                                disableToggle = true;
-                                el.classList.add("dragging");
-                                document
-                                    .querySelectorAll(".fixture-acts-toggle")
-                                    .forEach((btn) => {
-                                        btn.dataset.originalOnclick =
-                                            btn.getAttribute("onclick");
-                                        btn.removeAttribute("onclick");
-                                    });
-                            },
-                            { passive: false },
-                        ); // FIX: non-passive so preventDefault works
-
-                        el.addEventListener(
-                            "touchmove",
-                            (e) => {
-                                if (!isDraggingActivity || touchElement !== el)
-                                    return;
-                                const touch = e.touches[0];
-                                const deltaX = Math.abs(
-                                    touch.clientX - touchStartX,
-                                );
-                                const deltaY = Math.abs(
-                                    touch.clientY - touchStartY,
-                                );
-                                if (deltaX < 10 && deltaY < 10) return;
-                                if (!isTouchDrag) {
-                                    isTouchDrag = true;
-                                    const ghost = el.cloneNode(true);
-                                    ghost.id = "touch-drag-ghost";
-                                    ghost.className =
-                                        (ghost.className || "") +
-                                        " touch-drag-ghost";
-                                    ghost.style.width = el.offsetWidth + "px";
-                                    ghost.style.left =
-                                        touch.clientX -
-                                        el.offsetWidth / 2 +
-                                        "px";
-                                    ghost.style.top = touch.clientY - 30 + "px";
-                                    document.body.appendChild(ghost);
-                                }
-                                e.preventDefault();
-                                const ghost =
-                                    document.getElementById("touch-drag-ghost");
-                                if (ghost) {
-                                    ghost.style.left =
-                                        touch.clientX -
-                                        ghost.offsetWidth / 2 +
-                                        "px";
-                                    ghost.style.top = touch.clientY - 30 + "px";
-                                }
-                                document
-                                    .querySelectorAll(
-                                        ".tl-row.touch-drop-target",
-                                    )
-                                    .forEach((r) =>
-                                        r.classList.remove("touch-drop-target"),
-                                    );
-                                const target = document.elementFromPoint(
-                                    touch.clientX,
-                                    touch.clientY,
-                                );
-                                const targetRow = target?.closest(".tl-row");
-                                if (
-                                    targetRow &&
-                                    targetRow !== el.closest(".tl-row")
-                                )
-                                    targetRow.classList.add(
-                                        "touch-drop-target",
-                                    );
-
-                                // FIX: Don't show cluster placeholder if dragging a note
-                                const cluster =
-                                    target?.closest(".activity-cluster");
-                                if (cluster && dragItemType !== "note") {
-                                    const existingPlaceholder =
-                                        cluster.querySelector(
-                                            ".drag-placeholder",
-                                        );
-                                    if (existingPlaceholder)
-                                        existingPlaceholder.remove();
-                                    const placeholder = createDragPlaceholder();
-                                    const after = getDragAfterElement(
-                                        cluster,
-                                        touch.clientY,
-                                    );
-                                    after == null
-                                        ? cluster.appendChild(placeholder)
-                                        : cluster.insertBefore(
-                                              placeholder,
-                                              after,
-                                          );
-                                } else {
-                                    document
-                                        .querySelectorAll(".drag-placeholder")
-                                        .forEach((p) => p.remove());
-                                }
-                            },
-                            { passive: false },
-                        );
-
-                        el.addEventListener("touchend", (e) => {
-                            if (!isDraggingActivity || touchElement !== el)
-                                return;
-                            const ghost =
-                                document.getElementById("touch-drag-ghost");
-                            if (ghost) ghost.remove();
-                            document
-                                .querySelectorAll(".tl-row.touch-drop-target")
-                                .forEach((r) =>
-                                    r.classList.remove("touch-drop-target"),
-                                );
-                            if (!isTouchDrag) {
-                                isDraggingActivity = false;
-                                touchElement = null;
-                                el.classList.remove("dragging");
-                                document
-                                    .querySelectorAll(".fixture-acts-toggle")
-                                    .forEach((btn) => {
-                                        if (btn.dataset.originalOnclick) {
-                                            btn.setAttribute(
-                                                "onclick",
-                                                btn.dataset.originalOnclick,
-                                            );
-                                            delete btn.dataset.originalOnclick;
-                                        }
-                                    });
-                                disableToggle = false;
-                                return;
-                            }
-                            el.classList.remove("dragging");
-                            document
-                                .querySelectorAll(".mini-activity")
-                                .forEach((i) =>
-                                    i.classList.remove("drag-over"),
-                                );
-                            document
-                                .querySelectorAll(".drag-placeholder")
-                                .forEach((p) => p.remove());
-                            isDraggingActivity = false;
-                            dragEndTime = Date.now();
-                            const touch = e.changedTouches[0];
-                            const target = document.elementFromPoint(
-                                touch.clientX,
-                                touch.clientY,
-                            );
-                            const openClusterIds = getOpenClusterIds();
-                            const fc = target?.closest(".fixture-card");
-                            const cluster =
-                                target?.closest(".activity-cluster");
-                            const dateGroup = target?.closest(".date-group");
-                            let shouldRender = false;
-                            let toastMsg = "";
-
-                            if (fc && dragItemType === "note") {
-                                toastMsg =
-                                    "📝 Notes can't be linked to matches";
-                            } else if (cluster && dragItemType === "activity") {
-                                const fixtureId = cluster.id.replace(
-                                    "cluster-",
-                                    "",
-                                );
-                                const beforeId =
-                                    cluster.querySelector(".drag-placeholder")
-                                        ?.nextElementSibling?.dataset.id ||
-                                    null;
-                                const moved = moveActivityToFixtureCluster(
-                                    dragActivityId,
-                                    fixtureId,
-                                    beforeId,
-                                );
-                                if (moved.changed) {
-                                    shouldRender = true;
-                                    save();
-                                    render();
-                                    restoreOpenClusters([
-                                        ...openClusterIds,
-                                        fixtureId,
-                                    ]);
-                                    toastMsg = moved.linked
-                                        ? "🏉 Activity linked to match!"
-                                        : "↕ Activity order updated";
-                                }
-                            } else if (fc && dragItemType === "activity") {
-                                const fixtureId =
-                                    fc.dataset.fixtureId || fc.dataset.id;
-                                const moved = moveActivityToFixtureCluster(
-                                    dragActivityId,
-                                    fixtureId,
-                                    null,
-                                );
-                                if (moved.changed) {
-                                    shouldRender = true;
-                                    save();
-                                    render();
-                                    restoreOpenClusters([
-                                        ...openClusterIds,
-                                        fixtureId,
-                                    ]);
-                                    toastMsg = "🏉 Activity linked to match!";
-                                }
-                            } else if (dateGroup) {
-                                const date =
-                                    dateGroup.querySelector(".date-label")
-                                        ?.dataset.date;
-                                if (date) {
-                                    const orderedIds =
-                                        buildOrderedIdsForDateDrop(
-                                            dateGroup,
-                                            dragActivityId,
-                                            touch.clientY,
-                                        );
-                                    const moved = moveItemToDateGroup(
-                                        dragActivityId,
-                                        date,
-                                        orderedIds,
-                                    );
-                                    if (moved.changed) {
-                                        shouldRender = true;
-                                        save();
-                                        render();
-                                        restoreOpenClusters(openClusterIds);
-                                        if (moved.unlinked) {
-                                            toastMsg =
-                                                "↗ Activity moved back to timeline";
-                                        } else if (moved.dateChanged) {
-                                            toastMsg = "📅 Date updated";
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (toastMsg) showToast(toastMsg);
-                            if (!shouldRender) {
-                                document
-                                    .querySelectorAll(".drag-placeholder")
-                                    .forEach((p) => p.remove());
-                            }
-                            setTimeout(() => {
-                                disableToggle = false;
-                                document
-                                    .querySelectorAll(".fixture-acts-toggle")
-                                    .forEach((btn) => {
-                                        if (btn.dataset.originalOnclick) {
-                                            btn.setAttribute(
-                                                "onclick",
-                                                btn.dataset.originalOnclick,
-                                            );
-                                            delete btn.dataset.originalOnclick;
-                                        }
-                                    });
-                            }, 500);
-                            touchElement = null;
-                            isTouchDrag = false;
-                        });
-                    });
-
-                // ── Fixture card drop targets ────────────────────────────────
-                document.querySelectorAll(".fixture-card").forEach((fc) => {
-                    fc.addEventListener("dragover", (e) => {
-                        e.preventDefault();
-                        // Fixtures/milestones reorder via the date-group handler — no visual on the card
-                        if (
-                            dragItemType === "fixture" ||
-                            dragItemType === "milestone"
-                        )
-                            return;
-                        if (dragItemType === "note") {
-                            fc.classList.add("note-no-drop");
-                            fc.classList.remove("drop-active");
-                        } else {
-                            fc.classList.add("drop-active");
-                            fc.classList.remove("note-no-drop");
-                        }
-                    });
-                    fc.addEventListener("dragenter", () => {
-                        if (
-                            dragItemType === "fixture" ||
-                            dragItemType === "milestone"
-                        )
-                            return;
-                        if (dragItemType === "note")
-                            fc.classList.add("note-no-drop");
-                        else fc.classList.add("drop-active");
-                    });
-                    fc.addEventListener("dragleave", () => {
-                        fc.classList.remove("drop-active", "note-no-drop");
-                    });
-                    fc.addEventListener("drop", (e) => {
-                        e.preventDefault();
-                        fc.classList.remove("drop-active", "note-no-drop");
-                        // Notes: toast only — event bubbles harmlessly
-                        if (dragItemType === "note") {
-                            showToast("📝 Notes can't be linked to matches");
-                            return;
-                        }
-                        // Fixtures/milestones: let the event bubble to the date-group reorder handler
-                        if (
-                            dragItemType === "fixture" ||
-                            dragItemType === "milestone"
-                        )
-                            return;
-                        const fixtureId = fc.dataset.fixtureId || fc.dataset.id;
-                        const openClusterIds = getOpenClusterIds();
-                        const moved = moveActivityToFixtureCluster(
-                            dragActivityId,
-                            fixtureId,
-                            null,
-                        );
-                        if (moved.changed) {
-                            save();
-                            render();
-                            restoreOpenClusters([...openClusterIds, fixtureId]);
-                            showToast("🏉 Activity linked to match!");
-                        }
-                    });
-                });
-
-                document
-                    .querySelectorAll(".fixture-footer")
-                    .forEach((footer) => {
-                        footer.addEventListener(
-                            "click",
-                            (e) => {
-                                if (
-                                    isDraggingActivity ||
-                                    (dragEndTime &&
-                                        Date.now() - dragEndTime < 500)
-                                ) {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                }
-                            },
-                            true,
-                        );
-                    });
-                document
-                    .querySelectorAll(".fixture-acts-toggle")
-                    .forEach((btn) => {
-                        btn.addEventListener(
-                            "click",
-                            (e) => {
-                                if (
-                                    isDraggingActivity ||
-                                    (dragEndTime &&
-                                        Date.now() - dragEndTime < 500)
-                                ) {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    e.stopImmediatePropagation();
-                                }
-                            },
-                            true,
-                        );
-                    });
-
-                // ── Timeline-level drag: reorder rows + update date ──────────
-                document.querySelectorAll(".date-group").forEach((group) => {
-                    group.addEventListener("dragover", (e) => {
-                        e.preventDefault();
-                        const draggedRow =
-                            document.querySelector(".tl-row.dragging");
-                        const isClusterActivityDrag =
-                            !draggedRow && dragItemType === "activity";
-                        if (
-                            (!draggedRow && !isClusterActivityDrag) ||
-                            (draggedRow &&
-                                draggedRow.closest(".activity-cluster") &&
-                                !isClusterActivityDrag)
-                        )
-                            return;
-                        const date =
-                            group.querySelector(".date-label")?.dataset.date;
-                        if (!date) return;
-                        group
-                            .querySelectorAll(".tl-drop-indicator")
-                            .forEach((i) => i.remove());
-                        const rows = [
-                            ...group.querySelectorAll(":scope > .tl-row"),
-                        ];
-                        let afterRow = null,
-                            minAbsDist = Infinity;
-                        for (const row of rows) {
-                            if (row === draggedRow) continue;
-                            const box = row.getBoundingClientRect();
-                            const mid = box.top + box.height / 2;
-                            const dist = e.clientY - mid;
-                            if (dist > 0 && dist < minAbsDist) {
-                                minAbsDist = dist;
-                                afterRow = row;
-                            }
-                        }
-                        const indicator = document.createElement("div");
-                        indicator.className = "tl-drop-indicator";
-                        if (afterRow) {
-                            afterRow.insertAdjacentElement(
-                                "afterend",
-                                indicator,
-                            );
-                        } else {
-                            const firstRow =
-                                group.querySelector(":scope > .tl-row");
-                            if (firstRow)
-                                firstRow.insertAdjacentElement(
-                                    "beforebegin",
-                                    indicator,
-                                );
-                            else group.appendChild(indicator);
-                        }
-                    });
-
-                    group.addEventListener("dragleave", (e) => {
-                        if (!group.contains(e.relatedTarget))
-                            group
-                                .querySelectorAll(".tl-drop-indicator")
-                                .forEach((i) => i.remove());
-                    });
-
-                    group.addEventListener("drop", (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        document
-                            .querySelectorAll(".tl-drop-indicator")
-                            .forEach((i) => i.remove());
-                        const date =
-                            group.querySelector(".date-label")?.dataset.date;
-                        if (!date || !dragActivityId) return;
-                        const openClusterIds = getOpenClusterIds();
-                        const dragging =
-                            document.querySelector(".tl-row.dragging");
-                        const isClusterActivityDrop =
-                            !dragging && dragItemType === "activity";
-                        if (
-                            dragging &&
-                            dragging.closest(".activity-cluster") &&
-                            !isClusterActivityDrop
-                        ) {
-                            return;
-                        }
-                        const orderedIds = buildOrderedIdsForDateDrop(
-                            group,
-                            dragActivityId,
-                            e.clientY,
-                        );
-                        const moved = moveItemToDateGroup(
-                            dragActivityId,
-                            date,
-                            orderedIds,
-                        );
-                        if (!moved.changed) return;
-                        save();
-                        render();
-                        restoreOpenClusters(openClusterIds);
-                        if (moved.unlinked) {
-                            showToast("↗ Activity moved back to timeline");
-                        } else if (moved.dateChanged) {
-                            showToast("📅 Date updated");
-                        }
-                        // No toast for intra-date reordering
-                    });
-                });
-
-                // ── Activity cluster drop ─────────────────────────────────────
-                document
-                    .querySelectorAll(".activity-cluster")
-                    .forEach((cluster) => {
-                        cluster.addEventListener("dragover", (e) => {
-                            e.preventDefault();
-                            // Notes, fixtures, and milestones must not show a cluster placeholder
-                            if (
-                                dragItemType === "note" ||
-                                dragItemType === "fixture" ||
-                                dragItemType === "milestone"
-                            ) {
-                                document
-                                    .querySelectorAll(".drag-placeholder")
-                                    .forEach((p) => p.remove());
-                                return;
-                            }
-                            const dragging =
-                                document.querySelector(".dragging");
-                            if (!dragging) return;
-                            const existingPlaceholder =
-                                cluster.querySelector(".drag-placeholder");
-                            if (existingPlaceholder)
-                                existingPlaceholder.remove();
-                            const placeholder = createDragPlaceholder();
-                            const after = getDragAfterElement(
-                                cluster,
-                                e.clientY,
-                            );
-                            after == null
-                                ? cluster.appendChild(placeholder)
-                                : cluster.insertBefore(placeholder, after);
-                        });
-
-                        cluster.addEventListener("drop", (e) => {
-                            e.preventDefault();
-                            // Notes → toast only, don't stopPropagation
-                            if (dragItemType === "note") {
-                                document
-                                    .querySelectorAll(".drag-placeholder")
-                                    .forEach((p) => p.remove());
-                                showToast("📝 Notes can't be added to a match");
-                                return;
-                            }
-                            // Fixtures/milestones → clear any stray placeholder and bubble up to date-group handler
-                            if (
-                                dragItemType === "fixture" ||
-                                dragItemType === "milestone"
-                            ) {
-                                document
-                                    .querySelectorAll(".drag-placeholder")
-                                    .forEach((p) => p.remove());
-                                return;
-                            }
-                            e.stopPropagation(); // Activities only — handled fully here
-                            const fixtureId = cluster.id.replace(
-                                "cluster-",
-                                "",
-                            );
-                            const beforeId =
-                                cluster.querySelector(".drag-placeholder")
-                                    ?.nextElementSibling?.dataset.id || null;
-                            const openClusterIds = getOpenClusterIds();
-                            const moved = moveActivityToFixtureCluster(
-                                dragActivityId,
-                                fixtureId,
-                                beforeId,
-                            );
-                            document
-                                .querySelectorAll(".drag-placeholder")
-                                .forEach((p) => p.remove());
-                            if (!moved.changed) return;
-                            save();
-                            render();
-                            restoreOpenClusters([...openClusterIds, fixtureId]);
-                            showToast(
-                                moved.linked
-                                    ? "🏉 Activity linked to match!"
-                                    : "↕ Activity order updated",
-                            );
-                        });
-
-                        cluster.addEventListener("dragleave", (e) => {
-                            const placeholder =
-                                cluster.querySelector(".drag-placeholder");
-                            if (
-                                placeholder &&
-                                !cluster.contains(e.relatedTarget)
-                            )
-                                placeholder.remove();
-                        });
-                    });
-            }
-
-            function getDragAfterElement(container, y) {
-                const draggableElements = [
-                    ...container.querySelectorAll(
-                        ".mini-activity:not(.dragging)",
-                    ),
-                ];
-                return draggableElements.reduce(
-                    (closest, child) => {
-                        const box = child.getBoundingClientRect();
-                        const offset = y - box.top - box.height / 2;
-                        if (offset < 0 && offset > closest.offset) {
-                            return { offset, element: child };
-                        } else {
-                            return closest;
-                        }
-                    },
-                    { offset: Number.NEGATIVE_INFINITY },
-                ).element;
-            }
-            function createDragPlaceholder() {
-                const p = document.createElement("div");
-                p.className = "drag-placeholder";
-                return p;
-            }
+            function attachEvents() {}
 
             // ═══════════════════════════════════════════════════════════════
             // MODAL CONTROLS
@@ -5732,7 +4929,32 @@
                     const selectedFixtureId =
                         a.fixtureId || a.linkedFixtureId || "";
                     const selectedFixture = findFixtureById(selectedFixtureId);
-                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group fixture-link-picker"><label class="form-label">Related Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div><div class="form-help">Search fixtures by opponent or date. Linked activities stay on the main timeline but remain visually tied to the selected match.</div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+                    const placementMode =
+                        a._placementMode ||
+                        (a.fixtureId ? "fixture" : "timeline");
+                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Placement</label><div class="placement-selector" id="a-placement"><div class="placement-opt ${placementMode === "timeline" ? "selected" : ""}" data-value="timeline">Main Timeline</div><div class="placement-opt ${placementMode === "fixture" ? "selected" : ""}" data-value="fixture">Inside Match</div></div><div class="form-help">Choose whether this activity appears on the main timeline or inside a match's related activity list.</div></div><div class="form-group fixture-link-picker"><label class="form-label">Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div><div class="form-help" id="a-placement-help">${placementMode === "fixture" ? "Select the match this activity should sit under in the related activity list." : "Select a match if you want this timeline activity to stay visibly related to it."}</div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+                    document
+                        .querySelectorAll("#a-placement .placement-opt")
+                        .forEach((opt) =>
+                            opt.addEventListener("click", function () {
+                                document
+                                    .querySelectorAll(
+                                        "#a-placement .placement-opt",
+                                    )
+                                    .forEach((o) =>
+                                        o.classList.remove("selected"),
+                                    );
+                                this.classList.add("selected");
+                                const help =
+                                    document.getElementById("a-placement-help");
+                                if (help) {
+                                    help.textContent =
+                                        this.dataset.value === "fixture"
+                                            ? "Select the match this activity should sit under in the related activity list."
+                                            : "Select a match if you want this timeline activity to stay visibly related to it.";
+                                }
+                            }),
+                        );
                     renderFixtureLinkSelection();
                 } else if (type === "milestone") {
                     const m = data || {};
@@ -5966,9 +5188,31 @@
                     const selectedLinkedFixtureId =
                         document.getElementById("a-linked-fixture-id")?.value ||
                         null;
-                    const existingFixtureId = existing
-                        ? existing.fixtureId
-                        : null;
+                    const placementMode =
+                        document.querySelector(
+                            "#a-placement .placement-opt.selected",
+                        )?.dataset.value || "timeline";
+                    if (
+                        placementMode === "fixture" &&
+                        !selectedLinkedFixtureId
+                    ) {
+                        return alert(
+                            "Select a match to place this activity inside.",
+                        );
+                    }
+                    const previousFixtureId = existing?.fixtureId || null;
+                    const nextFixtureId =
+                        placementMode === "fixture"
+                            ? selectedLinkedFixtureId
+                            : null;
+                    const nextLinkedFixtureId =
+                        placementMode === "fixture"
+                            ? selectedLinkedFixtureId
+                            : selectedLinkedFixtureId;
+                    const nextClusterOrder =
+                        nextFixtureId && previousFixtureId !== nextFixtureId
+                            ? getNextClusterOrder(nextFixtureId, editId || null)
+                            : existing?.clusterOrder || 0;
                     const obj = {
                         id: editId || uid(),
                         type: "activity",
@@ -5978,15 +5222,22 @@
                         assignees: currentModal.assignees,
                         notes,
                         complete: existing ? existing.complete : false,
-                        fixtureId: existingFixtureId,
-                        linkedFixtureId:
-                            existingFixtureId || selectedLinkedFixtureId,
-                        clusterOrder: existing ? existing.clusterOrder || 0 : 0,
+                        fixtureId: nextFixtureId,
+                        linkedFixtureId: nextLinkedFixtureId,
+                        clusterOrder: nextClusterOrder,
                     };
                     if (editId)
                         S.items[S.items.findIndex((i) => i.id === editId)] =
                             obj;
                     else S.items.push(obj);
+                    if (
+                        previousFixtureId &&
+                        previousFixtureId !== nextFixtureId
+                    ) {
+                        normalizeFixtureClusterOrder(previousFixtureId);
+                    }
+                    if (nextFixtureId)
+                        normalizeFixtureClusterOrder(nextFixtureId);
                 } else if (type === "milestone") {
                     const title = document
                         .getElementById("m-title")
@@ -6041,17 +5292,10 @@
                 closeModal();
                 render();
                 openDropdowns.forEach((fid) => {
-                    const c = document.getElementById("cluster-" + fid),
-                        b = document.querySelector(
-                            `[onclick="toggleActCluster('${fid}')"]`,
-                        );
+                    const c = document.getElementById("cluster-" + fid);
                     if (c) {
                         c.style.display = "";
-                        if (b)
-                            b.textContent =
-                                "▾ " +
-                                c.querySelectorAll(".mini-activity").length +
-                                " Matchday Activities";
+                        updateFixtureActivitiesToggle(fid);
                     }
                 });
                 showToast("Changes saved.");
@@ -6076,6 +5320,12 @@
                     toDelete.forEach((i) =>
                         pendingDeleteOps.push({ id: i.id, type: i.type }),
                     );
+                    const deletedActivity = S.items.find(
+                        (i) =>
+                            i.id === pendingDeleteId && i.type === "activity",
+                    );
+                    const previousFixtureId =
+                        deletedActivity?.fixtureId || null;
                     const deletingFixture = S.items.find(
                         (i) => i.id === pendingDeleteId && i.type === "fixture",
                     );
@@ -6086,6 +5336,9 @@
                     );
                     if (deletingFixture) {
                         clearActivityLinksForDeletedFixture(pendingDeleteId);
+                    }
+                    if (previousFixtureId) {
+                        normalizeFixtureClusterOrder(previousFixtureId);
                     }
                     save();
                     render();
@@ -6135,19 +5388,11 @@
                             render();
                             openDropdowns.forEach((fid) => {
                                 const c = document.getElementById(
-                                        "cluster-" + fid,
-                                    ),
-                                    b = document.querySelector(
-                                        `[onclick="toggleActCluster('${fid}')"]`,
-                                    );
+                                    "cluster-" + fid,
+                                );
                                 if (c) {
                                     c.style.display = "";
-                                    if (b)
-                                        b.textContent =
-                                            "▾ " +
-                                            c.querySelectorAll(".mini-activity")
-                                                .length +
-                                            " Matchday Activities";
+                                    updateFixtureActivitiesToggle(fid);
                                 }
                             });
                             showToast(
