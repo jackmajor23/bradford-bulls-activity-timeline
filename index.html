@@ -68,42 +68,58 @@
             /* ─── SYNC POPUP NOTIFICATION ─── */
             #sync-banner {
                 position: fixed;
-                bottom: 88px;
-                right: 20px;
-                z-index: 500;
-                background: var(--ink);
+                left: 50%;
+                bottom: max(20px, env(safe-area-inset-bottom, 0px) + 12px);
+                z-index: 520;
+                background: rgba(10, 14, 18, 0.94);
                 color: #fff;
                 font-family: var(--font-body);
                 font-size: 12px;
                 font-weight: 600;
                 padding: 10px 16px;
-                border-radius: 24px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
+                border-radius: 999px;
+                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
                 display: flex;
                 align-items: center;
+                justify-content: center;
                 gap: 8px;
                 pointer-events: none;
-                transform: translateX(calc(100% + 28px));
-                transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-                max-width: 260px;
+                opacity: 0;
+                transform: translate(-50%, 18px) scale(0.96);
+                transition:
+                    opacity 0.28s ease,
+                    transform 0.28s ease,
+                    background 0.2s ease;
+                width: max-content;
+                max-width: min(calc(100vw - 24px), 340px);
                 white-space: nowrap;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                backdrop-filter: blur(10px);
             }
             #sync-banner.show {
-                transform: translateX(0);
+                opacity: 1;
+                transform: translate(-50%, 0) scale(1);
             }
             #sync-banner.connected {
-                background: var(--green);
-                animation: syncPopOut 2.8s ease forwards;
+                background: rgba(46, 125, 50, 0.94);
+                animation: syncPopOut 2.6s ease forwards;
+            }
+            #sync-banner.offline {
+                background: rgba(158, 11, 35, 0.94);
+            }
+            #sync-banner.connected .sync-spinner,
+            #sync-banner.offline .sync-spinner {
+                display: none;
             }
             @keyframes syncPopOut {
                 0%,
-                55% {
-                    transform: translateX(0);
+                58% {
                     opacity: 1;
+                    transform: translate(-50%, 0) scale(1);
                 }
                 100% {
-                    transform: translateX(calc(100% + 28px));
                     opacity: 0;
+                    transform: translate(-50%, 12px) scale(0.97);
                 }
             }
             .sync-spinner {
@@ -375,10 +391,10 @@
                 text-transform: uppercase;
                 letter-spacing: 0.06em;
                 transition: color 0.2s;
-                background: var(
-                    --bg
-                ); /* FIX: always centered, no asymmetric padding */
+                background: var(--bg);
                 text-align: center;
+                position: relative;
+                z-index: 340;
             }
             #past-toggle:hover {
                 color: var(--ink-mid);
@@ -397,13 +413,11 @@
                 top: 70px;
                 left: 50%;
                 transform: translateX(-50%);
-                z-index: 150;
+                z-index: 540;
                 background: var(--card);
                 border: 1.5px solid var(--line);
                 border-radius: 8px;
-                box-shadow: var(
-                    --shadow
-                ); /* FIX: symmetric padding, no left-padding inheritance */
+                box-shadow: var(--shadow);
                 padding: 8px 20px;
                 text-align: center;
             }
@@ -831,7 +845,7 @@
                 text-transform: uppercase;
                 letter-spacing: 0.06em;
                 padding: 2px 6px;
-                border-radius: 4px;
+                border-radius: 999px;
                 background: rgba(200, 16, 46, 0.07);
                 color: var(--red);
                 cursor: pointer;
@@ -843,6 +857,27 @@
             .linked-match-chip:hover {
                 background: rgba(200, 16, 46, 0.14);
             }
+            .cluster-link-note {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 0 2px 6px;
+                font-size: 10px;
+                color: var(--ink-mid);
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+            }
+            .cluster-link-note::before {
+                content: "";
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: rgba(26, 79, 139, 0.12);
+                border: 2px solid var(--blue);
+                box-shadow: 0 0 0 3px rgba(26, 79, 139, 0.08);
+                flex-shrink: 0;
+            }
 
             /* ─── ACTIVITY CLUSTER ─── */
             .activity-cluster {
@@ -851,9 +886,23 @@
                 flex-direction: column;
                 gap: 6px;
                 border-top: 1px solid var(--line);
-                background: #fdfdfd;
+                background: linear-gradient(180deg, #fdfdfd 0%, #fafcff 100%);
                 min-height: 10px;
                 position: relative;
+            }
+            .activity-cluster::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                bottom: 10px;
+                left: 28px;
+                width: 2px;
+                background: linear-gradient(
+                    to bottom,
+                    rgba(26, 79, 139, 0.18),
+                    rgba(26, 79, 139, 0.04)
+                );
+                pointer-events: none;
             }
             .drag-placeholder {
                 background: rgba(26, 79, 139, 0.08);
@@ -1044,7 +1093,8 @@
                 width: 100%;
                 transition:
                     box-shadow 0.2s,
-                    transform 0.2s;
+                    transform 0.2s,
+                    border-color 0.2s;
                 cursor: default;
             }
             .activity-card:hover {
@@ -1058,6 +1108,12 @@
             .activity-card.complete {
                 background: linear-gradient(135deg, #f0faf0 0%, #e8f5e9 100%);
                 border-color: rgba(46, 125, 50, 0.3);
+            }
+            .activity-card.pre-match-linked {
+                border-color: rgba(26, 79, 139, 0.28);
+                box-shadow:
+                    0 0 0 1px rgba(26, 79, 139, 0.06),
+                    var(--shadow);
             }
 
             .act-row {
@@ -1126,6 +1182,21 @@
             .activity-meta.complete-meta {
                 color: var(--green);
                 font-weight: 600;
+            }
+            .activity-link-row {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-top: 6px;
+            }
+            .activity-link-meta {
+                font-size: 9px;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: var(--blue);
+                opacity: 0.9;
             }
 
             .drag-handle {
@@ -1482,6 +1553,11 @@
             .form-textarea {
                 resize: vertical;
                 min-height: 70px;
+            }
+            .form-help {
+                font-size: 11px;
+                line-height: 1.4;
+                color: var(--ink-light);
             }
             .style-selector {
                 display: flex;
@@ -2183,32 +2259,35 @@
 
             /* ─── MOBILE ─── */
             @media (max-width: 700px) {
-                /* FIX: symmetric past-toggle layout on mobile */
+                /* Keep mobile headings aligned to the card column */
                 .date-header {
-                    justify-content: center;
-                    padding-left: 60px;
+                    justify-content: flex-start;
+                    padding: 10px 12px 15px 76px;
                 }
                 .date-label {
                     margin-left: 0;
                 }
                 .month-divider {
-                    justify-content: center;
-                    padding-left: 60px;
+                    justify-content: flex-start;
+                    padding: 20px 12px 10px 76px;
                 }
                 .month-divider-label {
-                    margin-left: 60px;
+                    margin-left: 0;
+                    padding-left: 0;
                 }
                 #today-marker {
                     justify-content: center;
                     padding: 0 12px;
                 }
                 #past-accordion {
-                    align-items: center;
+                    align-items: flex-start;
                     width: 100%;
+                    padding-left: 76px;
+                    padding-right: 12px;
                 }
 
                 #past-toggle {
-                    padding: 8px 20px 8px 36px;
+                    padding: 8px 0;
                     text-align: left;
                     width: auto;
                     margin: 0;
@@ -2227,10 +2306,6 @@
                 }
                 #today-marker {
                     padding: 0 12px 0 60px;
-                }
-                .month-divider {
-                    padding-left: 0;
-                    justify-content: center;
                 }
                 .tl-row {
                     grid-template-columns: 48px 1fr;
@@ -3034,16 +3109,13 @@
             // FIX: Render a proper SVG shield as the terminal fallback — never blank
             function shieldSVG(name) {
                 const initials = teamInitials(name);
-                // Colour based on initials hash for variety
-                const hue =
-                    initials
-                        .split("")
-                        .reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-                return `<svg viewBox="0 0 40 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                return `<svg viewBox="0 0 40 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M20 2 L36 8 L36 24 C36 33 20 42 20 42 C20 42 4 33 4 24 L4 8 Z"
-        fill="hsl(${hue},50%,35%)" stroke="hsl(${hue},40%,20%)" stroke-width="1.5"/>
-      <text x="20" y="28" text-anchor="middle" font-family="'Bebas Neue',sans-serif"
-        font-size="13" fill="white" letter-spacing="0.5">${initials}</text>
+        fill="#c9ced6" stroke="#8e97a3" stroke-width="1.5"/>
+      <path d="M20 6 L32 10.5 L32 23 C32 29.6 20 37.2 20 37.2 C20 37.2 8 29.6 8 23 L8 10.5 Z"
+        fill="#e8ebf0" opacity="0.92"/>
+      <text x="20" y="27.5" text-anchor="middle" font-family="'Bebas Neue',sans-serif"
+        font-size="13" fill="#626b76" letter-spacing="0.5">${initials}</text>
     </svg>`;
             }
 
@@ -3243,6 +3315,7 @@
             };
 
             let syncState = SyncState.CONNECTING;
+            let syncBannerHideTimer = null;
 
             function setSyncState(state) {
                 syncState = state;
@@ -3250,8 +3323,13 @@
                 const banner = document.getElementById("sync-banner");
                 const text = document.getElementById("sync-banner-text");
 
+                if (!banner || !text) return;
+
+                clearTimeout(syncBannerHideTimer);
+                syncBannerHideTimer = null;
+
                 banner.classList.add("show");
-                banner.classList.remove("connected");
+                banner.classList.remove("connected", "offline");
 
                 switch (state) {
                     case SyncState.CONNECTING:
@@ -3260,16 +3338,19 @@
 
                     case SyncState.OFFLINE:
                         text.textContent = "Offline — changes stored locally";
+                        banner.classList.add("offline");
                         break;
 
                     case SyncState.CONNECTED:
                         text.textContent = "✓ Cloud sync active";
-
                         banner.classList.add("connected");
-
-                        setTimeout(() => {
+                        syncBannerHideTimer = setTimeout(() => {
                             if (syncState === SyncState.CONNECTED) {
-                                banner.classList.remove("show", "connected");
+                                banner.classList.remove(
+                                    "show",
+                                    "connected",
+                                    "offline",
+                                );
                             }
                         }, 2500);
                         break;
@@ -3310,6 +3391,8 @@
                                 notes: record.notes || "",
                                 complete: record.completed || false,
                                 fixtureId: record.fixture_id || null,
+                                linkedFixtureId:
+                                    record.linked_fixture_id || null,
                                 clusterOrder: record.cluster_order || 0,
                             };
                         case "milestone":
@@ -3489,12 +3572,12 @@
             // SUPABASE SAVE (FIX: single-in-flight queue, prevents request pile-up)
             // ═══════════════════════════════════════════════════════════════
             async function saveToSupabase() {
-                if (!supabaseClient || !useCloudSync) return;
+                if (!supabaseClient || !useCloudSync) return true;
 
                 // If a save is already in flight, queue one more and return
                 if (supabaseSaveInFlight) {
                     supabaseSaveQueued = true;
-                    return;
+                    return true;
                 }
 
                 supabaseSaveInFlight = true;
@@ -3584,6 +3667,8 @@
                                         cluster_order: a.clusterOrder || 0,
                                     };
                                     if (a.fixtureId) r.fixture_id = a.fixtureId;
+                                    if (a.linkedFixtureId)
+                                        r.linked_fixture_id = a.linkedFixtureId;
                                     return r;
                                 }),
                                 { onConflict: "id" },
@@ -3630,9 +3715,16 @@
                     }
 
                     console.log("✓ Saved to Supabase");
+                    cloudConnected = true;
+                    if (syncState !== SyncState.CONNECTED) {
+                        setSyncState(SyncState.CONNECTED);
+                    }
+                    return true;
                 } catch (e) {
                     console.error("Supabase save failed:", e);
+                    setSyncState(SyncState.OFFLINE);
                     showToast("⚠ Cloud save failed — data kept locally");
+                    return false;
                 } finally {
                     supabaseSaveInFlight = false;
                     // If another save was queued while we were in-flight, fire it now
@@ -3674,6 +3766,20 @@
                     )
                     .subscribe((status) => {
                         console.log("Realtime status:", status);
+                        if (status === "SUBSCRIBED") {
+                            cloudConnected = true;
+                            if (syncState !== SyncState.CONNECTED) {
+                                setSyncState(SyncState.CONNECTED);
+                            }
+                        } else if (
+                            status === "CHANNEL_ERROR" ||
+                            status === "TIMED_OUT" ||
+                            status === "CLOSED"
+                        ) {
+                            setSyncState(SyncState.OFFLINE);
+                        } else if (status === "RETRYING") {
+                            setSyncState(SyncState.CONNECTING);
+                        }
                     });
             }
 
@@ -3684,6 +3790,9 @@
                     const deletedId = oldRecord && oldRecord.id;
                     if (deletedId) {
                         S.items = S.items.filter((i) => i.id !== deletedId);
+                        if (itemType === "fixture") {
+                            clearActivityLinksForDeletedFixture(deletedId);
+                        }
                         saveToLocal();
                         render();
                         showSyncToast("🔄 Remote: item removed");
@@ -3781,12 +3890,15 @@
                         console.log(
                             "Cloud empty — pushing local data to Supabase.",
                         );
-                        await saveToSupabase();
+                        const pushed = await saveToSupabase();
+                        if (!pushed) {
+                            hideSkeleton();
+                            return;
+                        }
                     }
 
-                    // Mark cloud as connected — banner will auto-dismiss after 2.5 s
-                    if (!cloudConnected) {
-                        cloudConnected = true;
+                    cloudConnected = true;
+                    if (syncState !== SyncState.CONNECTED) {
                         setSyncState(SyncState.CONNECTED);
                     }
                     hideSkeleton();
@@ -3874,8 +3986,18 @@
             function buildGroups(items) {
                 const seen = {},
                     fixtureActMap = {};
+                const fixtureIds = new Set(
+                    items
+                        .filter((i) => i.type === "fixture")
+                        .map((fixture) => fixture.id),
+                );
                 S.items
-                    .filter((i) => i.type === "activity" && i.fixtureId)
+                    .filter(
+                        (i) =>
+                            i.type === "activity" &&
+                            i.fixtureId &&
+                            fixtureIds.has(i.fixtureId),
+                    )
                     .forEach((a) => {
                         if (!fixtureActMap[a.fixtureId])
                             fixtureActMap[a.fixtureId] = [];
@@ -3927,7 +4049,10 @@
                                 items: [],
                             };
                         dateMap[item.date].items.push({ type: "note", item });
-                    } else if (item.type === "activity" && !item.fixtureId) {
+                    } else if (
+                        item.type === "activity" &&
+                        (!item.fixtureId || !fixtureIds.has(item.fixtureId))
+                    ) {
                         seen[item.id] = true;
                         if (!dateMap[item.date])
                             dateMap[item.date] = {
@@ -4069,7 +4194,7 @@
                 const actsHtml = acts
                     .map((a) => renderMiniActivity(a))
                     .join("");
-                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-fixture-id="${f.id}" draggable="true"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ""}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ""}</div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-fixture-id="${f.id}" draggable="true"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ""}<div class="fixture-actions"><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none"><div class="cluster-link-note">Linked activity cards for this match</div>${actsHtml}</div>` : ""}</div></div></div>`;
             }
 
             function renderMiniActivity(a) {
@@ -4091,22 +4216,23 @@
                 const aType =
                     ACTIVITY_TYPES.find((t) => t.id === a.actType) ||
                     ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
+                const linkedFixture = getStandaloneLinkedFixture(a);
+                const linkLeadText = linkedFixture
+                    ? getActivityMatchLeadText(a, linkedFixture)
+                    : "";
                 const completeCls = a.complete ? " complete" : "",
-                    pastCls = isPast ? " past" : "";
+                    pastCls = isPast ? " past" : "",
+                    linkedCls = linkedFixture ? " pre-match-linked" : "";
                 const assigneesHtml = (a.assignees || [])
                     .map(
                         (p) =>
                             `<span class="assignee-chip">👤 ${esc(p)}</span>`,
                     )
                     .join("");
-                // FIX: show linked match chip on standalone activity cards that have a fixtureId
-                const fixItem = a.fixtureId
-                    ? S.items.find((i) => i.id === a.fixtureId)
-                    : null;
-                const linkedChip = fixItem
-                    ? `<span class="linked-match-chip" onclick="editFixture('${fixItem.id}')">🏉 ${esc(fixItem.opponent)}</span>`
+                const linkedRow = linkedFixture
+                    ? `<div class="activity-link-row"><span class="linked-match-chip" onclick="editFixture('${linkedFixture.id}')">🏉 ${esc(linkedFixture.opponent)}</span>${linkLeadText ? `<span class="activity-link-meta">${esc(linkLeadText)}</span>` : ""}</div>`
                     : "";
-                return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" data-type="activity" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}${linkedChip}</div><div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}${linkedCls}" data-id="${a.id}" data-type="activity" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
             }
 
             function renderMilestoneGroup(g, side, isPast) {
@@ -4166,6 +4292,7 @@
                     showToast("Activity is already on the main timeline");
                     return;
                 }
+                item.linkedFixtureId = item.fixtureId;
                 item.fixtureId = null;
                 save();
                 render();
@@ -4246,6 +4373,218 @@
                     }
                     if (attempts >= 60) clearInterval(iv);
                 }, 50);
+            }
+
+            function getFixtureOptionsForActivitySelect(selectedId = null) {
+                const fixtures = S.items
+                    .filter((i) => i.type === "fixture")
+                    .sort((a, b) => a.date.localeCompare(b.date));
+                const selectedMissing =
+                    selectedId && !fixtures.some((f) => f.id === selectedId);
+                const missingFixture = selectedMissing
+                    ? S.items.find(
+                          (i) => i.type === "fixture" && i.id === selectedId,
+                      )
+                    : null;
+                const allFixtures = missingFixture
+                    ? [missingFixture, ...fixtures]
+                    : fixtures;
+
+                return [
+                    `<option value="">No related match</option>`,
+                    ...allFixtures.map(
+                        (fixture) =>
+                            `<option value="${fixture.id}" ${fixture.id === selectedId ? "selected" : ""}>${esc(fmtDisplay(fixture.date))} — ${esc(fixture.opponent)}</option>`,
+                    ),
+                ].join("");
+            }
+
+            function getStandaloneLinkedFixture(activity) {
+                if (!activity?.linkedFixtureId) return null;
+                return (
+                    S.items.find(
+                        (i) =>
+                            i.type === "fixture" &&
+                            i.id === activity.linkedFixtureId,
+                    ) || null
+                );
+            }
+
+            function getActivityMatchLeadText(activity, fixture) {
+                if (!activity?.date || !fixture?.date) return "";
+                const msPerDay = 24 * 60 * 60 * 1000;
+                const diffDays = Math.round(
+                    (new Date(fixture.date + "T12:00:00") -
+                        new Date(activity.date + "T12:00:00")) /
+                        msPerDay,
+                );
+                if (diffDays > 0) return `${diffDays}d before match`;
+                if (diffDays === 0) return "matchday linked";
+                return `${Math.abs(diffDays)}d after match`;
+            }
+
+            function clearActivityLinksForDeletedFixture(fixtureId) {
+                if (!fixtureId) return;
+                S.items.forEach((item) => {
+                    if (item.type !== "activity") return;
+                    if (item.fixtureId === fixtureId) item.fixtureId = null;
+                    if (item.linkedFixtureId === fixtureId)
+                        item.linkedFixtureId = null;
+                });
+            }
+
+            function isTopLevelTimelineItem(item) {
+                return !!item && !(item.type === "activity" && item.fixtureId);
+            }
+
+            function getOpenClusterIds() {
+                return Array.from(
+                    document.querySelectorAll(".activity-cluster"),
+                )
+                    .filter((cluster) => cluster.style.display !== "none")
+                    .map((cluster) => cluster.id.replace("cluster-", ""));
+            }
+
+            function restoreOpenClusters(ids = []) {
+                Array.from(new Set(ids.filter(Boolean))).forEach((fid) =>
+                    ensureDropdownOpen(fid),
+                );
+            }
+
+            function getSortedFixtureActivities(fixtureId, excludeId = null) {
+                return S.items
+                    .filter(
+                        (i) =>
+                            i.type === "activity" &&
+                            i.fixtureId === fixtureId &&
+                            i.id !== excludeId,
+                    )
+                    .sort(
+                        (a, b) =>
+                            (a.clusterOrder || 0) - (b.clusterOrder || 0) ||
+                            a.date.localeCompare(b.date) ||
+                            (a.title || "").localeCompare(b.title || ""),
+                    );
+            }
+
+            function moveActivityToFixtureCluster(
+                activityId,
+                fixtureId,
+                beforeId,
+            ) {
+                const activity = S.items.find(
+                    (i) => i.id === activityId && i.type === "activity",
+                );
+                if (!activity) return { changed: false, linked: false };
+
+                const previousFixtureId = activity.fixtureId || null;
+                const ordered = getSortedFixtureActivities(
+                    fixtureId,
+                    activityId,
+                );
+                let insertIndex = ordered.length;
+
+                if (beforeId) {
+                    const beforeIndex = ordered.findIndex(
+                        (a) => a.id === beforeId,
+                    );
+                    if (beforeIndex >= 0) insertIndex = beforeIndex;
+                }
+
+                activity.fixtureId = fixtureId;
+                activity.linkedFixtureId = fixtureId;
+                ordered.splice(insertIndex, 0, activity);
+                ordered.forEach((a, idx) => {
+                    a.clusterOrder = idx;
+                });
+
+                return {
+                    changed: true,
+                    linked: previousFixtureId !== fixtureId,
+                    previousFixtureId,
+                };
+            }
+
+            function buildOrderedIdsForDateDrop(group, movedId, clientY) {
+                const ids = Array.from(
+                    group.querySelectorAll(":scope > .tl-row[data-id]"),
+                )
+                    .map((row) => row.dataset.id)
+                    .filter((id) => id && id !== movedId);
+
+                let insertIndex = ids.length;
+                const rows = Array.from(
+                    group.querySelectorAll(":scope > .tl-row[data-id]"),
+                ).filter((row) => row.dataset.id && row.dataset.id !== movedId);
+
+                for (let i = 0; i < rows.length; i++) {
+                    const box = rows[i].getBoundingClientRect();
+                    const midpoint = box.top + box.height / 2;
+                    if (clientY < midpoint) {
+                        insertIndex = i;
+                        break;
+                    }
+                }
+
+                ids.splice(insertIndex, 0, movedId);
+                return ids;
+            }
+
+            function moveItemToDateGroup(itemId, targetDate, orderedIds) {
+                const item = S.items.find((i) => i.id === itemId);
+                if (!item || !targetDate) {
+                    return {
+                        changed: false,
+                        dateChanged: false,
+                        unlinked: false,
+                    };
+                }
+
+                const previousDate = item.date;
+                const previousFixtureId =
+                    item.type === "activity" ? item.fixtureId : null;
+                const wasLinkedActivity =
+                    item.type === "activity" && !!item.fixtureId;
+
+                if (item.type === "activity") {
+                    if (item.fixtureId) item.linkedFixtureId = item.fixtureId;
+                    item.fixtureId = null;
+                }
+                item.date = targetDate;
+
+                const targetSet = new Set(orderedIds || []);
+                const reordered = (orderedIds || [])
+                    .map(
+                        (id) =>
+                            S.items.find((i) => i.id === id) ||
+                            (id === itemId ? item : null),
+                    )
+                    .filter(Boolean)
+                    .map((entry) => {
+                        if (entry.id === itemId) return item;
+                        return entry;
+                    });
+
+                const remainder = S.items.filter((candidate) => {
+                    if (candidate.id === itemId) return false;
+                    if (
+                        candidate.date === targetDate &&
+                        isTopLevelTimelineItem(candidate) &&
+                        targetSet.has(candidate.id)
+                    ) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                S.items = [...remainder, ...reordered];
+
+                return {
+                    changed: true,
+                    dateChanged: previousDate !== targetDate,
+                    unlinked: wasLinkedActivity,
+                    previousFixtureId,
+                };
             }
 
             document.addEventListener(
@@ -4539,88 +4878,98 @@
                                 touch.clientX,
                                 touch.clientY,
                             );
+                            const openClusterIds = getOpenClusterIds();
                             const fc = target?.closest(".fixture-card");
-
-                            // FIX: Block notes from being dropped onto fixture cards
-                            if (fc && dragItemType !== "note") {
-                                const act = S.items.find(
-                                    (i) => i.id === dragActivityId,
-                                );
-                                if (act && act.type === "activity") {
-                                    act.fixtureId =
-                                        fc.dataset.fixtureId || fc.dataset.id;
-                                    save();
-                                    render();
-                                    showToast("🏉 Activity linked to match!");
-                                }
-                            }
-
                             const cluster =
                                 target?.closest(".activity-cluster");
-                            // Only activities may enter clusters (not notes, fixtures, or milestones)
-                            if (cluster && dragItemType === "activity") {
+                            const dateGroup = target?.closest(".date-group");
+                            let shouldRender = false;
+                            let toastMsg = "";
+
+                            if (fc && dragItemType === "note") {
+                                toastMsg =
+                                    "📝 Notes can't be linked to matches";
+                            } else if (cluster && dragItemType === "activity") {
                                 const fixtureId = cluster.id.replace(
                                     "cluster-",
                                     "",
                                 );
-                                // FIX: Set fixtureId so main-timeline activities are properly linked
-                                const droppedAct = S.items.find(
-                                    (i) =>
-                                        i.id === dragActivityId &&
-                                        i.type === "activity",
+                                const beforeId =
+                                    cluster.querySelector(".drag-placeholder")
+                                        ?.nextElementSibling?.dataset.id ||
+                                    null;
+                                const moved = moveActivityToFixtureCluster(
+                                    dragActivityId,
+                                    fixtureId,
+                                    beforeId,
                                 );
-                                if (droppedAct)
-                                    droppedAct.fixtureId = fixtureId;
-                                const placeholder =
-                                    cluster.querySelector(".drag-placeholder");
-                                if (placeholder) {
-                                    placeholder.replaceWith(el);
-                                } else {
-                                    cluster.appendChild(el);
+                                if (moved.changed) {
+                                    shouldRender = true;
+                                    save();
+                                    render();
+                                    restoreOpenClusters([
+                                        ...openClusterIds,
+                                        fixtureId,
+                                    ]);
+                                    toastMsg = moved.linked
+                                        ? "🏉 Activity linked to match!"
+                                        : "↕ Activity order updated";
                                 }
-                                const order = Array.from(
-                                    cluster.querySelectorAll(".mini-activity"),
-                                ).map((e) => e.dataset.id);
-                                const acts = S.items.filter(
-                                    (i) =>
-                                        i.fixtureId === fixtureId &&
-                                        i.type === "activity",
+                            } else if (fc && dragItemType === "activity") {
+                                const fixtureId =
+                                    fc.dataset.fixtureId || fc.dataset.id;
+                                const moved = moveActivityToFixtureCluster(
+                                    dragActivityId,
+                                    fixtureId,
+                                    null,
                                 );
-                                const sorted = order
-                                    .map((id) => acts.find((a) => a.id === id))
-                                    .filter(Boolean);
-                                S.items = S.items.filter(
-                                    (i) => !order.includes(i.id),
-                                );
-                                sorted.forEach((a, idx) => {
-                                    a.clusterOrder = idx;
-                                    S.items.push(a);
-                                });
-                                save();
-                                ensureDropdownOpen(fixtureId);
-                            } else {
-                                const dateGroup =
-                                    target?.closest(".date-group");
-                                if (dateGroup) {
-                                    const date =
-                                        dateGroup.querySelector(".date-label")
-                                            ?.dataset.date;
-                                    if (date) {
-                                        const item = S.items.find(
-                                            (i) => i.id === dragActivityId,
+                                if (moved.changed) {
+                                    shouldRender = true;
+                                    save();
+                                    render();
+                                    restoreOpenClusters([
+                                        ...openClusterIds,
+                                        fixtureId,
+                                    ]);
+                                    toastMsg = "🏉 Activity linked to match!";
+                                }
+                            } else if (dateGroup) {
+                                const date =
+                                    dateGroup.querySelector(".date-label")
+                                        ?.dataset.date;
+                                if (date) {
+                                    const orderedIds =
+                                        buildOrderedIdsForDateDrop(
+                                            dateGroup,
+                                            dragActivityId,
+                                            touch.clientY,
                                         );
-                                        if (item && item.date !== date) {
-                                            item.date = date;
-                                            save();
-                                            render();
-                                            showToast("📅 Date updated");
+                                    const moved = moveItemToDateGroup(
+                                        dragActivityId,
+                                        date,
+                                        orderedIds,
+                                    );
+                                    if (moved.changed) {
+                                        shouldRender = true;
+                                        save();
+                                        render();
+                                        restoreOpenClusters(openClusterIds);
+                                        if (moved.unlinked) {
+                                            toastMsg =
+                                                "↗ Activity moved back to timeline";
+                                        } else if (moved.dateChanged) {
+                                            toastMsg = "📅 Date updated";
                                         }
                                     }
                                 }
                             }
-                            document
-                                .querySelectorAll(".drag-placeholder")
-                                .forEach((p) => p.remove());
+
+                            if (toastMsg) showToast(toastMsg);
+                            if (!shouldRender) {
+                                document
+                                    .querySelectorAll(".drag-placeholder")
+                                    .forEach((p) => p.remove());
+                            }
                             setTimeout(() => {
                                 disableToggle = false;
                                 document
@@ -4685,14 +5034,17 @@
                             dragItemType === "milestone"
                         )
                             return;
-                        const act = S.items.find(
-                            (i) => i.id === dragActivityId,
+                        const fixtureId = fc.dataset.fixtureId || fc.dataset.id;
+                        const openClusterIds = getOpenClusterIds();
+                        const moved = moveActivityToFixtureCluster(
+                            dragActivityId,
+                            fixtureId,
+                            null,
                         );
-                        if (act && act.type === "activity") {
-                            act.fixtureId =
-                                fc.dataset.fixtureId || fc.dataset.id;
+                        if (moved.changed) {
                             save();
                             render();
+                            restoreOpenClusters([...openClusterIds, fixtureId]);
                             showToast("🏉 Activity linked to match!");
                         }
                     });
@@ -4742,9 +5094,13 @@
                         e.preventDefault();
                         const draggedRow =
                             document.querySelector(".tl-row.dragging");
+                        const isClusterActivityDrag =
+                            !draggedRow && dragItemType === "activity";
                         if (
-                            !draggedRow ||
-                            draggedRow.closest(".activity-cluster")
+                            (!draggedRow && !isClusterActivityDrag) ||
+                            (draggedRow &&
+                                draggedRow.closest(".activity-cluster") &&
+                                !isClusterActivityDrag)
                         )
                             return;
                         const date =
@@ -4800,67 +5156,40 @@
                         document
                             .querySelectorAll(".tl-drop-indicator")
                             .forEach((i) => i.remove());
-                        const dragging =
-                            document.querySelector(".tl-row.dragging");
-                        if (!dragging || dragging.closest(".activity-cluster"))
-                            return;
                         const date =
                             group.querySelector(".date-label")?.dataset.date;
-                        if (!date) return;
-                        const rows = [
-                            ...group.querySelectorAll(":scope > .tl-row"),
-                        ].filter((r) => r !== dragging);
-                        let afterRow = null,
-                            minAbsDist = Infinity;
-                        for (const row of rows) {
-                            const box = row.getBoundingClientRect();
-                            const mid = box.top + box.height / 2;
-                            const dist = e.clientY - mid;
-                            if (dist > 0 && dist < minAbsDist) {
-                                minAbsDist = dist;
-                                afterRow = row;
-                            }
+                        if (!date || !dragActivityId) return;
+                        const openClusterIds = getOpenClusterIds();
+                        const dragging =
+                            document.querySelector(".tl-row.dragging");
+                        const isClusterActivityDrop =
+                            !dragging && dragItemType === "activity";
+                        if (
+                            dragging &&
+                            dragging.closest(".activity-cluster") &&
+                            !isClusterActivityDrop
+                        ) {
+                            return;
                         }
-                        if (afterRow) {
-                            afterRow.insertAdjacentElement(
-                                "afterend",
-                                dragging,
-                            );
-                        } else {
-                            const firstRow =
-                                group.querySelector(":scope > .tl-row");
-                            if (firstRow)
-                                group.insertBefore(dragging, firstRow);
-                            else group.appendChild(dragging);
-                        }
-
-                        const orderedIds = [
-                            ...group.querySelectorAll(
-                                ":scope > .tl-row[data-id]",
-                            ),
-                        ]
-                            .map((row) => row.dataset.id)
-                            .filter(Boolean);
-                        const dateItems = orderedIds
-                            .map((id) => S.items.find((i) => i.id === id))
-                            .filter(Boolean);
-                        const otherItems = S.items.filter(
-                            (i) => !orderedIds.includes(i.id),
+                        const orderedIds = buildOrderedIdsForDateDrop(
+                            group,
+                            dragActivityId,
+                            e.clientY,
                         );
-
-                        // FIX: Only show "Date updated" toast if the date actually changed
-                        let dateChanged = false;
-                        dateItems.forEach((item) => {
-                            if (item.date !== date) {
-                                item.date = date;
-                                dateChanged = true;
-                            }
-                        });
-
-                        S.items = [...otherItems, ...dateItems];
+                        const moved = moveItemToDateGroup(
+                            dragActivityId,
+                            date,
+                            orderedIds,
+                        );
+                        if (!moved.changed) return;
                         save();
                         render();
-                        if (dateChanged) showToast("📅 Date updated");
+                        restoreOpenClusters(openClusterIds);
+                        if (moved.unlinked) {
+                            showToast("↗ Activity moved back to timeline");
+                        } else if (moved.dateChanged) {
+                            showToast("📅 Date updated");
+                        }
                         // No toast for intra-date reordering
                     });
                 });
@@ -4920,59 +5249,31 @@
                                 return;
                             }
                             e.stopPropagation(); // Activities only — handled fully here
-                            const dragging =
-                                document.querySelector(".dragging");
-                            if (!dragging) return;
                             const fixtureId = cluster.id.replace(
                                 "cluster-",
                                 "",
                             );
-                            // FIX: Set fixtureId so activities dragged from the main timeline are properly linked
-                            const droppedAct = S.items.find(
-                                (i) =>
-                                    i.id === dragActivityId &&
-                                    i.type === "activity",
+                            const beforeId =
+                                cluster.querySelector(".drag-placeholder")
+                                    ?.nextElementSibling?.dataset.id || null;
+                            const openClusterIds = getOpenClusterIds();
+                            const moved = moveActivityToFixtureCluster(
+                                dragActivityId,
+                                fixtureId,
+                                beforeId,
                             );
-                            if (droppedAct) droppedAct.fixtureId = fixtureId;
-                            const placeholder =
-                                cluster.querySelector(".drag-placeholder");
-                            if (placeholder) {
-                                placeholder.replaceWith(dragging);
-                            } else {
-                                cluster.appendChild(dragging);
-                            }
-                            const order = Array.from(
-                                cluster.querySelectorAll(".mini-activity"),
-                            ).map((e) => e.dataset.id);
-                            const acts = S.items.filter(
-                                (i) =>
-                                    i.fixtureId === fixtureId &&
-                                    i.type === "activity",
-                            );
-                            const sorted = order
-                                .map((id) => acts.find((a) => a.id === id))
-                                .filter(Boolean);
-                            S.items = S.items.filter(
-                                (i) => !order.includes(i.id),
-                            );
-                            sorted.forEach((a, idx) => {
-                                a.clusterOrder = idx;
-                                S.items.push(a);
-                            });
+                            document
+                                .querySelectorAll(".drag-placeholder")
+                                .forEach((p) => p.remove());
+                            if (!moved.changed) return;
                             save();
-                            const btn = document.querySelector(
-                                `[onclick="toggleActCluster('${fixtureId}')"]`,
+                            render();
+                            restoreOpenClusters([...openClusterIds, fixtureId]);
+                            showToast(
+                                moved.linked
+                                    ? "🏉 Activity linked to match!"
+                                    : "↕ Activity order updated",
                             );
-                            if (btn) {
-                                const orig = btn.getAttribute("onclick");
-                                btn.removeAttribute("onclick");
-                                btn.style.pointerEvents = "none";
-                                setTimeout(() => {
-                                    btn.setAttribute("onclick", orig);
-                                    btn.style.pointerEvents = "";
-                                }, 500);
-                            }
-                            ensureDropdownOpen(fixtureId);
                         });
 
                         cluster.addEventListener("dragleave", (e) => {
@@ -5118,7 +5419,9 @@
                         );
                 } else if (type === "activity") {
                     const a = data || {};
-                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+                    const selectedFixtureId =
+                        a.fixtureId || a.linkedFixtureId || "";
+                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Related Match</label><select class="form-select" id="a-linked-fixture">${getFixtureOptionsForActivitySelect(selectedFixtureId)}</select><div class="form-help">Use this for pre-match work that should stay on the main timeline while still linking visually to a fixture.</div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
                 } else if (type === "milestone") {
                     const m = data || {};
                     body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title || "")}"></div><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}"></div><div class="form-group"><label class="form-label">Style Color</label><div class="style-selector" id="m-style"><div class="style-opt red ${m.style === "red" || !m.style ? "selected" : ""}" data-value="red" title="Red"></div><div class="style-opt gold ${m.style === "gold" ? "selected" : ""}" data-value="gold" title="Gold"></div><div class="style-opt neutral ${m.style === "neutral" ? "selected" : ""}" data-value="neutral" title="Neutral"></div></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || "")}</textarea></div>`;
@@ -5348,6 +5651,12 @@
                     const existing = editId
                         ? S.items.find((i) => i.id === editId)
                         : null;
+                    const selectedLinkedFixtureId =
+                        document.getElementById("a-linked-fixture")?.value ||
+                        null;
+                    const existingFixtureId = existing
+                        ? existing.fixtureId
+                        : null;
                     const obj = {
                         id: editId || uid(),
                         type: "activity",
@@ -5357,7 +5666,9 @@
                         assignees: currentModal.assignees,
                         notes,
                         complete: existing ? existing.complete : false,
-                        fixtureId: existing ? existing.fixtureId : null,
+                        fixtureId: existingFixtureId,
+                        linkedFixtureId:
+                            existingFixtureId || selectedLinkedFixtureId,
                         clusterOrder: existing ? existing.clusterOrder || 0 : 0,
                     };
                     if (editId)
@@ -5453,11 +5764,17 @@
                     toDelete.forEach((i) =>
                         pendingDeleteOps.push({ id: i.id, type: i.type }),
                     );
+                    const deletingFixture = S.items.find(
+                        (i) => i.id === pendingDeleteId && i.type === "fixture",
+                    );
                     S.items = S.items.filter(
                         (i) =>
                             i.id !== pendingDeleteId &&
                             i.fixtureId !== pendingDeleteId,
                     );
+                    if (deletingFixture) {
+                        clearActivityLinksForDeletedFixture(pendingDeleteId);
+                    }
                     save();
                     render();
                     showToast("Item deleted.");
