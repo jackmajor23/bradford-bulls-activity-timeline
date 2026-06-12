@@ -872,66 +872,21 @@
                 margin-left: auto;
                 display: inline-flex;
                 align-items: center;
-                gap: 6px;
                 font-size: 10px;
-                color: var(--ink-mid);
+                color: var(--blue);
                 cursor: pointer;
                 font-weight: 700;
-                background: rgba(26, 79, 139, 0.04);
-                border: 1px solid rgba(26, 79, 139, 0.09);
+                background: transparent;
+                border: none;
                 letter-spacing: 0.04em;
-                padding: 5px 9px;
-                border-radius: 999px;
-                transition:
-                    background 0.15s,
-                    color 0.15s,
-                    border-color 0.15s,
-                    box-shadow 0.15s;
+                padding: 0;
+                transition: color 0.15s;
             }
             .fixture-acts-toggle:hover {
-                background: rgba(26, 79, 139, 0.08);
                 color: var(--ink);
-                border-color: rgba(26, 79, 139, 0.16);
             }
             .fixture-acts-toggle[data-open="true"] {
-                background: rgba(26, 79, 139, 0.1);
                 color: var(--blue);
-                border-color: rgba(26, 79, 139, 0.2);
-                box-shadow: 0 0 0 3px rgba(26, 79, 139, 0.08);
-            }
-            .fixture-acts-text {
-                white-space: nowrap;
-            }
-            .fixture-acts-dot {
-                width: 7px;
-                height: 7px;
-                border-radius: 50%;
-                background: rgba(26, 79, 139, 0.45);
-                flex-shrink: 0;
-                transition:
-                    background 0.15s,
-                    transform 0.15s,
-                    box-shadow 0.15s;
-            }
-            .fixture-acts-count {
-                min-width: 18px;
-                height: 18px;
-                padding: 0 5px;
-                border-radius: 999px;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                background: rgba(26, 79, 139, 0.12);
-                color: var(--blue);
-                font-size: 9px;
-                line-height: 1;
-                flex-shrink: 0;
-            }
-            .fixture-acts-toggle:hover .fixture-acts-dot,
-            .fixture-acts-toggle[data-open="true"] .fixture-acts-dot {
-                background: var(--blue);
-                transform: scale(1.08);
-                box-shadow: 0 0 0 4px rgba(26, 79, 139, 0.08);
             }
 
             /* ─── ACTIVITY CLUSTER ─── */
@@ -2467,11 +2422,7 @@
                     margin-left: 0;
                     padding: 2px 16px;
                 }
-                #today-marker {
-                    justify-content: center;
-                    padding: 0 var(--mobile-timeline-right-gap) 0
-                        var(--mobile-timeline-left-gap);
-                }
+
                 #past-accordion {
                     align-items: center;
                     width: 100%;
@@ -4378,7 +4329,7 @@
                     .map((a) => renderMiniActivity(a))
                     .join("");
                 const activityCountLabel = acts.length;
-                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-item-type="fixture" data-fixture-id="${f.id}"><div class="fixture-header"><div class="drag-handle" draggable="true" data-drag-handle="true">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div>${linkedTimelineHint}</div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" type="button" data-fixture-id="${f.id}" data-open="false" onclick="toggleActCluster('${f.id}', true)" title="Matchday Activities" aria-label="Matchday Activities (${acts.length})"><span class="fixture-acts-dot"></span><span class="fixture-acts-count">${activityCountLabel}</span></button>` : ""}<div class="fixture-actions"><button class="activity-btn" title="Add matchday activity" onclick="openActivityForFixture('${f.id}')">＋</button><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ""}</div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-item-type="fixture" data-fixture-id="${f.id}"><div class="fixture-header"><div class="drag-handle" draggable="true" data-drag-handle="true">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div>${linkedTimelineHint}</div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" type="button" data-fixture-id="${f.id}" data-open="false" onclick="toggleActCluster('${f.id}', true)" title="Matchday Activities" aria-label="Matchday Activities (${acts.length})">▸ ${activityCountLabel} Matchday Activities</button>` : ""}<div class="fixture-actions"><button class="activity-btn" title="Add matchday activity" onclick="openActivityForFixture('${f.id}')">＋</button><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ""}</div></div></div>`;
             }
 
             function renderMiniActivity(a) {
@@ -4521,10 +4472,9 @@
                 );
                 if (!cluster || !btn) return;
                 const count = cluster.querySelectorAll(".mini-activity").length;
-                btn.dataset.open =
-                    cluster.style.display === "none" ? "false" : "true";
-                const countEl = btn.querySelector(".fixture-acts-count");
-                if (countEl) countEl.textContent = String(count);
+                const isOpen = cluster.style.display !== "none";
+                btn.dataset.open = isOpen ? "true" : "false";
+                btn.textContent = `${isOpen ? "▾" : "▸"} ${count} Matchday Activities`;
             }
 
             function getOpenClusterIds() {
@@ -5505,10 +5455,7 @@
                     const selectedFixtureId =
                         a.fixtureId || a.linkedFixtureId || "";
                     const selectedFixture = findFixtureById(selectedFixtureId);
-                    const placementMode =
-                        a._placementMode ||
-                        (a.fixtureId ? "fixture" : "timeline");
-                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Placement</label><label class="compact-checkbox"><input type="checkbox" id="a-inside-match" ${placementMode === "fixture" ? "checked" : ""}><span>Inside Matchday Activities</span></label></div><div class="form-group fixture-link-picker"><label class="form-label">Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group fixture-link-picker"><label class="form-label">Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
                     renderFixtureLinkSelection();
                 } else if (type === "milestone") {
                     const m = data || {};
@@ -5742,11 +5689,9 @@
                     const selectedLinkedFixtureId =
                         document.getElementById("a-linked-fixture-id")?.value ||
                         null;
-                    const placementMode = document.getElementById(
-                        "a-inside-match",
-                    )?.checked
-                        ? "fixture"
-                        : "timeline";
+                    const placementMode =
+                        currentModal.data?._placementMode ||
+                        (existing?.fixtureId ? "fixture" : "timeline");
                     if (
                         placementMode === "fixture" &&
                         !selectedLinkedFixtureId
@@ -5760,10 +5705,7 @@
                         placementMode === "fixture"
                             ? selectedLinkedFixtureId
                             : null;
-                    const nextLinkedFixtureId =
-                        placementMode === "fixture"
-                            ? selectedLinkedFixtureId
-                            : selectedLinkedFixtureId;
+                    const nextLinkedFixtureId = selectedLinkedFixtureId;
                     const nextClusterOrder =
                         nextFixtureId && previousFixtureId !== nextFixtureId
                             ? getNextClusterOrder(nextFixtureId, editId || null)
