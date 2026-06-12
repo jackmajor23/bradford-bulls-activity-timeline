@@ -1110,10 +1110,30 @@
                 border-color: rgba(46, 125, 50, 0.3);
             }
             .activity-card.pre-match-linked {
-                border-color: rgba(26, 79, 139, 0.28);
+                border-color: rgba(26, 79, 139, 0.3);
                 box-shadow:
-                    0 0 0 1px rgba(26, 79, 139, 0.06),
+                    0 0 0 1px rgba(26, 79, 139, 0.08),
                     var(--shadow);
+                position: relative;
+                background:
+                    linear-gradient(
+                        90deg,
+                        rgba(26, 79, 139, 0.08) 0 6px,
+                        transparent 6px
+                    ),
+                    var(--card);
+            }
+            .activity-card.pre-match-linked::before {
+                content: "PRE-MATCH LINK";
+                position: absolute;
+                top: 7px;
+                right: 10px;
+                font-size: 8px;
+                font-weight: 700;
+                letter-spacing: 0.12em;
+                color: var(--blue);
+                opacity: 0.75;
+                pointer-events: none;
             }
 
             .act-row {
@@ -1189,6 +1209,23 @@
                 gap: 6px;
                 flex-wrap: wrap;
                 margin-top: 6px;
+                padding: 6px 8px;
+                background: rgba(26, 79, 139, 0.06);
+                border: 1px solid rgba(26, 79, 139, 0.12);
+                border-radius: 8px;
+                position: relative;
+            }
+            .activity-link-row::before {
+                content: "";
+                width: 16px;
+                height: 2px;
+                background: linear-gradient(
+                    to right,
+                    rgba(26, 79, 139, 0.22),
+                    rgba(26, 79, 139, 0.95)
+                );
+                border-radius: 999px;
+                flex-shrink: 0;
             }
             .activity-link-meta {
                 font-size: 9px;
@@ -1197,6 +1234,25 @@
                 text-transform: uppercase;
                 color: var(--blue);
                 opacity: 0.9;
+            }
+            .linked-match-unlink {
+                margin-left: auto;
+                border: 1px solid rgba(26, 79, 139, 0.18);
+                background: rgba(255, 255, 255, 0.8);
+                color: var(--ink-mid);
+                border-radius: 999px;
+                padding: 2px 8px;
+                font-size: 9px;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            }
+            .linked-match-unlink:hover {
+                background: rgba(242, 12, 35, 0.08);
+                border-color: rgba(242, 12, 35, 0.26);
+                color: var(--red);
             }
 
             .drag-handle {
@@ -1756,6 +1812,80 @@
             }
             .autocomplete-item:hover {
                 background: var(--bg);
+            }
+            .autocomplete-item.empty {
+                color: var(--ink-light);
+                cursor: default;
+            }
+            .autocomplete-item.empty:hover {
+                background: transparent;
+            }
+            .autocomplete-group-label {
+                position: sticky;
+                top: 0;
+                z-index: 1;
+                padding: 7px 13px;
+                background: #f8f8f7;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--ink-light);
+            }
+            .fixture-link-option {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+            }
+            .fixture-link-option-main {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--ink);
+            }
+            .fixture-link-option-meta {
+                font-size: 10px;
+                color: var(--ink-light);
+            }
+            .fixture-link-picker {
+                position: relative;
+            }
+            .fixture-link-current {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-top: 8px;
+            }
+            .fixture-link-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 5px 10px;
+                border-radius: 999px;
+                background: rgba(26, 79, 139, 0.08);
+                border: 1px solid rgba(26, 79, 139, 0.14);
+                color: var(--blue);
+                font-size: 11px;
+                font-weight: 600;
+            }
+            .fixture-link-clear {
+                border: none;
+                background: transparent;
+                color: inherit;
+                cursor: pointer;
+                font-size: 12px;
+                line-height: 1;
+                padding: 0;
+            }
+            .fixture-link-empty {
+                font-size: 11px;
+                color: var(--ink-light);
+            }
+            .fixture-link-meta {
+                font-size: 10px;
+                color: var(--ink-light);
+                margin-top: 6px;
             }
             .modal-footer {
                 padding: 16px 24px;
@@ -4230,7 +4360,7 @@
                     )
                     .join("");
                 const linkedRow = linkedFixture
-                    ? `<div class="activity-link-row"><span class="linked-match-chip" onclick="editFixture('${linkedFixture.id}')">🏉 ${esc(linkedFixture.opponent)}</span>${linkLeadText ? `<span class="activity-link-meta">${esc(linkLeadText)}</span>` : ""}</div>`
+                    ? `<div class="activity-link-row"><span class="linked-match-chip" onclick="editFixture('${linkedFixture.id}')">🏉 ${esc(linkedFixture.opponent)}</span>${linkLeadText ? `<span class="activity-link-meta">${esc(linkLeadText)}</span>` : ""}<button class="linked-match-unlink" title="Remove match link" onclick="unlinkActivityMatch('${a.id}')">Unlink</button></div>`
                     : "";
                 return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}${linkedCls}" data-id="${a.id}" data-type="activity" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
             }
@@ -4375,28 +4505,194 @@
                 }, 50);
             }
 
-            function getFixtureOptionsForActivitySelect(selectedId = null) {
-                const fixtures = S.items
+            function fixtureDisplayLabel(fixture) {
+                if (!fixture) return "";
+                return `${fmtDisplay(fixture.date)} — ${fixture.opponent}`;
+            }
+
+            function getFixturesForLinking() {
+                return S.items
                     .filter((i) => i.type === "fixture")
                     .sort((a, b) => a.date.localeCompare(b.date));
-                const selectedMissing =
-                    selectedId && !fixtures.some((f) => f.id === selectedId);
-                const missingFixture = selectedMissing
-                    ? S.items.find(
-                          (i) => i.type === "fixture" && i.id === selectedId,
-                      )
-                    : null;
-                const allFixtures = missingFixture
-                    ? [missingFixture, ...fixtures]
-                    : fixtures;
+            }
 
-                return [
-                    `<option value="">No related match</option>`,
-                    ...allFixtures.map(
-                        (fixture) =>
-                            `<option value="${fixture.id}" ${fixture.id === selectedId ? "selected" : ""}>${esc(fmtDisplay(fixture.date))} — ${esc(fixture.opponent)}</option>`,
-                    ),
-                ].join("");
+            function findFixtureById(fixtureId) {
+                if (!fixtureId) return null;
+                return (
+                    S.items.find(
+                        (i) => i.type === "fixture" && i.id === fixtureId,
+                    ) || null
+                );
+            }
+
+            function fixtureLinkTemporalWeight(fixture) {
+                const diff = daysUntil(fixture.date);
+                if (diff >= 0) return diff;
+                return 1000 + Math.abs(diff);
+            }
+
+            function fixtureLinkMetaLabel(fixture) {
+                const parts = [];
+                if (fixture.teamType) parts.push(fixture.teamType);
+                if (fixture.matchType) parts.push(fixture.matchType);
+                if (fixture.venueType) {
+                    parts.push(
+                        fixture.venueType.charAt(0).toUpperCase() +
+                            fixture.venueType.slice(1),
+                    );
+                }
+                return parts.join(" • ");
+            }
+
+            function renderFixtureLinkResults(fixtures) {
+                if (!fixtures.length) {
+                    return `<div class="autocomplete-item empty">No matches found</div>`;
+                }
+
+                let currentMonth = "";
+                let html = "";
+                fixtures.forEach((fixture) => {
+                    const monthKey = fixture.date.slice(0, 7);
+                    if (monthKey !== currentMonth) {
+                        currentMonth = monthKey;
+                        html += `<div class="autocomplete-group-label">${esc(fmtMonth(fixture.date))}</div>`;
+                    }
+                    html += `<div class="autocomplete-item" onclick="selectLinkedFixture('${fixture.id}')"><div class="fixture-link-option"><div class="fixture-link-option-main">🏉 ${esc(fixtureDisplayLabel(fixture))}</div><div class="fixture-link-option-meta">${esc(fixtureLinkMetaLabel(fixture))}</div></div></div>`;
+                });
+                return html;
+            }
+
+            function getFixtureLinkMatches(query) {
+                const fixtures = getFixturesForLinking();
+                const q = (query || "").trim().toLowerCase();
+                return fixtures
+                    .map((fixture) => {
+                        const label =
+                            fixtureDisplayLabel(fixture).toLowerCase();
+                        const opponent = (fixture.opponent || "").toLowerCase();
+                        const teamType = (fixture.teamType || "").toLowerCase();
+                        const matchType = (
+                            fixture.matchType || ""
+                        ).toLowerCase();
+                        let score = 0;
+
+                        if (!q) {
+                            score = 1;
+                        } else {
+                            if (opponent.startsWith(q)) score += 7;
+                            if (opponent.includes(q)) score += 4;
+                            if (label.includes(q)) score += 2;
+                            if (teamType.includes(q)) score += 1;
+                            if (matchType.includes(q)) score += 1;
+                        }
+
+                        return {
+                            fixture,
+                            score,
+                            timeWeight: fixtureLinkTemporalWeight(fixture),
+                        };
+                    })
+                    .filter((entry) => entry.score > 0)
+                    .sort(
+                        (a, b) =>
+                            b.score - a.score ||
+                            a.timeWeight - b.timeWeight ||
+                            a.fixture.date.localeCompare(b.fixture.date) ||
+                            (a.fixture.opponent || "").localeCompare(
+                                b.fixture.opponent || "",
+                            ),
+                    )
+                    .slice(0, 16)
+                    .map((entry) => entry.fixture);
+            }
+
+            function renderFixtureLinkSelection() {
+                const container = document.getElementById(
+                    "a-linked-fixture-current",
+                );
+                if (!container) return;
+                const selectedId =
+                    document.getElementById("a-linked-fixture-id")?.value || "";
+                const fixture = findFixtureById(selectedId);
+                container.innerHTML = fixture
+                    ? `<span class="fixture-link-pill">🏉 ${esc(fixtureDisplayLabel(fixture))}<button class="fixture-link-clear" type="button" onclick="clearLinkedFixtureSelection()" title="Clear related match">✕</button></span>`
+                    : `<span class="fixture-link-empty">No match linked</span>`;
+            }
+
+            function selectLinkedFixture(fixtureId) {
+                const fixture = findFixtureById(fixtureId);
+                const hidden = document.getElementById("a-linked-fixture-id");
+                const input = document.getElementById("a-linked-fixture-query");
+                if (!hidden || !input) return;
+                hidden.value = fixture?.id || "";
+                input.value = fixture ? fixtureDisplayLabel(fixture) : "";
+                renderFixtureLinkSelection();
+                hideFixtureLinkSuggestions();
+            }
+
+            function clearLinkedFixtureSelection() {
+                const hidden = document.getElementById("a-linked-fixture-id");
+                const input = document.getElementById("a-linked-fixture-query");
+                if (hidden) hidden.value = "";
+                if (input) {
+                    input.value = "";
+                    input.focus();
+                }
+                renderFixtureLinkSelection();
+                showFixtureLinkSuggestions("");
+            }
+
+            function showFixtureLinkSuggestions(query) {
+                const dropdown = document.getElementById(
+                    "a-linked-fixture-dropdown",
+                );
+                if (!dropdown) return;
+                const matches = getFixtureLinkMatches(query);
+                dropdown.innerHTML = renderFixtureLinkResults(matches);
+                dropdown.style.display = "block";
+            }
+
+            function hideFixtureLinkSuggestions() {
+                const dropdown = document.getElementById(
+                    "a-linked-fixture-dropdown",
+                );
+                if (dropdown) dropdown.style.display = "none";
+            }
+
+            function handleFixtureLinkInput() {
+                const input = document.getElementById("a-linked-fixture-query");
+                const hidden = document.getElementById("a-linked-fixture-id");
+                if (!input || !hidden) return;
+                hidden.value = "";
+                renderFixtureLinkSelection();
+                showFixtureLinkSuggestions(input.value);
+            }
+
+            function handleFixtureLinkKeydown(event) {
+                const dropdown = document.getElementById(
+                    "a-linked-fixture-dropdown",
+                );
+                if (!dropdown) return;
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    dropdown
+                        .querySelector(".autocomplete-item:not(.empty)")
+                        ?.click();
+                } else if (event.key === "Escape") {
+                    hideFixtureLinkSuggestions();
+                }
+            }
+
+            function unlinkActivityMatch(id) {
+                const item = S.items.find(
+                    (i) => i.id === id && i.type === "activity",
+                );
+                if (!item || item.fixtureId) return;
+                if (!item.linkedFixtureId) return;
+                item.linkedFixtureId = null;
+                save();
+                render();
+                showToast("Match link removed");
             }
 
             function getStandaloneLinkedFixture(activity) {
@@ -4618,6 +4914,20 @@
                     event.target !== input
                 )
                     hideAssigneeSuggestions();
+
+                const fixtureDropdown = document.getElementById(
+                    "a-linked-fixture-dropdown",
+                );
+                const fixturePicker = document.querySelector(
+                    ".fixture-link-picker",
+                );
+                if (
+                    fixtureDropdown &&
+                    fixturePicker &&
+                    !fixturePicker.contains(event.target)
+                ) {
+                    hideFixtureLinkSuggestions();
+                }
             });
 
             // ═══════════════════════════════════════════════════════════════
@@ -5421,7 +5731,9 @@
                     const a = data || {};
                     const selectedFixtureId =
                         a.fixtureId || a.linkedFixtureId || "";
-                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Related Match</label><select class="form-select" id="a-linked-fixture">${getFixtureOptionsForActivitySelect(selectedFixtureId)}</select><div class="form-help">Use this for pre-match work that should stay on the main timeline while still linking visually to a fixture.</div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+                    const selectedFixture = findFixtureById(selectedFixtureId);
+                    body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group fixture-link-picker"><label class="form-label">Related Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div><div class="form-help">Search fixtures by opponent or date. Linked activities stay on the main timeline but remain visually tied to the selected match.</div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+                    renderFixtureLinkSelection();
                 } else if (type === "milestone") {
                     const m = data || {};
                     body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title || "")}"></div><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}"></div><div class="form-group"><label class="form-label">Style Color</label><div class="style-selector" id="m-style"><div class="style-opt red ${m.style === "red" || !m.style ? "selected" : ""}" data-value="red" title="Red"></div><div class="style-opt gold ${m.style === "gold" ? "selected" : ""}" data-value="gold" title="Gold"></div><div class="style-opt neutral ${m.style === "neutral" ? "selected" : ""}" data-value="neutral" title="Neutral"></div></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || "")}</textarea></div>`;
@@ -5652,7 +5964,7 @@
                         ? S.items.find((i) => i.id === editId)
                         : null;
                     const selectedLinkedFixtureId =
-                        document.getElementById("a-linked-fixture")?.value ||
+                        document.getElementById("a-linked-fixture-id")?.value ||
                         null;
                     const existingFixtureId = existing
                         ? existing.fixtureId
