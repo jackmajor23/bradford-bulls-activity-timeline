@@ -418,14 +418,7 @@
             .tl-row.dragging {
                 z-index: 100;
             }
-
-            .tl-row + .tl-row.dragging {
-            }
-
-            .tl-row.prev-to-dragging {
-            }
-
-            .tl-row.side-left .tl-card-wrap {
+.tl-row.side-left .tl-card-wrap {
                 grid-column: 1;
                 grid-row: 1;
                 display: flex;
@@ -922,39 +915,110 @@
                 background: #fdfdfd;
                 min-height: 10px;
                 position: relative;
+                transition: all 0.2s ease;
+                border-radius: 6px;
+            }
+            
+            .activity-cluster:has(.drag-placeholder) {
+                background: linear-gradient(135deg, rgba(26, 79, 139, 0.04), rgba(26, 79, 139, 0.02));
+                border-color: rgba(26, 79, 139, 0.2);
             }
 
             .drag-placeholder {
-                background: var(--card);
-                border: 2px solid var(--blue);
-                border-radius: 7px;
-                min-height: 46px;
-                height: 46px;
-                margin: 0;
-                transition: all 0.2s ease;
+                background: linear-gradient(135deg, #555555 0%, #444444 100%);
+                border: 2px dashed rgba(255, 255, 255, 0.3);
+                border-radius: 10px;
+                min-height: 52px;
+                height: 52px;
+                margin: 6px 0;
+                transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
                 flex-shrink: 0;
-                opacity: 0.6;
-                box-shadow: inset 0 0 12px rgba(26, 79, 139, 0.15);
+                opacity: 0.85;
+                box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(255, 255, 255, 0.1), 0 8px 24px rgba(0, 0, 0, 0.35);
+                position: relative;
+                overflow: hidden;
             }
 
-            /* Drop indicator line shown between timeline rows */
-            .tl-drop-indicator {
-                position: relative;
-                height: 4px;
-                margin: 0 40px;
-                pointer-events: none;
-                z-index: 50;
-            }
-            .tl-drop-indicator::after {
+            .drag-placeholder::before {
                 content: "";
                 position: absolute;
-                left: 0;
-                right: 0;
-                top: 1px;
+                inset: 0;
+                background: repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 10px,
+                    rgba(255, 255, 255, 0.05) 10px,
+                    rgba(255, 255, 255, 0.05) 20px
+                ), linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.1) 50%,
+                    transparent
+                );
+                animation: dragPlaceholderShimmer 2.5s linear infinite;
+            }
+
+            .drag-placeholder::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(
+                    circle at 30% 30%,
+                    rgba(255, 255, 255, 0.15) 0%,
+                    transparent 50%
+                );
+            }
+
+            @keyframes dragPlaceholderShimmer {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(100%); }
+            }
+
+            .drag-placeholder.pulse {
+                animation: dragPlaceholderPulse 0.6s ease-in-out infinite;
+            }
+
+            @keyframes dragPlaceholderPulse {
+                0%, 100% {
+                    box-shadow: inset 0 0 20px rgba(26, 79, 139, 0.12), 0 0 0 2px rgba(26, 79, 139, 0.1);
+                }
+                50% {
+                    box-shadow: inset 0 0 20px rgba(26, 79, 139, 0.2), 0 0 0 3px rgba(26, 79, 139, 0.2);
+                }
+            }
+
+            /* Insertion zone - visual hint for where item will be placed */
+            .insertion-zone {
                 height: 2px;
-                background: var(--blue);
-                border-radius: 2px;
-                box-shadow: 0 0 0 3px rgba(26, 79, 139, 0.15);
+                background: linear-gradient(90deg, transparent, var(--blue) 20%, var(--blue) 80%, transparent);
+                margin: 8px 0;
+                border-radius: 1px;
+                opacity: 0.7;
+                animation: insertionZonePulse 0.8s ease-in-out infinite;
+            }
+
+            @keyframes insertionZonePulse {
+                0%, 100% {
+                    opacity: 0.4;
+                    height: 2px;
+                }
+                50% {
+                    opacity: 0.9;
+                    height: 3px;
+                }
+            }
+
+            @keyframes dragSnapPulse {
+                0%, 100% {
+                    box-shadow: 0 0 0 2px rgba(242, 12, 35, 0.15);
+                }
+                50% {
+                    box-shadow: 0 0 0 4px rgba(242, 12, 35, 0.25);
+                }
+            }
+
+            .mini-activity.drag-snap {
+                animation: dragSnapPulse 0.5s ease-out;
             }
 
             /* ─── DATE GROUP ─── */
@@ -2151,118 +2215,6 @@
                 font-weight: 700;
                 cursor: pointer;
             }
-            /* ─── DATE POPUP MODAL ─── */
-            #date-popup-overlay {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.4);
-                z-index: 1000;
-                align-items: center;
-                justify-content: center;
-            }
-            #date-popup-modal {
-                background: var(--card);
-                border-radius: var(--card-radius);
-                box-shadow: var(--shadow-hover);
-                width: 90%;
-                max-width: 400px;
-                padding: 24px;
-                animation: popupFadeIn 0.2s ease;
-            }
-            @keyframes popupFadeIn {
-                from {
-                    opacity: 0;
-                    transform: scale(0.95);
-                }
-                to {
-                    opacity: 1;
-                    transform: scale(1);
-                }
-            }
-            .popup-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
-            }
-            .popup-title {
-                font-family: var(--font-display);
-                font-size: 20px;
-                color: var(--ink);
-                letter-spacing: 0.05em;
-            }
-            .popup-close {
-                background: none;
-                border: none;
-                font-size: 24px;
-                color: var(--ink-light);
-                cursor: pointer;
-                padding: 0;
-                width: 32px;
-                height: 32px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 6px;
-                transition: background 0.15s;
-            }
-            .popup-close:hover {
-                background: rgba(0, 0, 0, 0.05);
-                color: var(--ink);
-            }
-            .popup-section {
-                margin-bottom: 20px;
-            }
-            .popup-section:last-child {
-                margin-bottom: 0;
-            }
-            .popup-label {
-                font-family: var(--font-body);
-                font-size: 12px;
-                font-weight: 600;
-                color: var(--ink-mid);
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-                margin-bottom: 8px;
-            }
-            .popup-date-display {
-                font-family: var(--font-body);
-                font-size: 14px;
-                font-weight: 500;
-                color: var(--ink);
-                padding: 10px 14px;
-                background: var(--bg);
-                border-radius: 8px;
-                border: 1px solid var(--line);
-            }
-            .popup-date-input {
-                width: 100%;
-                padding: 10px 14px;
-                font-family: var(--font-body);
-                font-size: 14px;
-                border: 1.5px solid var(--line);
-                border-radius: 8px;
-                background: var(--bg);
-                color: var(--ink);
-                outline: none;
-                transition: border-color 0.15s;
-            }
-            .popup-date-input:focus {
-                border-color: var(--red);
-            }
-            .popup-actions {
-                display: flex;
-                gap: 10px;
-                margin-top: 24px;
-            }
-            .popup-actions .btn {
-                flex: 1;
-                justify-content: center;
-            }
             /* ─── DELETE CONFIRM MODAL ─── */
             #delete-confirm-overlay,
             #complete-confirm-overlay {
@@ -2966,16 +2918,18 @@
     pointer-events: none;
     z-index: 9999;
 
-    opacity: 0.96;
+    opacity: 0.92;
 
     transform:
-        rotate(2deg)
-        scale(1.04);
+        rotate(3deg)
+        scale(1.06);
 
     box-shadow:
-        0 20px 50px rgba(0,0,0,.30);
+        0 25px 60px rgba(0,0,0,.35),
+        0 0 0 2px rgba(26, 79, 139, 0.2);
 
     border-radius: var(--card-radius);
+    border: 2px solid rgba(26, 79, 139, 0.3);
 
     transition: none;
 
@@ -2985,6 +2939,21 @@
         transform,
         left,
         top;
+        
+    filter: drop-shadow(0 4px 12px rgba(26, 79, 139, 0.2));
+    
+    animation: ghostFloat 0.3s ease-out;
+}
+
+@keyframes ghostFloat {
+    from {
+        opacity: 0.7;
+        transform: rotate(1deg) scale(1.02);
+    }
+    to {
+        opacity: 0.92;
+        transform: rotate(3deg) scale(1.06);
+    }
 }
 
                 /* Mobile drag improvements */
@@ -3008,13 +2977,15 @@
 .fixture-card.dragging,
 .milestone-card.dragging {
 
-    opacity: 0.15;
+    opacity: 0.2;
 
-    transform: scale(.98);
+    transform: scale(.96);
 
-    transition:
-        opacity .2s ease,
-        transform .2s ease;
+    transition: opacity .2s ease, transform .2s ease;
+    
+    pointer-events: none;
+    
+    cursor: grabbing;
 }
 
                 .mini-activity.drag-over,
@@ -3024,57 +2995,58 @@
 .milestone-card.drag-over {
 
     border: 2px dashed var(--blue);
-
-    background:
-        repeating-linear-gradient(
-            -45deg,
-            rgba(26,79,139,.08),
-            rgba(26,79,139,.08) 10px,
-            rgba(26,79,139,.14) 10px,
-            rgba(26,79,139,.14) 20px
-        );
+    
+    background: linear-gradient(
+        135deg,
+        rgba(26,79,139,.12),
+        rgba(26,79,139,.06)
+    );
 
     min-height: 60px;
 
-    animation:
-        dragPlaceholderPulse
-        .8s ease-in-out infinite alternate;
+    animation: dragZonePulse .6s ease-in-out infinite alternate;
+    
+    box-shadow: inset 0 0 16px rgba(26,79,139,.15), 0 0 0 3px rgba(26,79,139,.12);
 }
 
-@keyframes dragPlaceholderPulse {
-
+@keyframes dragZonePulse {
     from {
-        opacity: .45;
+        background: linear-gradient(135deg, rgba(26,79,139,.08), rgba(26,79,139,.04));
+        box-shadow: inset 0 0 16px rgba(26,79,139,.12), 0 0 0 2px rgba(26,79,139,.1);
     }
-
     to {
-        opacity: .9;
+        background: linear-gradient(135deg, rgba(26,79,139,.16), rgba(26,79,139,.08));
+        box-shadow: inset 0 0 24px rgba(26,79,139,.2), 0 0 0 4px rgba(26,79,139,.15);
     }
-
 }
 
 /* Fixture receives drop */
-
-.fixture-card.touch-drop-target,
-.fixture-card.drag-over {
+.fixture-card.touch-drop-target {
 
     outline: 3px solid var(--gold);
-
     outline-offset: 4px;
+    transform: scale(1.03);
+    transition: all .2s cubic-bezier(.34, 1.56, .64, 1);
+    box-shadow: var(--shadow-hover), 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
 
+.fixture-card.drag-over {
+    outline: 3px dashed var(--gold);
+    outline-offset: 3px;
+    background: rgba(212, 175, 55, 0.08);
     transform: scale(1.02);
     transition: all .15s ease;
 }
 
             .drag-placeholder {
-                min-height: 72px;
+                min-height: 52px;
                 border-radius: 10px;
-                border: 2px solid var(--blue);
-                background: var(--card);
-                margin: 4px 0;
-                opacity: 0.6;
-                box-shadow: inset 0 0 12px rgba(26, 79, 139, 0.15);
-                animation: skeleton-pulse 1.5s ease-in-out infinite;
+                border: 2px dashed var(--blue);
+                background: linear-gradient(135deg, rgba(26, 79, 139, 0.08), rgba(26, 79, 139, 0.04));
+                margin: 6px 0;
+                opacity: 0.8;
+                box-shadow: inset 0 0 20px rgba(26, 79, 139, 0.12), 0 0 0 2px rgba(26, 79, 139, 0.1);
+                animation: dragPlaceholderShimmer 2s linear infinite, dragPlaceholderPulse 0.6s ease-in-out infinite;
             }
 
                 /* Drop highlight for timeline rows on mobile */
@@ -5502,6 +5474,9 @@
                         el.getBoundingClientRect().top + window.scrollY - headerOffset;
                     window.scrollTo({ top: y, behavior: "smooth" });
                 }
+                
+                // Remove any remaining drop indicator lines
+                document.querySelectorAll(".tl-drop-indicator").forEach(el => el.remove());
 
                 document.querySelectorAll(".linked-match-chip").forEach((chip) => {
                     chip.addEventListener("click", (e) => {
@@ -5545,7 +5520,9 @@
                                     btn.removeAttribute("onclick");
                                 });
                         });
-                        el.addEventListener("dragend", () => {
+                        el.addEventListener("dragend", (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             el.classList.remove("dragging");
                             isDraggingActivity = false;
                             dragEndTime = Date.now();
@@ -5564,20 +5541,19 @@
                                 .forEach((fc) =>
                                     fc.classList.remove("drop-active"),
                                 );
-                            setTimeout(() => {
-                                disableToggle = false;
-                                document
+                            // Immediately re-enable toggle
+                            disableToggle = false;
+                            document
                                 .querySelectorAll(".fixture-acts-toggle")
-                                    .forEach((btn) => {
-                                        if (btn.dataset.originalOnclick) {
-                                            btn.setAttribute(
-                                                "onclick",
-                                                btn.dataset.originalOnclick,
-                                            );
-                                            delete btn.dataset.originalOnclick;
-                                        }
-                                    });
-                            }, 500);
+                                .forEach((btn) => {
+                                    if (btn.dataset.originalOnclick) {
+                                        btn.setAttribute(
+                                            "onclick",
+                                            btn.dataset.originalOnclick,
+                                        );
+                                        delete btn.dataset.originalOnclick;
+                                    }
+                                });
                         });
 
                         let touchStartX,
@@ -5638,22 +5614,15 @@
                                     document.body.appendChild(ghost);
                                 }
                                 e.preventDefault();
-                                // Move ghost
+                                // Move ghost with smooth easing
                                 if (ghost) {
-
-    requestAnimationFrame(() => {
-
-        ghost.style.left =
-            touch.clientX -
-            ghost.offsetWidth / 2 +
-            "px";
-
-        ghost.style.top =
-            touch.clientY - 30 + "px";
-
-    });
-
-}
+                                    requestAnimationFrame(() => {
+                                        const targetX = touch.clientX - ghost.offsetWidth / 2;
+                                        const targetY = touch.clientY - 30;
+                                        ghost.style.left = targetX + "px";
+                                        ghost.style.top = targetY + "px";
+                                    });
+                                }
                                 // Highlight drop target row
                                 document
                                     .querySelectorAll(
@@ -5789,6 +5758,14 @@ if (cluster) {
                                 return;
                             }
                             el.classList.remove("dragging");
+                            // Animate dragged item back to normal state
+                            el.style.transition = "opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)";
+                            el.style.opacity = "1";
+                            el.style.transform = "scale(1)";
+                            setTimeout(() => {
+                                el.style.transition = "";
+                            }, 300);
+                            
                             document
                                 .querySelectorAll(".mini-activity")
                                 .forEach((i) =>
@@ -5796,7 +5773,11 @@ if (cluster) {
                                 );
                             document
                                 .querySelectorAll(".drag-placeholder")
-                                .forEach((p) => p.remove());
+                                .forEach((p) => {
+                                    p.style.opacity = "0";
+                                    p.style.transform = "scale(0.9)";
+                                    setTimeout(() => p.remove(), 200);
+                                });
                             isDraggingActivity = false;
                             dragEndTime = Date.now();
                             const touch = e.changedTouches[0];
@@ -5815,6 +5796,15 @@ if (cluster) {
                                         fc.dataset.fixtureId || fc.dataset.id;
                                     act.fixtureId = fixtureId;
                                     act.linkedFixtureId = fixtureId;
+                                    // Animate fixture card feedback
+                                    fc.style.transition = "all 0.3s ease";
+                                    fc.style.transform = "scale(1.02)";
+                                    setTimeout(() => {
+                                        fc.style.transform = "scale(1)";
+                                        setTimeout(() => {
+                                            fc.style.transition = "";
+                                        }, 300);
+                                    }, 100);
                                     save();
                                     render();
                                     showToast("🏉 Activity linked to match!");
@@ -5830,6 +5820,16 @@ if (cluster) {
                                 } else {
                                     cluster.appendChild(el);
                                 }
+                                // Auto-snap to nearest position
+                                snapToNearestPosition(el, cluster);
+                                
+                                // Smooth animate back to final position
+                                el.style.transition = "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+                                el.style.transform = "scale(1)";
+                                setTimeout(() => {
+                                    el.style.transition = "";
+                                }, 400);
+                                
                                 const fixtureId = cluster.id.replace(
                                     "cluster-",
                                     "",
@@ -5898,11 +5898,62 @@ if (cluster) {
                                             delete btn.dataset.originalOnclick;
                                         }
                                     });
-                            }, 500);
+                            });
                             touchElement = null;
                             isTouchDrag = false;
                         });
                     });
+
+                // Desktop drag-and-drop for mini-activity reordering within clusters
+                document.querySelectorAll(".mini-activity").forEach((ma) => {
+                    ma.addEventListener("dragover", (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        const cluster = ma.closest(".activity-cluster");
+                        if (cluster && cluster.contains(document.querySelector(`[data-id="${dragActivityId}"]`))) {
+                            ma.classList.add("drag-over");
+                        }
+                    });
+                    ma.addEventListener("dragleave", () => {
+                        ma.classList.remove("drag-over");
+                    });
+                    ma.addEventListener("drop", (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        ma.classList.remove("drag-over");
+                        const cluster = ma.closest(".activity-cluster");
+                        const draggedElement = document.querySelector(`[data-id="${dragActivityId}"]`);
+                        
+                        if (draggedElement && cluster && cluster.contains(draggedElement) && draggedElement !== ma) {
+                            // Reorder activities within the cluster
+                            const activities = Array.from(cluster.querySelectorAll(".mini-activity")).map(el => el.dataset.id);
+                            const draggedIndex = activities.indexOf(dragActivityId);
+                            const targetIndex = activities.indexOf(ma.dataset.id);
+                            
+                            if (draggedIndex !== -1 && targetIndex !== -1) {
+                                // Update S.items order to match new visual order
+                                const [removed] = activities.splice(draggedIndex, 1);
+                                activities.splice(targetIndex, 0, removed);
+                                
+                                // Reorder in S.items
+                                activities.forEach((id, idx) => {
+                                    const item = S.items.find(i => i.id === id);
+                                    if (item) item.order = idx;
+                                });
+                                
+                                // Apply snap animation and save
+                                ma.classList.add("drag-snap");
+                                ma.addEventListener("animationend", () => {
+                                    ma.classList.remove("drag-snap");
+                                }, { once: true });
+                                
+                                save();
+                                render();
+                                showToast("↕️ Activity reordered!");
+                            }
+                        }
+                    });
+                });
 
                 document.querySelectorAll(".fixture-card").forEach((fc) => {
                     fc.addEventListener("dragover", (e) => e.preventDefault());
@@ -6228,10 +6279,48 @@ if (cluster) {
 
             function createDragPlaceholder() {
                 const placeholder = document.createElement("div");
-                placeholder.className = "drag-placeholder";
-                // Add a subtle skeleton animation to indicate drop zone
-                placeholder.style.animation = "skeleton-pulse 1.5s ease-in-out infinite";
+                placeholder.className = "drag-placeholder pulse";
+                placeholder.setAttribute("data-placeholder", "true");
                 return placeholder;
+            }
+            
+            // Auto-snap helper: snap element to nearest valid position
+            function snapToNearestPosition(element, container) {
+                if (!element || !container) return;
+                const items = Array.from(container.querySelectorAll(".mini-activity")).filter(
+                    el => el !== element && el.offsetHeight > 0
+                );
+                
+                if (items.length === 0) {
+                    container.appendChild(element);
+                    return;
+                }
+                
+                const rect = element.getBoundingClientRect();
+                const elementCenter = rect.top + rect.height / 2;
+                
+                let closestItem = items[0];
+                let closestDistance = Math.abs(
+                    closestItem.getBoundingClientRect().top + closestItem.offsetHeight / 2 - elementCenter
+                );
+                
+                for (let i = 1; i < items.length; i++) {
+                    const itemRect = items[i].getBoundingClientRect();
+                    const itemCenter = itemRect.top + itemRect.height / 2;
+                    const distance = Math.abs(itemCenter - elementCenter);
+                    
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestItem = items[i];
+                    }
+                }
+                
+                const closestRect = closestItem.getBoundingClientRect();
+                if (elementCenter < closestRect.top + closestRect.height / 2) {
+                    container.insertBefore(element, closestItem);
+                } else {
+                    closestItem.parentNode.insertBefore(element, closestItem.nextSibling);
+                }
             }
 
             // Add skeleton pulse animation if not already in CSS
