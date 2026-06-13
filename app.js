@@ -1,0 +1,3708 @@
+// ─── CONSTANTS ─────────────────────────────────────────────────
+const STORAGE_KEY = "bbTimeline_v5";
+const ASSIGNEE_KEY = "bbAssignees";
+
+// ─── SUPABASE CONFIGURATION ────────────────────────────────────
+// The anon key is intentionally public — it is the credential for the
+// shared team workspace.  It is NOT a secret.  The service role key
+// must never appear here; it lives only in server-side code.
+const SUPABASE_URL = "https://iqenyprolzxzwnbubuar.supabase.co";
+const SUPABASE_ANON_KEY =
+    "sb_publishable_s7P_E83Hu701PzDJoBE8aw_lDr5ruqS";
+
+let supabaseClient = null;
+let useCloudSync = true;
+
+// ─── FAIL-SAFE SYNC UI HOOKS (prevent bootstrap crashes) ────────
+// If older builds are missing these functions, provide safe
+// fallbacks so sync bootstrap can't break rendering.
+// Connection indicator UI removed from header.
+// Keep this as a no-op fallback so sync bootstrap can't crash.
+window.updateConnectionIndicator = window.updateConnectionIndicator || function () {};
+if (typeof window.updateSyncStatus !== 'function') {
+    window.updateSyncStatus = function () {
+        // No-op (we already show toasts + heartbeat banner).
+    };
+}
+if (typeof window.showOfflineBanner !== 'function') {
+    window.showOfflineBanner = function (show) {
+        const banner = document.getElementById('offline-banner');
+        if (!banner) return;
+        if (show) banner.classList.add('show');
+        else banner.classList.remove('show');
+    };
+}
+
+window.addEventListener('error', (ev) => {
+    // Keep console visibility for debugging "page not showing".
+    console.error('Uncaught error:', ev.error || ev.message);
+});
+window.addEventListener('unhandledrejection', (ev) => {
+    console.error('Unhandled rejection:', ev.reason);
+});
+
+try {
+    supabaseClient = supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
+    );
+    console.log("✓ Supabase initialized");
+
+    // Initialize sync managers
+    if (window.SyncSystem) {
+        window.deviceManager = new window.SyncSystem.DeviceManager();
+        window.conflictResolver = new window.SyncSystem.ConflictResolver('merge');
+        window.syncQueue = new window.SyncSystem.SyncQueue();
+        window.connectionMonitor = new window.SyncSystem.ConnectionMonitor(supabaseClient);
+        window.notificationManager = new window.SyncSystem.NotificationManager();
+
+        // Start connection monitoring
+        window.connectionMonitor.startHeartbeat((status) => {
+            try {
+                window.updateConnectionIndicator?.(status);
+                if (status.status === 'offline') {
+                    window.notificationManager.offlineMode();
+                    window.showOfflineBanner?.(true);
+                } else if (status.status === 'connected') {
+                    window.notificationManager.backOnline();
+                    window.showOfflineBanner?.(false);
+                }
+            } catch (e) {
+                console.error('Heartbeat callback failed:', e);
+            }
+        });
+
+        console.log("✓ Sync system initialized");
+    } else {
+        console.warn("⚠ sync-config.js not loaded");
+    }
+} catch (e) {
+    console.error("Supabase save failed:", e.message || e);
+}
+
+// ─── SYNC STATE ────────────────────────────────────────────────
+// FIX: Track the timestamp of the last local write so realtime can
+// suppress events that originated from this client (preventing loops).
+let lastWriteTime = 0;
+let saveDebounceTimer = null;
+// FIX: Track deletes explicitly so upsert-only saves don't orphan rows.
+let pendingDeleteOps = []; // [{id, type}]
+
+// ─── ACTIVITY / TEAM DEFINITIONS ───────────────────────────────
+const ACTIVITY_TYPES = [
+    {
+        id: "social",
+        label: "Social",
+        icon: "📱",
+        cls: "type-social",
+    },
+    { id: "email", label: "Email", icon: "📧", cls: "type-email" },
+    { id: "pr", label: "PR", icon: "📰", cls: "type-pr" },
+    {
+        id: "training",
+        label: "Training",
+        icon: "🏉",
+        cls: "type-training",
+    },
+    {
+        id: "digital",
+        label: "Digital",
+        icon: "💻",
+        cls: "type-digital",
+    },
+    { id: "print", label: "Print", icon: "🖨️", cls: "type-print" },
+    { id: "event", label: "Event", icon: "🎟️", cls: "type-event" },
+    {
+        id: "photo",
+        label: "Photography",
+        icon: "📷",
+        cls: "type-photo",
+    },
+    {
+        id: "interview",
+        label: "Interview",
+        icon: "🎙️",
+        cls: "type-interview",
+    },
+    {
+        id: "website",
+        label: "Website",
+        icon: "💻",
+        cls: "type-website",
+    },
+    {
+        id: "design",
+        label: "Design",
+        icon: "🎨",
+        cls: "type-design",
+    },
+    { id: "other", label: "Other", icon: "📌", cls: "type-other" },
+];
+
+const TEAM_TYPES = [
+    "Men's",
+    "Women's",
+    "Reserves",
+    "Academy",
+    "Scholarship",
+    "Wheelchair",
+    "PD/LDRL",
+];
+
+function teamInitials(name) {
+    if (!name) return "?";
+    return name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 3)
+        .toUpperCase();
+}
+
+function shieldSVG(name) {
+    // Create a dark grey shield icon as fallback
+    const initials = teamInitials(name);
+    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+      <path d="M 50 10 L 10 30 L 10 55 Q 10 75 50 90 Q 90 75 90 55 L 90 30 Z" fill="#808080" stroke="#666" stroke-width="1"/>
+      <text x="50" y="55" text-anchor="middle" dominant-baseline="middle" font-size="32" font-weight="bold" fill="#fff" font-family="Arial, sans-serif">${esc(initials)}</text>
+    </svg>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGO SYSTEM (FIX: robust fallback chain)
+// ═══════════════════════════════════════════════════════════════
+const LOGO_CACHE_KEY = "bbLogoCache_v2";
+let logoCache = {};
+try {
+    logoCache = JSON.parse(
+        localStorage.getItem(LOGO_CACHE_KEY) || "{}",
+    );
+} catch (e) {
+    logoCache = {};
+}
+function saveLogoCache() {
+    try {
+        localStorage.setItem(
+            LOGO_CACHE_KEY,
+            JSON.stringify(logoCache),
+        );
+    } catch (e) {}
+}
+
+// Confirmed working URLs (verified via Wikipedia File API).
+// All other clubs are resolved asynchronously by discoverLogoAsync.
+const KNOWN_LOGOS = {
+    "Bradford Bulls":
+        "https://upload.wikimedia.org/wikipedia/en/1/1f/2025_Bradford_Bulls_Logo.png",
+    "Leeds Rhinos":
+        "https://upload.wikimedia.org/wikipedia/en/6/6f/Leeds_Rhinos_logo.svg",
+    "Wigan Warriors":
+        "https://upload.wikimedia.org/wikipedia/en/d/d7/Wigan_Warriors_Logo%2C_November_2020.svg",
+};
+
+// Lowercase-keyed map for fast, case-insensitive logo lookups
+const KNOWN_LOGO_MAP = Object.fromEntries(
+    Object.entries(KNOWN_LOGOS).map(([k, v]) => [
+        k.toLowerCase().trim(),
+        v,
+    ]),
+);
+
+// FIX: Render a proper SVG shield as the terminal fallback — never blank
+function shieldSVG(name) {
+    const initials = teamInitials(name);
+    return `<svg viewBox="0 0 40 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M20 2 L36 8 L36 24 C36 33 20 42 20 42 C20 42 4 33 4 24 L4 8 Z"
+        fill="#c9ced6" stroke="#8e97a3" stroke-width="1.5"/>
+      <path d="M20 6 L32 10.5 L32 23 C32 29.6 20 37.2 20 37.2 C20 37.2 8 29.6 8 23 L8 10.5 Z"
+        fill="#e8ebf0" opacity="0.92"/>
+      <text x="20" y="27.5" text-anchor="middle" font-family="'Bebas Neue',sans-serif"
+        font-size="13" fill="#626b76" letter-spacing="0.5">${initials}</text>
+    </svg>`;
+}
+
+// Robust img fallback: shows shield on error AND triggers async re-discovery
+function logoImgWithFallback(url, name) {
+    const escaped = esc(name);
+    return `<img
+      src="${url}"
+      alt="${escaped}"
+      data-team="${escaped}"
+      onload="this.style.display='block';this.nextElementSibling&&(this.nextElementSibling.style.display='none')"
+      onerror="this.style.display='none';var fb=this.nextElementSibling;if(fb){fb.style.display='flex';}discoverLogoAsync(this.dataset.team);"
+    ><div class="logo-shield-wrap" style="display:none">${shieldSVG(name)}</div>`;
+}
+
+const logoLookupMemo = new Map();
+
+function getTeamLogo(name) {
+    if (!name) return null;
+
+    const lower = name.toLowerCase().trim();
+
+    if (logoLookupMemo.has(lower)) {
+        return logoLookupMemo.get(lower);
+    }
+
+    const logo =
+        KNOWN_LOGO_MAP[lower] ||
+        (logoCache[lower] !== "NOT_FOUND"
+            ? logoCache[lower]
+            : null);
+
+    logoLookupMemo.set(lower, logo);
+
+    if (!logo && logoCache[lower] !== "NOT_FOUND") {
+        discoverLogoAsync(name);
+    }
+
+    return logo;
+}
+const brokenLogoUrls = new Set();
+
+function handleLogoError(img) {
+    const url = img.src;
+
+    brokenLogoUrls.add(url);
+
+    img.style.display = "none";
+
+    const fallback = img.nextElementSibling;
+
+    if (fallback) {
+        fallback.style.display = "flex";
+    }
+}
+
+const pendingDiscovery = new Set();
+
+async function discoverLogoAsync(name) {
+    const lower = name.toLowerCase().trim();
+    if (pendingDiscovery.has(lower)) return;
+    pendingDiscovery.add(lower);
+
+    // ── Strategy 1: Search Wikipedia File namespace directly ──────────
+    // This is far more reliable than pageimages (which returns article
+    // featured images, not logos).
+    const fileQueries = [
+        `${name} logo`,
+        `${name} RLFC logo`,
+        `${name} rugby league logo`,
+    ];
+    const firstWord = lower.split(" ")[0];
+
+    for (const query of fileQueries) {
+        try {
+            const searchRes = await fetch(
+                `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&srlimit=5&format=json&origin=*`,
+            );
+            const searchData = await searchRes.json();
+            const files = searchData.query?.search || [];
+
+            for (const file of files) {
+                const tl = file.title.toLowerCase();
+                if (!tl.includes(firstWord)) continue;
+                const isLogoFile =
+                    tl.includes("logo") ||
+                    tl.includes("badge") ||
+                    tl.includes("crest");
+                const isPhoto =
+                    tl.includes("stadium") ||
+                    tl.includes("ground") ||
+                    tl.includes("portrait") ||
+                    tl.includes("player");
+                if (!isLogoFile || isPhoto) continue;
+
+                const imgRes = await fetch(
+                    `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(file.title)}&prop=imageinfo&iiprop=url&format=json&origin=*`,
+                );
+                const imgData = await imgRes.json();
+                const pages = Object.values(
+                    imgData.query?.pages || {},
+                );
+                const imageUrl = pages[0]?.imageinfo?.[0]?.url;
+                if (imageUrl && !pages[0].missing) {
+                    logoCache[lower] = imageUrl;
+                    saveLogoCache();
+                    logoLookupMemo.delete(lower);
+                    updateLogoInDOM(name, imageUrl);
+                    pendingDiscovery.delete(lower);
+                    return;
+                }
+            }
+        } catch (e) {
+            /* network error — silent */
+        }
+    }
+
+    // ── Strategy 2: Fallback to pageimages API ───────────────────────
+    const articleQueries = [
+        `${name} rugby league`,
+        `${name} RLFC`,
+        name,
+    ];
+    for (const query of articleQueries) {
+        try {
+            const searchRes = await fetch(
+                `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=3&format=json&origin=*`,
+            );
+            const searchData = await searchRes.json();
+            const titles = searchData[1] || [];
+            for (const title of titles) {
+                if (!title.toLowerCase().includes(firstWord))
+                    continue;
+                const imgRes = await fetch(
+                    `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&pithumbsize=200&format=json&origin=*`,
+                );
+                const imgData = await imgRes.json();
+                const pages = Object.values(
+                    imgData.query?.pages || {},
+                );
+                const thumb = pages[0]?.thumbnail?.source;
+                if (thumb) {
+                    const tl = thumb.toLowerCase();
+                    const isLogo =
+                        tl.includes("logo") ||
+                        tl.includes("badge") ||
+                        tl.includes("crest") ||
+                        tl.includes(".svg");
+                    const isPhoto =
+                        tl.includes("stadium") ||
+                        tl.includes("ground") ||
+                        tl.includes("portrait") ||
+                        tl.includes("player");
+                    if (isLogo && !isPhoto) {
+                        logoCache[lower] = thumb;
+                        saveLogoCache();
+                        logoLookupMemo.delete(lower);
+                        updateLogoInDOM(name, thumb);
+                        pendingDiscovery.delete(lower);
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            /* network error — silent */
+        }
+    }
+
+    logoCache[lower] = "NOT_FOUND";
+    saveLogoCache();
+    pendingDiscovery.delete(lower);
+}
+
+function updateLogoInDOM(name, url) {
+    // Invalidate memo so the corrected URL is used on the next render()
+    logoLookupMemo.delete(name.toLowerCase().trim());
+    document
+        .querySelectorAll(".fixture-logo-wrap")
+        .forEach((wrap) => {
+            const card = wrap.closest(".fixture-card");
+            const opponent = card
+                ?.querySelector(".fixture-opponent")
+                ?.textContent?.trim();
+            if (
+                !opponent ||
+                opponent.toLowerCase() !== name.toLowerCase().trim()
+            )
+                return;
+            wrap.innerHTML = logoImgWithFallback(url, name);
+        });
+}
+
+let syncState = SyncState.CONNECTING;
+let syncBannerHideTimer = null;
+
+function setSyncState(state) {
+    syncState = state;
+
+    const banner = document.getElementById("sync-banner");
+    const text = document.getElementById("sync-banner-text");
+
+    if (!banner || !text) return;
+
+    clearTimeout(syncBannerHideTimer);
+    syncBannerHideTimer = null;
+
+    banner.classList.add("show");
+    banner.classList.remove("connected", "offline");
+
+    switch (state) {
+        case SyncState.CONNECTING:
+            text.textContent = "Connecting to cloud…";
+            break;
+
+        case SyncState.OFFLINE:
+            text.textContent = "Offline — changes stored locally";
+            banner.classList.add("offline");
+            break;
+
+        case SyncState.CONNECTED:
+            text.textContent = "✓ Cloud sync active";
+            banner.classList.add("connected");
+            syncBannerHideTimer = setTimeout(() => {
+                if (syncState === SyncState.CONNECTED) {
+                    banner.classList.remove(
+                        "show",
+                        "connected",
+                        "offline",
+                    );
+                }
+            }, 2500);
+            break;
+    }
+}
+
+setSyncState(SyncState.CONNECTING);
+
+// ─── SUPABASE RECORD CONVERTER ─────────────────────────────────
+// FIX: Centralised converter used by both loadFromSupabase and the
+// realtime handler, ensuring consistent mapping in both code paths.
+function convertSupabaseRecord(record, itemType) {
+    if (!record) return null;
+    try {
+        switch (itemType) {
+            case "fixture":
+                return {
+                    id: record.id,
+                    type: "fixture",
+                    date: (record.date || "").split("T")[0],
+                    opponent: record.opponent || "",
+                    venue: record.venue || "",
+                    venueType: record.venue_type || "home",
+                    matchType: record.match_type || "League",
+                    teamType: record.team_type || "Men's",
+                    assignees: [],
+                };
+            case "activity":
+                return {
+                    id: record.id,
+                    type: "activity",
+                    date: (record.date || "").split("T")[0],
+                    title: record.title || "",
+                    actType: record.type || "other",
+                    assignees: Array.isArray(record.assignees)
+                        ? record.assignees
+                        : [],
+                    notes: record.notes || "",
+                    complete: record.completed || false,
+                    fixtureId: record.fixture_id || null,
+                    linkedFixtureId:
+                        record.linked_fixture_id || null,
+                };
+            case "milestone":
+                return {
+                    id: record.id,
+                    type: "milestone",
+                    date: (record.date || "").split("T")[0],
+                    title: record.title || "",
+                    style: record.color || "red",
+                    notes: record.notes || "",
+                    assignees: [],
+                };
+            case "note":
+                return {
+                    id: record.id,
+                    type: "note",
+                    date: (record.date || "").split("T")[0],
+                    content: record.content || "",
+                    assignees: [],
+                };
+            default:
+                return null;
+        }
+    } catch (e) {
+        console.error("Supabase save failed:", e.message || e);
+    }
+}
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+// Password is never stored in plain text — only its SHA-256 hash lives here.
+// Replace the string below with the hash you generated in Step 2.
+const PASSWORD_HASH =
+    "a568a40f9f6913d1acc69b86999c55b44913da2740390a87b52cac3d37db5272";
+
+// Session lasts 30 days from last successful login.
+const SESSION_KEY = "bbTimeline_auth";
+const SESSION_DAYS = 30;
+
+async function sha256(str) {
+    const buf = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(str),
+    );
+    return Array.from(new Uint8Array(buf))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+}
+
+function hasValidSession() {
+    try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (!raw) return false;
+        const { expiry } = JSON.parse(raw);
+        return Date.now() < expiry;
+    } catch (e) {
+        return false;
+    }
+}
+
+function writeSession() {
+    const expiry = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ expiry }));
+}
+
+function initAuth() {
+    if (hasValidSession()) {
+        dismissAuthGate();
+        return;
+    }
+    document.getElementById("auth-gate").style.display = "flex";
+    // Focus the password field automatically
+    setTimeout(
+        () => document.getElementById("auth-password")?.focus(),
+        50,
+    );
+}
+
+function dismissAuthGate() {
+    const gate = document.getElementById("auth-gate");
+    if (gate) gate.style.display = "none";
+    load();
+    setupRealtime();
+}
+
+async function submitPassword() {
+    const input = document.getElementById("auth-password");
+    const errorEl = document.getElementById("auth-error");
+    const entered = (input.value || "").trim();
+
+    if (!entered) {
+        errorEl.textContent = "Please enter the password.";
+        return;
+    }
+
+    const hash = await sha256(entered);
+
+    if (hash === PASSWORD_HASH) {
+        writeSession(); // Saves 30-day session to localStorage
+        input.value = "";
+        dismissAuthGate();
+    } else {
+        errorEl.textContent = "Incorrect password.";
+        input.value = "";
+        input.focus();
+        // Brief red border shake for feedback
+        input.style.borderColor = "var(--red)";
+        input.style.animation = "none";
+        setTimeout(() => {
+            input.style.borderColor = "var(--line)";
+        }, 1200);
+    }
+}
+// ─── LOAD FROM SUPABASE ────────────────────────────────────────
+// FIX: Now orders by `date` (the canonical column) instead of
+// `kickoff_at` which may not exist on all installs.
+async function loadFromSupabase() {
+    if (!supabaseClient || !useCloudSync) return null;
+    try {
+        const [
+            fixturesRes,
+            activitiesRes,
+            milestonesRes,
+            notesRes,
+            savedAssigneesRes,
+        ] = await Promise.all([
+            supabaseClient
+                .from("fixtures")
+                .select("*")
+                .order("date", { ascending: true }),
+            supabaseClient
+                .from("activities")
+                .select("*")
+                .order("date", { ascending: true }),
+            supabaseClient
+                .from("milestones")
+                .select("*")
+                .order("date", { ascending: true }),
+            supabaseClient
+                .from("notes")
+                .select("*")
+                .order("date", { ascending: true }),
+            supabaseClient.from("saved_assignees").select("name"),
+        ]);
+
+        if (fixturesRes.error) throw fixturesRes.error;
+        if (activitiesRes.error) throw activitiesRes.error;
+        if (milestonesRes.error) throw milestonesRes.error;
+        if (notesRes.error) throw notesRes.error;
+        if (savedAssigneesRes.error) throw savedAssigneesRes.error;
+
+        const items = [
+            ...(fixturesRes.data || []).map((r) =>
+                convertSupabaseRecord(r, "fixture"),
+            ),
+            ...(activitiesRes.data || []).map((r) =>
+                convertSupabaseRecord(r, "activity"),
+            ),
+            ...(milestonesRes.data || []).map((r) =>
+                convertSupabaseRecord(r, "milestone"),
+            ),
+            ...(notesRes.data || []).map((r) =>
+                convertSupabaseRecord(r, "note"),
+            ),
+        ].filter(Boolean);
+
+        const savedAssignees = (savedAssigneesRes.data || []).map(
+            (r) => r.name,
+        );
+
+        return { items, savedAssignees };
+    } catch (e) {
+        console.error("loadFromSupabase failed:", e.message || e);
+        return null;
+    }
+}
+
+// ─── SAVE TO SUPABASE ──────────────────────────────────────────
+// FIX: Replaced delete-all + re-insert with upsert + explicit deletes.
+//   - No more `season_id` FK injection.
+//   - `lastWriteTime` stamp prevents the realtime handler from echoing
+//     our own saves back as remote changes (self-event suppression).
+//   - Pending deletes are processed first to respect FK ordering.
+async function saveToSupabase() {
+    if (!supabaseClient || !useCloudSync) return;
+
+    lastWriteTime = Date.now();
+
+    try {
+        // Process explicit deletes first (FK order: activities before fixtures)
+        // This ensures we don't violate foreign key constraints when deleting fixtures
+        const actDeletes = pendingDeleteOps.filter(
+            (d) => d.type === "activity",
+        );
+        const fixDeletes = pendingDeleteOps.filter(
+            (d) => d.type === "fixture",
+        );
+        const milDeletes = pendingDeleteOps.filter(
+            (d) => d.type === "milestone",
+        );
+        const noteDeletes = pendingDeleteOps.filter(
+            (d) => d.type === "note",
+        );
+
+        // Process deletes in FK-safe order: activities → fixtures → milestones → notes
+        for (const d of [
+            ...actDeletes,
+            ...fixDeletes,
+            ...milDeletes,
+            ...noteDeletes,
+        ]) {
+            const table =
+                d.type === "fixture"
+                    ? "fixtures"
+                    : d.type === "activity"
+                      ? "activities"
+                      : d.type === "milestone"
+                        ? "milestones"
+                        : "notes";
+            const { error } = await supabaseClient
+                .from(table)
+                .delete()
+                .eq("id", d.id);
+            if (error) {
+                console.error(
+                    `Delete ${table} ${d.id} failed:`,
+                    JSON.stringify(error),
+                );
+                throw new Error(`Failed to delete ${table} ${d.id}: ${JSON.stringify(error)}`);
+            }
+        }
+        pendingDeleteOps = [];
+
+        // Upsert all surviving items by type
+        const fixtures = S.items.filter(
+            (i) => i.type === "fixture",
+        );
+        const activities = S.items.filter(
+            (i) => i.type === "activity",
+        );
+        const milestones = S.items.filter(
+            (i) => i.type === "milestone",
+        );
+        const notes = S.items.filter((i) => i.type === "note");
+
+        if (fixtures.length) {
+            const { error } = await supabaseClient
+                .from("fixtures")
+                .upsert(
+                    fixtures.map((f) => ({
+                        id: f.id,
+                        opponent: f.opponent || "",
+                        date: f.date,
+                        match_type: f.matchType || "League",
+                        team_type: f.teamType || "Men's",
+                        venue: f.venue || "",
+                        venue_type: f.venueType || "home",
+                    })),
+                    { onConflict: "id" },
+                );
+            if (error) throw new Error(JSON.stringify(error));
+        }
+
+        if (activities.length) {
+            const { error } = await supabaseClient
+                .from("activities")
+                .upsert(
+                    activities.map((a) => {
+                        return {
+                            id: a.id,
+                            title: a.title || "",
+                            type: a.actType || "other",
+                            date: a.date,
+                            completed: a.complete || false,
+                            assignees: a.assignees || [],
+                            notes: a.notes || "",
+                            fixture_id: a.fixtureId || null,
+                            linked_fixture_id:
+                                a.linkedFixtureId || null,
+                        };
+                    }),
+                    { onConflict: "id" },
+                );
+            if (error) {
+                console.error(
+                    "Activities upsert error:",
+                    JSON.stringify(error),
+                );
+                throw new Error(JSON.stringify(error));
+            }
+        }
+
+        if (milestones.length) {
+            const { error } = await supabaseClient
+                .from("milestones")
+                .upsert(
+                    milestones.map((m) => ({
+                        id: m.id,
+                        title: m.title || "",
+                        color: m.style || "red",
+                        date: m.date,
+                        notes: m.notes || "",
+                    })),
+                    { onConflict: "id" },
+                );
+            if (error) {
+                console.error(
+                    "Milestones error:",
+                    JSON.stringify(error),
+                );
+                throw new Error(JSON.stringify(error));
+            }
+        }
+
+        if (notes.length) {
+            const { error } = await supabaseClient
+                .from("notes")
+                .upsert(
+                    notes.map((n) => ({
+                        id: n.id,
+                        content: n.content || "",
+                        date: n.date,
+                    })),
+                    { onConflict: "id" },
+                );
+            if (error) {
+                console.error(
+                    "Notes error:",
+                    JSON.stringify(error),
+                );
+                throw new Error(JSON.stringify(error));
+            }
+        }
+
+        // Sync saved assignees using delete-all + re-insert pattern
+        // This is appropriate for a simple list of names without stable identifiers
+        if (S.savedAssignees && S.savedAssignees.length > 0) {
+            const { error: deleteError } = await supabaseClient
+                .from("saved_assignees")
+                .delete()
+                .neq("id", "00000000-0000-0000-0000-000000000000");
+            if (deleteError) {
+                console.error(
+                    "Saved assignees delete error:",
+                    JSON.stringify(deleteError),
+                );
+                throw new Error(`Failed to delete saved assignees: ${JSON.stringify(deleteError)}`);
+            }
+
+            const { error: insertError } = await supabaseClient
+                .from("saved_assignees")
+                .insert(S.savedAssignees.map((name) => ({ name })));
+            if (insertError) {
+                console.error(
+                    "Saved assignees insert error:",
+                    JSON.stringify(insertError),
+                );
+                throw new Error(`Failed to insert saved assignees: ${JSON.stringify(insertError)}`);
+            }
+        }
+
+        console.log("✓ Saved to Supabase");
+        if (window.notificationManager) {
+            window.notificationManager.syncSuccess();
+        }
+        showToast("✓ Synced to cloud", "success", 2000);
+        updateSyncStatus();
+    } catch (e) {
+        console.error("Supabase save failed:", e);
+        if (window.notificationManager) {
+            window.notificationManager.syncFailed(e.message || "Network error");
+        }
+        showToast("⚠ Cloud save failed — data kept locally", "error", 5000);
+    }
+}
+
+// ─── REALTIME ─────────────────────────────────────────────────
+// FIX: Extracted to a named function so it can be called once at
+// bootstrap and easily cleaned up. Incremental state merge instead
+// of full reload. Self-event suppression via lastWriteTime.
+let realtimeChannel = null;
+
+function setupRealtime() {
+    if (!supabaseClient || !useCloudSync) return;
+
+    realtimeChannel = supabaseClient
+        .channel("timeline_changes")
+        .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "fixtures" },
+            (p) => handleRealtimeEvent(p, "fixture"),
+        )
+        .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "activities" },
+            (p) => handleRealtimeEvent(p, "activity"),
+        )
+        .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "milestones" },
+            (p) => handleRealtimeEvent(p, "milestone"),
+        )
+        .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "notes" },
+            (p) => handleRealtimeEvent(p, "note"),
+        )
+        .subscribe((status) => {
+            console.log("Realtime status:", status);
+            updateSyncStatus();
+        });
+}
+
+// FIX: Incremental state merge on realtime events.
+// Self-events (within 3 s of a local write) are discarded to prevent
+// the save → realtime → reload → save loop.
+// Enhanced: Detects conflicts and resolves using conflict resolver.
+function handleRealtimeEvent(payload, itemType) {
+    // Suppress events that we ourselves triggered
+    if (Date.now() - lastWriteTime < 1500) return;
+
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+
+    if (eventType === "DELETE") {
+        const deletedId = oldRecord && oldRecord.id;
+        if (deletedId) {
+            S.items = S.items.filter((i) => i.id !== deletedId);
+            saveToLocal();
+            render();
+            showSyncToast("🔄 Remote: item removed");
+        }
+        return;
+    }
+
+    // INSERT or UPDATE
+    const converted = convertSupabaseRecord(newRecord, itemType);
+    if (!converted) return;
+
+    const idx = S.items.findIndex((i) => i.id === converted.id);
+    let finalItem = converted;
+
+    // Check for conflicts if item exists locally
+    if (idx >= 0) {
+        const localItem = S.items[idx];
+        
+        // Use conflict resolver if available
+        if (window.conflictResolver) {
+            const conflict = window.conflictResolver.detectConflict(localItem, converted);
+            if (conflict) {
+                const resolution = window.conflictResolver.resolve(conflict);
+                finalItem = resolution.merged;
+                if (window.notificationManager) {
+                    window.notificationManager.conflictDetected(conflict);
+                }
+                showSyncToast("⚠ Conflict resolved (merged)");
+            }
+        }
+        S.items[idx] = finalItem;
+    } else {
+        S.items.push(finalItem);
+    }
+
+    saveToLocal();
+    render();
+    if (idx < 0) showSyncToast("🔄 Remote: item added");
+    else if (idx >= 0 && !window.conflictResolver) showSyncToast("🔄 Remote: item updated");
+}
+
+// ─── STATE ─────────────────────────────────────────────────────
+let S = { items: [], savedAssignees: [] };
+let currentModal = null;
+let dragActivityId = null;
+let isDraggingActivity = false;
+let dragEndTime = 0;
+let disableToggle = false;
+
+// ─── PERSISTENCE ──────────────────────────────────────────────
+function saveToLocal() {
+    try {
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+                items: S.items,
+                savedAssignees: S.savedAssignees || [],
+            }),
+        );
+    } catch (e) {
+        console.warn("localStorage write failed:", e);
+    }
+}
+
+function loadFromLocal() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && Array.isArray(parsed.items)) {
+                S = parsed;
+            }
+        }
+    } catch (e) {
+        console.warn(
+            "localStorage parse failed, starting fresh:",
+            e,
+        );
+    }
+
+    // Ensure all items have assignees array
+    S.items.forEach((i) => {
+        if (!i.assignees) i.assignees = [];
+    });
+
+    // Migrate from old separate assignee key
+    if (
+        !Array.isArray(S.savedAssignees) ||
+        S.savedAssignees.length === 0
+    ) {
+        try {
+            const a = localStorage.getItem(ASSIGNEE_KEY);
+            if (a) S.savedAssignees = JSON.parse(a);
+        } catch (e) {
+            /* ignore */
+        }
+    }
+    if (!Array.isArray(S.savedAssignees)) S.savedAssignees = [];
+}
+
+// FIX: loadFromCloud now:
+//   1. Cancels any debounce timer before overwriting state (prevents
+//      demo data being pushed to Supabase after cloud data arrives).
+//   2. Pushes local state to Supabase when the DB is empty on first run.
+async function loadFromCloud() {
+    if (!useCloudSync) {
+        loadFromLocal();
+        render();
+        hideSkeleton();
+        return;
+    }
+
+    loadFromLocal();
+    render();
+
+    try {
+        const data = await loadFromSupabase();
+
+        if (data === null) {
+            // Network/DB error — keep local data, don't clobber it.
+            console.warn("Cloud load failed; using local data.");
+            hideSkeleton();
+            return;
+        }
+
+        if (data.items.length > 0) {
+            // Cloud has data — it is the source of truth.
+            clearTimeout(saveDebounceTimer); // Cancel any pending save
+            S.items = data.items;
+            S.savedAssignees = data.savedAssignees.length
+                ? data.savedAssignees
+                : S.savedAssignees;
+            saveToLocal();
+            render();
+            showToast("✓ Synced from cloud");
+        } else {
+            // Cloud is empty (first run) — push local data up.
+            console.log(
+                "Cloud empty — pushing local data to Supabase.",
+            );
+            await saveToSupabase();
+        }
+        hideSkeleton();
+    } catch (e) {
+        console.error("Supabase save failed:", e.message || e);
+        hideSkeleton();
+    }
+}
+
+function hideSkeleton() {
+    const skeleton = document.getElementById("skeleton-screen");
+    if (skeleton) {
+        skeleton.style.opacity = "0";
+        skeleton.style.transition = "opacity 0.3s ease";
+        setTimeout(() => {
+            skeleton.style.display = "none";
+        }, 300);
+    }
+}
+
+// FIX: save() debounces Supabase writes to avoid a write per keypress
+// or per drag event.  800 ms is long enough to batch rapid changes
+// (e.g. reordering activities) without feeling unresponsive.
+function save() {
+    saveToLocal();
+    if (!useCloudSync) return;
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(() => saveToSupabase(), 800);
+}
+
+function saveAssignees() {
+    save();
+}
+function load() {
+    loadFromCloud();
+}
+
+// ─── UTILITY ──────────────────────────────────────────────────
+function offsetDate(d, days) {
+    const r = new Date(d);
+    r.setDate(r.getDate() + days);
+    return r;
+}
+function fmtDate(d) {
+    return d.toISOString().split("T")[0];
+}
+function uid() {
+    if (typeof crypto !== "undefined" && crypto.randomUUID)
+        return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+        /[xy]/g,
+        (c) => {
+            const r = (Math.random() * 16) | 0,
+                v = c === "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+        },
+    );
+}
+function todayStr() {
+    return new Date().toISOString().split("T")[0];
+}
+function daysUntil(ds) {
+    return Math.round(
+        (new Date(ds + "T12:00:00") -
+            new Date(todayStr() + "T12:00:00")) /
+            86400000,
+    );
+}
+function esc(s) {
+    return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+function fmtDisplay(ds) {
+    if (!ds) return "";
+    return new Date(ds + "T12:00:00").toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "2-digit",
+    });
+}
+function fmtMonth(ds) {
+    return new Date(ds + "T12:00:00").toLocaleDateString("en-GB", {
+        month: "long",
+        year: "numeric",
+    });
+}
+function findFixtureById(id) {
+    return (
+        S.items.find((i) => i.type === "fixture" && i.id === id) ||
+        null
+    );
+}
+function fixtureDisplayLabel(fixture) {
+    return fixture
+        ? `${fmtDisplay(fixture.date)} — ${fixture.opponent}`
+        : "";
+}
+function getFixturesForLinking() {
+    return S.items
+        .filter((i) => i.type === "fixture")
+        .sort((a, b) => a.date.localeCompare(b.date));
+}
+function fixtureLinkTemporalWeight(fixture) {
+    const diff = daysUntil(fixture.date);
+    if (diff >= 0) return diff;
+    return 1000 + Math.abs(diff);
+}
+function fixtureLinkMetaLabel(fixture) {
+    const parts = [];
+    if (fixture.teamType) parts.push(fixture.teamType);
+    if (fixture.matchType) parts.push(fixture.matchType);
+    if (fixture.venueType) {
+        parts.push(
+            fixture.venueType.charAt(0).toUpperCase() +
+                fixture.venueType.slice(1),
+        );
+    }
+    return parts.join(" • ");
+}
+function renderFixtureLinkResults(fixtures) {
+    if (!fixtures.length) {
+        return `<div class="autocomplete-item empty">No matches found</div>`;
+    }
+    let currentMonth = "";
+    let html = "";
+    fixtures.forEach((fixture) => {
+        const monthKey = fixture.date.slice(0, 7);
+        if (monthKey !== currentMonth) {
+            currentMonth = monthKey;
+            html += `<div class="autocomplete-group-label">${esc(fmtMonth(fixture.date))}</div>`;
+        }
+        html += `<div class="autocomplete-item" onclick="selectLinkedFixture('${fixture.id}')"><div class="fixture-link-option"><div class="fixture-link-option-main">🏉 ${esc(fixtureDisplayLabel(fixture))}</div><div class="fixture-link-option-meta">${esc(fixtureLinkMetaLabel(fixture))}</div></div></div>`;
+    });
+    return html;
+}
+function getFixtureLinkMatches(query) {
+    const fixtures = getFixturesForLinking();
+    const q = (query || "").trim().toLowerCase();
+    return fixtures
+        .map((fixture) => {
+            const label =
+                fixtureDisplayLabel(fixture).toLowerCase();
+            const opponent = (fixture.opponent || "").toLowerCase();
+            const teamType = (fixture.teamType || "").toLowerCase();
+            const matchType = (
+                fixture.matchType || ""
+            ).toLowerCase();
+            let score = 0;
+            if (!q) {
+                score = 1;
+            } else {
+                if (opponent.startsWith(q)) score += 7;
+                if (opponent.includes(q)) score += 4;
+                if (label.includes(q)) score += 2;
+                if (teamType.includes(q)) score += 1;
+                if (matchType.includes(q)) score += 1;
+            }
+            return {
+                fixture,
+                score,
+                timeWeight: fixtureLinkTemporalWeight(fixture),
+            };
+        })
+        .filter((entry) => entry.score > 0)
+        .sort(
+            (a, b) =>
+                b.score - a.score ||
+                a.timeWeight - b.timeWeight ||
+                a.fixture.date.localeCompare(b.fixture.date) ||
+                (a.fixture.opponent || "").localeCompare(
+                    b.fixture.opponent || "",
+                ),
+        )
+        .slice(0, 16)
+        .map((entry) => entry.fixture);
+}
+function renderFixtureLinkSelection() {
+    const container = document.getElementById("a-linked-fixture-current");
+    if (!container) return;
+
+    const selectedId =
+        document.getElementById("a-linked-fixture-id")?.value || "";
+    const fixture = findFixtureById(selectedId);
+
+    // Clear the input text while the pill is open.
+    const input = document.getElementById("a-linked-fixture-query");
+    if (input) input.value = fixture ? "" : input.value;
+
+    container.innerHTML = fixture
+        ? `<span class="fixture-link-pill">🏉 ${esc(fixtureDisplayLabel(fixture))}<button class="fixture-link-clear" type="button" onclick="clearLinkedFixtureSelection()" title="Clear linked match">✕</button></span>`
+        : "";
+
+    // If no fixture, hide the pill overlay.
+    container.style.display = fixture ? "block" : "none";
+}
+function selectLinkedFixture(fixtureId) {
+    const fixture = findFixtureById(fixtureId);
+    const hidden = document.getElementById("a-linked-fixture-id");
+    const input = document.getElementById("a-linked-fixture-query");
+    if (!hidden || !input) return;
+    hidden.value = fixture?.id || "";
+
+    // Clear the input text while the pill is open (pill is the selection UI).
+    input.value = "";
+
+    renderFixtureLinkSelection();
+    hideFixtureLinkSuggestions();
+}
+function clearLinkedFixtureSelection() {
+    const hidden = document.getElementById("a-linked-fixture-id");
+    const input = document.getElementById("a-linked-fixture-query");
+    if (hidden) hidden.value = "";
+    if (input) {
+        input.value = "";
+        input.focus();
+    }
+    renderFixtureLinkSelection();
+    showFixtureLinkSuggestions("");
+}
+function showFixtureLinkSuggestions(query) {
+    const dropdown = document.getElementById(
+        "a-linked-fixture-dropdown",
+    );
+    if (!dropdown) return;
+    const matches = getFixtureLinkMatches(query);
+    dropdown.innerHTML = renderFixtureLinkResults(matches);
+    dropdown.style.display = "block";
+}
+function hideFixtureLinkSuggestions() {
+    const dropdown = document.getElementById(
+        "a-linked-fixture-dropdown",
+    );
+    if (dropdown) dropdown.style.display = "none";
+}
+function handleFixtureLinkInput() {
+    const input = document.getElementById("a-linked-fixture-query");
+    const hidden = document.getElementById("a-linked-fixture-id");
+    if (!input || !hidden) return;
+
+    // Keep selection/pill while the user is editing within the field,
+    // but clear it once the text no longer matches the selected fixture label.
+    const selectedId = hidden.value || "";
+    if (selectedId) {
+        const fixture = findFixtureById(selectedId);
+        const selectedLabel = fixture
+            ? fixtureDisplayLabel(fixture)
+            : "";
+        const typed = (input.value || "").trim();
+
+        if (typed !== selectedLabel) {
+            hidden.value = "";
+        }
+    }
+
+    renderFixtureLinkSelection();
+    showFixtureLinkSuggestions(input.value);
+}
+function handleFixtureLinkKeydown(event) {
+    const dropdown = document.getElementById(
+        "a-linked-fixture-dropdown",
+    );
+    if (!dropdown) return;
+    if (event.key === "Enter") {
+        event.preventDefault();
+        dropdown
+            .querySelector(".autocomplete-item:not(.empty)")
+            ?.click();
+    } else if (event.key === "Escape") {
+        hideFixtureLinkSuggestions();
+    }
+}
+
+// ─── GROUPS BUILDER ───────────────────────────────────────────
+function buildGroups(items) {
+    const seen = new Set();
+    const fixtureActMap = {};
+    S.items
+        .filter((i) => i.type === "activity" && i.fixtureId)
+        .forEach((a) => {
+            if (!fixtureActMap[a.fixtureId])
+                fixtureActMap[a.fixtureId] = [];
+            fixtureActMap[a.fixtureId].push(a);
+        });
+    const dateMap = {};
+    items.forEach((item) => {
+        if (seen.has(item.id)) return;
+        if (item.type === "fixture") {
+            seen.add(item.id);
+            const linked = fixtureActMap[item.id] || [];
+            linked.forEach((a) => seen.add(a.id));
+            if (!dateMap[item.date])
+                dateMap[item.date] = {
+                    type: "date-group",
+                    date: item.date,
+                    items: [],
+                };
+            dateMap[item.date].items.push({
+                type: "fixture",
+                fixture: item,
+                activities: linked.sort((a, b) =>
+                    a.date.localeCompare(b.date),
+                ),
+            });
+        } else if (item.type === "milestone") {
+            seen.add(item.id);
+            if (!dateMap[item.date])
+                dateMap[item.date] = {
+                    type: "date-group",
+                    date: item.date,
+                    items: [],
+                };
+            dateMap[item.date].items.push({
+                type: "milestone",
+                item,
+            });
+        } else if (item.type === "note") {
+            seen.add(item.id);
+            if (!dateMap[item.date])
+                dateMap[item.date] = {
+                    type: "date-group",
+                    date: item.date,
+                    items: [],
+                };
+            dateMap[item.date].items.push({ type: "note", item });
+        } else if (item.type === "activity" && !item.fixtureId) {
+            seen.add(item.id);
+            if (!dateMap[item.date])
+                dateMap[item.date] = {
+                    type: "date-group",
+                    date: item.date,
+                    items: [],
+                };
+            dateMap[item.date].items.push({
+                type: "activity",
+                item,
+            });
+        }
+    });
+    return Object.values(dateMap).sort((a, b) =>
+        a.date.localeCompare(b.date),
+    );
+}
+
+// ─── RENDER ENGINE ────────────────────────────────────────────
+function linkifyText(text) {
+    const t = String(text ?? "");
+
+    // Simple URL detection:
+    //  - http(s)://...
+    //  - www....
+    // Stops on whitespace and common HTML delimiters.
+    const urlRegex = /(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"']+)/g;
+
+    const NOTES_OPEN = "[[NOTES]]";
+    const NOTES_CLOSE = "[[/NOTES]]";
+
+    function linkifyPlain(str) {
+        let out = "";
+        let lastIndex = 0;
+
+        // Reset regex state because urlRegex is global (/g).
+        urlRegex.lastIndex = 0;
+        const matches = str.matchAll(urlRegex);
+        for (const m of matches) {
+            const idx = m.index ?? 0;
+
+            // Append text before match (escaped)
+            out += esc(str.slice(lastIndex, idx));
+
+            const raw = m[0];
+            const href = raw.startsWith("www.")
+                ? "https://" + raw
+                : raw;
+
+            const linkText = esc(raw);
+
+            const iconSVG = `
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 3h7v7"/>
+                    <path d="M10 14L21 3"/>
+                    <path d="M21 14v7H3V3h7"/>
+                </svg>
+            `.trim();
+
+            out += `<a class="note-link" href="${esc(
+                href,
+            )}" target="_blank" rel="noopener noreferrer">${linkText}<span class="note-link-icon" aria-hidden="true">${iconSVG}</span></a>`;
+
+            lastIndex = idx + raw.length;
+        }
+
+        out += esc(str.slice(lastIndex));
+        return out;
+    }
+
+    // If no markers, behave as before.
+    if (!t.includes(NOTES_OPEN) || !t.includes(NOTES_CLOSE)) {
+        return linkifyPlain(t);
+    }
+
+    // Marker-aware: bold ONLY the user-entered notes segments.
+    let out = "";
+    let cursor = 0;
+
+    while (cursor < t.length) {
+        const openIdx = t.indexOf(NOTES_OPEN, cursor);
+        if (openIdx === -1) {
+            out += linkifyPlain(t.slice(cursor));
+            break;
+        }
+
+        // Text before notes segment
+        out += linkifyPlain(t.slice(cursor, openIdx));
+
+        const notesStart = openIdx + NOTES_OPEN.length;
+        const closeIdx = t.indexOf(NOTES_CLOSE, notesStart);
+        if (closeIdx === -1) {
+            // Malformed marker; treat remainder as plain
+            out += linkifyPlain(t.slice(notesStart));
+            break;
+        }
+
+        const notesText = t.slice(notesStart, closeIdx);
+
+        // Bold the whole linkified notes chunk (links inside are fine)
+        out += `<strong class="notes-bold">${linkifyPlain(
+            notesText,
+        )}</strong>`;
+
+        cursor = closeIdx + NOTES_CLOSE.length;
+    }
+
+    return out;
+}
+
+function decorateLinkContainers(root = document) {
+    const targets = root.querySelectorAll(
+        ".note-card .note-content, .activity-card .activity-meta, .mini-activity .activity-meta, .milestone-card .milestone-date"
+    );
+
+    targets.forEach((el) => {
+        // If already decorated, skip to avoid nesting links.
+        if (el.dataset.linkified === "1") return;
+
+        const rawText = el.textContent ?? "";
+        el.innerHTML = linkifyText(rawText);
+        el.dataset.linkified = "1";
+    });
+}
+
+function render() {
+    const content = document.getElementById("timeline-content");
+    const today = todayStr();
+    const pastItems = S.items.filter((i) => i.date < today);
+    const activeItems = S.items.filter((i) => i.date >= today);
+    const pastGroups = buildGroups(pastItems);
+    const activeGroups = buildGroups(activeItems);
+    let html = "";
+    if (pastGroups.length > 0) {
+        let inner = "",
+            side = 0,
+            lastMonth = "";
+        pastGroups.forEach((g) => {
+            const month = g.date.slice(0, 7);
+            if (month !== lastMonth) {
+                lastMonth = month;
+                inner += `<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`;
+            }
+            inner += renderGroup(
+                g,
+                side % 2 === 0 ? "side-left" : "side-right",
+                true,
+            );
+            side++;
+        });
+        html += `<div id="past-accordion"><div id="past-toggle" onclick="togglePast(event,this)">show previous activity</div><div id="past-items">${inner}</div></div>`;
+    }
+    html += `<div id="today-marker"><div class="today-line"></div><div class="today-badge">Today — ${fmtDisplay(today)}</div><div class="today-line"></div></div>`;
+    let side = 0,
+        lastMonth = "";
+    activeGroups.forEach((g) => {
+        const month = g.date.slice(0, 7);
+        if (month !== lastMonth) {
+            lastMonth = month;
+            html += `<div class="month-divider"><span class="month-divider-label">${fmtMonth(g.date)}</span></div>`;
+        }
+        html += renderGroup(
+            g,
+            side % 2 === 0 ? "side-left" : "side-right",
+            false,
+        );
+        side++;
+    });
+    if (activeGroups.length === 0 && pastGroups.length === 0) {
+        html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
+    }
+    content.innerHTML = html;
+    decorateLinkContainers(content);
+    attachEvents();
+}
+
+function renderGroup(g, side, isPast) {
+    return g.type === "date-group"
+        ? renderDateGroup(g, side, isPast)
+        : "";
+}
+
+function renderDateGroup(g, side, isPast) {
+    let itemsHtml = "";
+    let itemSide = 0;
+    g.items.forEach((item) => {
+        const s = itemSide % 2 === 0 ? "side-left" : "side-right";
+        if (item.type === "fixture")
+            itemsHtml += renderFixtureGroup(item, s, isPast);
+        else if (item.type === "milestone")
+            itemsHtml += renderMilestoneGroup(item, s, isPast);
+        else if (item.type === "note")
+            itemsHtml += renderNoteGroup(item, s, isPast);
+        else if (item.type === "activity")
+            itemsHtml += renderActivityGroup(item, s, isPast);
+        itemSide++;
+    });
+    return `<div class="date-group"><div class="date-header"><div class="date-label" data-date="${g.date}" onclick="handleDateLabelClick('${g.date}',this)">${fmtDisplay(g.date)}</div></div>${itemsHtml}</div>`;
+}
+
+function renderFixtureGroup(g, side, isPast) {
+    const f = g.fixture,
+        acts = g.activities;
+    const days = daysUntil(f.date);
+    const venueClass =
+        f.venueType === "home"
+            ? "home"
+            : f.venueType === "away"
+              ? "away"
+              : "neutral";
+    const venueLabel =
+        f.venueType === "home"
+            ? "H"
+            : f.venueType === "away"
+              ? "A"
+              : "N";
+    let countdownTxt, countdownCls;
+    if (isPast || days < 0) {
+        countdownTxt = `${Math.abs(days)}d ago`;
+        countdownCls = "past";
+    } else if (days === 0) {
+        countdownTxt = "MATCHDAY";
+        countdownCls = "imminent";
+    } else if (days === 1) {
+        countdownTxt = "Tomorrow";
+        countdownCls = "imminent";
+    } else if (days <= 7) {
+        countdownTxt = `${days} Days To Go`;
+        countdownCls = "imminent";
+    } else {
+        countdownTxt = `${days} Days`;
+        countdownCls = "far";
+    }
+    const teamLogo = getTeamLogo(f.opponent);
+    // Always render both img and shield - img loads if available, falls back to shield
+    const logoHtml = `<img src="${teamLogo || ''}" alt="${esc(f.opponent)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" style="${teamLogo ? '' : 'display:none;'}"><div class="fixture-logo-initials" style="${teamLogo ? 'display:none;' : ''}">${shieldSVG(f.opponent)}</div>`;
+    const teamBadge = f.teamType
+        ? `<span class="team-badge">${esc(f.teamType)}</span>`
+        : "";
+    const actsHtml = acts
+        .map((a) => renderMiniActivity(a))
+        .join("");
+    return `<div class="tl-row ${side}" data-id="${f.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot fixture-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="fixture-card${isPast ? " past" : ""}" id="fc-${f.id}" data-id="${f.id}" data-fixture-id="${f.id}" draggable="true"><div class="fixture-header"><div class="drag-handle">⠿</div><div class="fixture-logo-wrap">${logoHtml}</div><div class="fixture-meta"><div class="fixture-opponent">${esc(f.opponent)}</div><div class="fixture-sub"><span class="subtle-date">${fmtDisplay(f.date)}</span>${f.venue ? `<span>📍 ${esc(f.venue)}</span>` : ""}<span>🏉 ${esc(f.matchType || "")}</span>${teamBadge}</div></div><div class="fixture-venue-badge badge-${venueClass}">${venueLabel}</div></div><div class="fixture-footer"><div class="countdown-text ${countdownCls}">${countdownTxt}</div>${acts.length > 0 ? `<button class="fixture-acts-toggle" onclick="toggleActCluster('${f.id}')">▸ ${acts.length} Matchday Activities</button>` : ""}<div class="fixture-actions"><button class="activity-btn" title="Add matchday activity" onclick="openActivityForFixture('${f.id}')">＋</button><button class="activity-btn edit" title="Edit" onclick="editFixture('${f.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${f.id}')">✕</button></div></div>${acts.length > 0 ? `<div class="activity-cluster" id="cluster-${f.id}" style="display:none">${actsHtml}</div>` : ""}</div></div></div>`;
+}
+
+function renderMiniActivity(a) {
+    const aType =
+        ACTIVITY_TYPES.find((t) => t.id === a.actType) ||
+        ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
+    const completeCls = a.complete ? " complete" : "";
+    const assigneesHtml = (a.assignees || [])
+        .map(
+            (p) =>
+                `<span class="assignee-chip">👤 ${esc(p)}</span>`,
+        )
+        .join("");
+    return `<div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · [[NOTES]]" + esc(a.notes) + "[[/NOTES]]" : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="event.stopPropagation(); toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="event.stopPropagation(); moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="event.stopPropagation(); editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="event.stopPropagation(); deleteItem('${a.id}')">✕</button></div></div>`;
+}
+
+function renderActivityGroup(g, side, isPast) {
+    const a = g.item;
+    const aType =
+        ACTIVITY_TYPES.find((t) => t.id === a.actType) ||
+        ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
+    const linkedFixture = a.linkedFixtureId
+        ? findFixtureById(a.linkedFixtureId)
+        : null;
+    const completeCls = a.complete ? " complete" : "";
+    const pastCls = isPast ? " past" : "";
+    const assigneesHtml = (a.assignees || [])
+        .map(
+            (p) =>
+                `<span class="assignee-chip">👤 ${esc(p)}</span>`,
+        )
+        .join("");
+    const linkedRow = linkedFixture
+        ? (() => {
+            const days = daysUntil(linkedFixture.date);
+            let daysText = "";
+            if (days > 0) {
+                daysText = days === 1 ? "tomorrow" : `in ${days}d`;
+            } else if (days === 0) {
+                daysText = "today";
+            } else {
+                daysText = `${Math.abs(days)}d ago`;
+            }
+            return `<div class="activity-link-row"><span class="activity-link-label">Related match</span><span class="linked-match-chip">🏉 ${esc(linkedFixture.opponent)} <span class="match-days-indicator">${daysText}</span></span></div>`;
+        })()
+        : "";
+    return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · [[NOTES]]" + esc(a.notes) + "[[/NOTES]]" : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="event.stopPropagation(); toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="event.stopPropagation(); editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="event.stopPropagation(); deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
+}
+
+function renderMilestoneGroup(g, side, isPast) {
+    const m = g.item,
+        style = m.style || "red",
+        pastCls = isPast ? " past" : "";
+    return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? " · [[NOTES]]" + esc(m.notes) + "[[/NOTES]]" : ""}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
+}
+
+function renderNoteGroup(g, side, isPast) {
+    const n = g.item,
+        pastCls = isPast ? " past" : "";
+    return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast ? " past-dot" : ""}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}" draggable="true"><div class="act-row"><div class="drag-handle">⋮⋮</div><div class="note-body"><div class="note-content">[[NOTES]]${esc(n.content)}[[/NOTES]]</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
+}
+
+function togglePasswordVisibility() {
+    const input = document.getElementById("auth-password");
+    const icon = document.getElementById("eye-icon");
+    const isHidden = input.type === "password";
+    input.type = isHidden ? "text" : "password";
+    icon.innerHTML = isHidden
+        ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+           <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+           <line x1="1" y1="1" x2="23" y2="23"/>`
+        : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+           <circle cx="12" cy="12" r="3"/>`;
+}
+
+let syncToastTimer = null;
+let syncToastMsg = null;
+
+function showSyncToast(msg = "🔄 Synced from another device") {
+    // Keep the most recent message but only show one toast
+    syncToastMsg = msg;
+    if (syncToastTimer) return; // already pending, do nothing
+    syncToastTimer = setTimeout(() => {
+        showToast(syncToastMsg);
+        syncToastTimer = null;
+        syncToastMsg = null;
+    }, 300); // 300ms window batches all table events from one sync
+}
+// ─── INTERACTIONS ─────────────────────────────────────────────
+function isMobile() {
+    return window.innerWidth <= 768 || "ontouchstart" in window;
+}
+
+function toggleComplete(id) {
+    const item = S.items.find((i) => i.id === id);
+    if (!item) return;
+    const openDropdowns = Array.from(
+        document.querySelectorAll(".activity-cluster"),
+    )
+        .filter((el) => el.style.display !== "none")
+        .map((el) => el.id.replace("cluster-", ""));
+    item.complete = !item.complete;
+    save();
+    render();
+    openDropdowns.forEach((fid) => {
+        const cluster = document.getElementById("cluster-" + fid);
+        const btn = document.querySelector(
+            `[onclick="toggleActCluster('${fid}')"]`,
+        );
+        if (cluster) {
+            cluster.style.display = "";
+            if (btn)
+                btn.textContent =
+                    "▾ " +
+                    cluster.querySelectorAll(".mini-activity")
+                        .length +
+                    " Matchday Activities";
+        }
+    });
+    showToast(
+        item.complete ? "✓ Marked complete" : "Marked incomplete",
+    );
+}
+
+function moveToTimeline(id) {
+    const item = S.items.find((i) => i.id === id);
+    if (!item) return;
+    if (!item.fixtureId) {
+        showToast("Activity is already on the main timeline");
+        return;
+    }
+    item.linkedFixtureId = item.linkedFixtureId || item.fixtureId;
+    item.fixtureId = null;
+    save();
+    render();
+    showToast("Activity moved to main timeline");
+}
+
+let pastAutoCloseDebounce = null;
+
+function closePast(reason = "click") {
+    const pastItems = document.getElementById("past-items");
+    const btn = document.getElementById("past-toggle");
+    const accordion = document.getElementById("past-accordion");
+    if (!btn || !pastItems || !accordion) return;
+    if (!btn.classList.contains("open")) return;
+
+    const currentH = pastItems.scrollHeight;
+
+    btn.classList.remove("open");
+    btn.textContent = "show previous activity";
+    accordion.classList.remove("past-open");
+
+    if (reason === "auto") {
+        const scrollBefore = window.scrollY;
+        pastItems.style.cssText = "max-height:0;opacity:0;overflow:hidden;transition:none;";
+        window.scrollTo({ top: Math.max(0, scrollBefore - currentH), behavior: "instant" });
+        return;
+    }
+
+    // Direct click: subtle collapse with height change.
+    pastItems.style.visibility = "";
+    pastItems.style.pointerEvents = "";
+    pastItems.style.overflow = "hidden";
+    pastItems.style.transition = "max-height 180ms ease, opacity 160ms ease";
+    pastItems.style.maxHeight = currentH + "px";
+
+    requestAnimationFrame(() => {
+        pastItems.style.maxHeight = "0px";
+        pastItems.style.opacity = "0";
+    });
+}
+
+function togglePast(e, btn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const isOpening = !btn.classList.contains("open");
+    const todayMarker = document.getElementById("today-marker");
+    const pastItems = document.getElementById("past-items");
+    const accordion = document.getElementById("past-accordion");
+
+    if (isOpening) {
+        const viewportOffset =
+            todayMarker.getBoundingClientRect().top;
+        pastItems.style.cssText =
+            "max-height:none;opacity:1;overflow:visible;transition:none;";
+        btn.classList.add("open");
+        btn.textContent = "hide previous activity";
+        accordion?.classList.add("past-open");
+
+        requestAnimationFrame(() => {
+            const newOffset =
+                todayMarker.getBoundingClientRect().top;
+            const shift = newOffset - viewportOffset;
+            if (shift !== 0)
+                window.scrollTo({
+                    top: window.scrollY + shift - 200,
+                    behavior: "instant",
+                });
+        });
+    } else {
+        pastItems.style.cssText = "max-height:0;opacity:0;overflow:hidden;transition:none;";
+        btn.classList.remove("open");
+        btn.textContent = "show previous activity";
+        accordion?.classList.remove("past-open");
+        requestAnimationFrame(() => {
+            const top = todayMarker.getBoundingClientRect().top + window.scrollY - 80;
+            window.scrollTo({ top: Math.max(0, top), behavior: "instant" });
+        });
+    }    
+}
+
+function toggleActCluster(fid) {
+    if (disableToggle) return;
+    const cluster = document.getElementById("cluster-" + fid);
+    const btn = document.querySelector(
+        `[onclick="toggleActCluster('${fid}')"]`,
+    );
+    if (!cluster) return;
+    const hidden = cluster.style.display === "none";
+    cluster.style.display = hidden ? "" : "none";
+    if (btn)
+        btn.textContent =
+            (hidden ? "▾ " : "▸ ") +
+            cluster.querySelectorAll(".mini-activity").length +
+            " Matchday Activities";
+}
+
+function ensureDropdownOpen(fid) {
+    const cluster = document.getElementById("cluster-" + fid);
+    const btn = document.querySelector(
+        `[onclick="toggleActCluster('${fid}')"]`,
+    );
+    if (!cluster || !btn) return;
+    cluster.style.display = "";
+    btn.textContent =
+        "▾ " +
+        cluster.querySelectorAll(".mini-activity").length +
+        " Matchday Activities";
+    let attempts = 0;
+    const iv = setInterval(() => {
+        attempts++;
+        if (cluster.style.display === "none") {
+            cluster.style.display = "";
+            btn.textContent =
+                "▾ " +
+                cluster.querySelectorAll(".mini-activity").length +
+                " Matchday Activities";
+        }
+        if (attempts >= 60) clearInterval(iv);
+    }, 50);
+}
+
+// Auto-close the "previous activity" toggle once the user scrolls
+// below the Today marker (previous items are no longer visible).
+let lastPastAutoCloseAt = 0;
+let isAutoClosing = false;
+
+window.addEventListener(
+    "scroll",
+    () => {
+        if (isAutoClosing) return;
+
+        const btn = document.getElementById("past-toggle");
+        const todayMarker = document.getElementById("today-marker");
+        if (!btn || !todayMarker) return;
+        if (!btn.classList.contains("open")) return;
+
+        const btnRect = btn.getBoundingClientRect();
+        const todayRect = todayMarker.getBoundingClientRect();
+
+        // Close as soon as the toggle overlaps the Today marker region.
+        // (more responsive than waiting for Today to fully leave the viewport)
+        const overlaps =
+            btnRect.bottom >= todayRect.top + 2 &&
+            btnRect.top <= todayRect.bottom - 2;
+
+        // Fallback: if Today is already above viewport.
+        const todayAbove = todayRect.bottom < btnRect.top + 8;
+
+        if (overlaps || todayAbove) {
+            const now = Date.now();
+            // Throttle to avoid rapid flicker.
+            if (now - lastPastAutoCloseAt < 120) return;
+            lastPastAutoCloseAt = now;
+
+            isAutoClosing = true;
+            closePast("auto");
+
+            // "Pause" scroll reactions briefly while layout is collapsing
+            // and scrollTop is being corrected.
+            setTimeout(() => {
+                isAutoClosing = false;
+            }, 380);
+        }
+    },
+    { passive: true },
+);
+
+document.addEventListener(
+    "click",
+    (event) => {
+        if (
+            isDraggingActivity ||
+            (dragEndTime && Date.now() - dragEndTime < 500)
+        ) {
+            const toggleBtn = event.target.closest(
+                ".fixture-acts-toggle",
+            );
+            if (toggleBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+        }
+    },
+    true,
+);
+document.addEventListener("click", (event) => {
+    const dropdown = document.getElementById(
+        "autocomplete-dropdown",
+    );
+    const input = document.getElementById("assignee-input");
+    if (
+        dropdown &&
+        input &&
+        !dropdown.contains(event.target) &&
+        event.target !== input
+    )
+        hideAssigneeSuggestions();
+
+    const fixtureDropdown = document.getElementById(
+        "a-linked-fixture-dropdown",
+    );
+    const fixturePicker = document.querySelector(
+        ".fixture-link-picker",
+    );
+    if (
+        fixtureDropdown &&
+        fixturePicker &&
+        !fixturePicker.contains(event.target)
+    ) {
+        hideFixtureLinkSuggestions();
+    }
+});
+
+function openActivityForFixture(fixtureId) {
+    const fixture = findFixtureById(fixtureId);
+    currentModal = {
+        type: "activity",
+        editId: null,
+        data: {
+            date: fixture?.date || todayStr(),
+            fixtureId: fixtureId || null,
+            linkedFixtureId: fixtureId || null,
+            _placementMode: "fixture",
+        },
+        assignees: [],
+    };
+    renderModal();
+    document.getElementById("modal-overlay").classList.add("open");
+}
+
+// ─── DRAG & DROP ──────────────────────────────────────────────
+function attachEvents() {
+    // Linked-match navigation (activity chip -> linked fixture card)
+    // No accordion auto-expansion by design.
+    const headerOffset = 56 + 12; // fixed header + a small buffer
+    function scrollToEl(el) {
+        if (!el) return;
+        const y =
+            el.getBoundingClientRect().top + window.scrollY - headerOffset;
+        window.scrollTo({ top: y, behavior: "smooth" });
+    }
+    
+    // Remove any remaining drop indicator lines
+    document.querySelectorAll(".tl-drop-indicator").forEach(el => el.remove());
+
+    document.querySelectorAll(".linked-match-chip").forEach((chip) => {
+        chip.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const activityCard = chip.closest(".activity-card");
+            const activityId = activityCard?.dataset?.id;
+            if (!activityId) return;
+
+            const activity = S.items.find((i) => i.id === activityId && i.type === "activity");
+            const fixtureId = activity?.linkedFixtureId;
+            if (!fixtureId) return;
+
+            const target = document.getElementById("fc-" + fixtureId);
+            if (!target) return;
+
+            scrollToEl(target);
+        });
+    });
+
+    document
+        .querySelectorAll(
+            ".activity-card,.mini-activity,.note-card,.fixture-card,.milestone-card",
+        )
+        .forEach((el) => {
+            el.addEventListener("dragstart", (e) => {
+                e.stopPropagation();
+                dragActivityId = el.dataset.id;
+                isDraggingActivity = true;
+                disableToggle = true;
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", el.dataset.id);
+                el.classList.add("dragging");
+                const tlRow = el.closest(".tl-row");
+                if (tlRow) tlRow.classList.add("dragging");
+                document
+                    .querySelectorAll(".fixture-acts-toggle")
+                    .forEach((btn) => {
+                        btn.dataset.originalOnclick =
+                            btn.getAttribute("onclick");
+                        btn.removeAttribute("onclick");
+                    });
+            });
+            el.addEventListener("dragend", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                el.classList.remove("dragging");
+                isDraggingActivity = false;
+                dragEndTime = Date.now();
+                // Remove all indicators and dragging classes
+                document
+                    .querySelectorAll(".tl-drop-indicator")
+                    .forEach((i) => i.remove());
+                document
+                    .querySelectorAll(".dragging")
+                    .forEach((r) => r.classList.remove("dragging"));
+                document
+                    .querySelectorAll(".drag-placeholder")
+                    .forEach((p) => p.remove());
+                document
+                    .querySelectorAll(".fixture-card.drop-active")
+                    .forEach((fc) =>
+                        fc.classList.remove("drop-active"),
+                    );
+                // Immediately re-enable toggle
+                disableToggle = false;
+                document
+                    .querySelectorAll(".fixture-acts-toggle")
+                    .forEach((btn) => {
+                        if (btn.dataset.originalOnclick) {
+                            btn.setAttribute(
+                                "onclick",
+                                btn.dataset.originalOnclick,
+                            );
+                            delete btn.dataset.originalOnclick;
+                        }
+                    });
+            });
+
+            let touchStartX,
+                touchStartY,
+                touchElement,
+                isTouchDrag = false;
+            el.addEventListener(
+                "touchstart",
+                (e) => {
+                    const touch = e.touches[0];
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    touchElement = el;
+                    isTouchDrag = false;
+                    // Only initiate drag from the drag handle
+                    if (!e.target.closest(".drag-handle")) return;
+                    // Don't stop propagation to allow proper touch handling within accordions
+                    dragActivityId = el.dataset.id;
+                    isDraggingActivity = true;
+                    disableToggle = true;
+                    el.classList.add("dragging");
+                    document
+                        .querySelectorAll(".fixture-acts-toggle")
+                        .forEach((btn) => {
+                            btn.dataset.originalOnclick =
+                                btn.getAttribute("onclick");
+                            btn.removeAttribute("onclick");
+                        });
+                },
+                { passive: true },
+            );
+            el.addEventListener(
+                "touchmove",
+                (e) => {
+                    if (!isDraggingActivity || touchElement !== el)
+                        return;
+                    const touch = e.touches[0];
+                    const deltaX = Math.abs(
+                        touch.clientX - touchStartX,
+                    );
+                    const deltaY = Math.abs(
+                        touch.clientY - touchStartY,
+                    );
+                    if (deltaX < 10 && deltaY < 10) return;
+                    if (!isTouchDrag) {
+                        isTouchDrag = true;
+                        // Create ghost clone
+                        const ghost = el.cloneNode(true);
+                        ghost.id = "touch-drag-ghost";
+                        ghost.className =
+                            (ghost.className || "") +
+                            " touch-drag-ghost";
+                        ghost.style.width = el.offsetWidth + "px";
+                        ghost.style.left =
+                            touch.clientX -
+                            el.offsetWidth / 2 +
+                            "px";
+                        ghost.style.top = touch.clientY - 30 + "px";
+                        document.body.appendChild(ghost);
+                    }
+                    e.preventDefault();
+                    // Move ghost with smooth easing
+                    if (ghost) {
+                        requestAnimationFrame(() => {
+                            const targetX = touch.clientX - ghost.offsetWidth / 2;
+                            const targetY = touch.clientY - 30;
+                            ghost.style.left = targetX + "px";
+                            ghost.style.top = targetY + "px";
+                        });
+                    }
+                    // Highlight drop target row
+                    document
+                        .querySelectorAll(
+                            ".tl-row.touch-drop-target",
+                        )
+                        .forEach((r) =>
+                            r.classList.remove("touch-drop-target"),
+                        );
+                    const target =
+                        document.elementFromPoint(
+                            touch.clientX,
+                            touch.clientY + 20
+                        );
+                    const targetRow = target?.closest(".tl-row");
+                    const currentRow = el.closest(".tl-row");
+                    
+                    // Allow dropping within the same row for reordering
+                    if (targetRow) {
+                        document
+                            .querySelectorAll(
+                                ".touch-drop-target"
+                            )
+                            .forEach(el =>
+                                el.classList.remove(
+                                    "touch-drop-target"
+                                )
+                            );
+                    }
+
+                    const fixtureCard =
+                        target?.closest(
+                            ".fixture-card"
+                        );
+
+                    if (fixtureCard) {
+                        fixtureCard.classList.add(
+                            "touch-drop-target"
+                        );
+                    }
+
+                    // Allow same-row drops for reordering within the same date
+                    if (targetRow) {
+                        targetRow.classList.add(
+                            "touch-drop-target"
+                        );
+                    }
+
+                    // Cluster placeholder
+                    const cluster =
+                        target?.closest(".activity-cluster");
+
+                    if (cluster) {
+                        let placeholder =
+                            document.querySelector(
+                                ".drag-placeholder"
+                            );
+
+                        if (!placeholder) {
+                            placeholder =
+                                createDragPlaceholder();
+                        }
+
+                        const after =
+                            getDragAfterElement(
+                                cluster,
+                                touch.clientY
+                            );
+
+                        if (after == null) {
+                            if (
+                                placeholder.parentNode !== cluster ||
+                                placeholder !== cluster.lastElementChild
+                            ) {
+                                cluster.appendChild(
+                                    placeholder
+                                );
+                            }
+                        } else {
+                            if (placeholder.nextSibling !== after) {
+                                cluster.insertBefore(placeholder, after);
+                            }
+                        }
+                    }
+                },
+                { passive: false }
+            );
+        el.addEventListener("touchend", (e) => {
+            if (!isDraggingActivity || touchElement !== el)
+                return;
+            // Remove ghost
+            const ghost =
+                document.getElementById("touch-drag-ghost");
+            if (ghost) ghost.remove();
+            // Remove drop highlights
+            document
+                .querySelectorAll(".tl-row.touch-drop-target")
+                .forEach((r) =>
+                    r.classList.remove("touch-drop-target"),
+                );
+            if (!isTouchDrag) {
+                isDraggingActivity = false;
+                touchElement = null;
+                el.classList.remove("dragging");
+                document
+                    .querySelectorAll(".fixture-acts-toggle")
+                    .forEach((btn) => {
+                        if (btn.dataset.originalOnclick) {
+                            btn.setAttribute(
+                                "onclick",
+                                btn.dataset.originalOnclick,
+                            );
+                            delete btn.dataset.originalOnclick;
+                        }
+                    });
+                disableToggle = false;
+                return;
+            }
+            el.classList.remove("dragging");
+            // Animate dragged item back to normal state
+            el.style.transition = "opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)";
+            el.style.opacity = "1";
+            el.style.transform = "scale(1)";
+            setTimeout(() => {
+                el.style.transition = "";
+            }, 300);
+            
+            document
+                .querySelectorAll(".mini-activity")
+                .forEach((i) =>
+                    i.classList.remove("drag-over"),
+                );
+            document
+                .querySelectorAll(".drag-placeholder")
+                .forEach((p) => {
+                    p.style.opacity = "0";
+                    p.style.transform = "scale(0.9)";
+                    setTimeout(() => p.remove(), 200);
+                });
+            isDraggingActivity = false;
+            dragEndTime = Date.now();
+            const touch = e.changedTouches[0];
+            const target =
+                document.elementFromPoint(
+                    touch.clientX,
+                    touch.clientY + 20
+                );
+            const fc = target?.closest(".fixture-card");
+            if (fc) {
+                const act = S.items.find(
+                    (i) => i.id === dragActivityId,
+                );
+                if (act && act.type === "activity") {
+                    const fixtureId =
+                        fc.dataset.fixtureId || fc.dataset.id;
+                    act.fixtureId = fixtureId;
+                    act.linkedFixtureId = fixtureId;
+                    // Animate fixture card feedback
+                    fc.style.transition = "all 0.3s ease";
+                    fc.style.transform = "scale(1.02)";
+                    setTimeout(() => {
+                        fc.style.transform = "scale(1)";
+                        setTimeout(() => {
+                            fc.style.transition = "";
+                        }, 300);
+                    }, 100);
+                    save();
+                    render();
+                    showToast("🏉 Activity linked to match!");
+                }
+            }
+            const cluster =
+                target?.closest(".activity-cluster");
+            if (cluster) {
+                const placeholder =
+                    cluster.querySelector(".drag-placeholder");
+                if (placeholder) {
+                    placeholder.replaceWith(el);
+                } else {
+                    cluster.appendChild(el);
+                }
+                // Auto-snap to nearest position
+                snapToNearestPosition(el, cluster);
+                
+                // Smooth animate back to final position
+                el.style.transition = "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+                el.style.transform = "scale(1)";
+                setTimeout(() => {
+                    el.style.transition = "";
+                }, 400);
+                
+                const fixtureId = cluster.id.replace(
+                    "cluster-",
+                    "",
+                );
+                const draggedAct = S.items.find(
+                    (i) => i.id === dragActivityId,
+                );
+                if (
+                    draggedAct &&
+                    draggedAct.type === "activity"
+                ) {
+                    draggedAct.fixtureId = fixtureId;
+                    draggedAct.linkedFixtureId = fixtureId;
+                }
+                const order = Array.from(
+                    cluster.querySelectorAll(".mini-activity"),
+                ).map((e) => e.dataset.id);
+                const acts = S.items.filter(
+                    (i) =>
+                        i.fixtureId === fixtureId &&
+                        i.type === "activity",
+                );
+                const sorted = order
+                    .map((id) => acts.find((a) => a.id === id))
+                    .filter(Boolean);
+                S.items = S.items.filter(
+                    (i) => !order.includes(i.id),
+                );
+                sorted.forEach((a) => S.items.push(a));
+                save();
+                ensureDropdownOpen(fixtureId);
+            } else {
+                // Drop onto a timeline date group — update the date
+                const dateGroup =
+                    target?.closest(".date-group");
+                if (dateGroup) {
+                    const date =
+                        dateGroup.querySelector(".date-label")
+                            ?.dataset.date;
+                    if (date) {
+                        const item = S.items.find(
+                            (i) => i.id === dragActivityId,
+                        );
+                        if (item && item.date !== date) {
+                            item.date = date;
+                            save();
+                            render();
+                            showToast("📅 Date updated");
+                        }
+                    }
+                }
+            }
+            document
+                .querySelectorAll(".drag-placeholder")
+                .forEach((p) => p.remove());
+            setTimeout(() => {
+                disableToggle = false;
+                document
+                    .querySelectorAll(".fixture-acts-toggle")
+                    .forEach((btn) => {
+                        if (btn.dataset.originalOnclick) {
+                            btn.setAttribute(
+                                "onclick",
+                                btn.dataset.originalOnclick,
+                            );
+                            delete btn.dataset.originalOnclick;
+                        }
+                    });
+            });
+            touchElement = null;
+            isTouchDrag = false;
+        });
+    });
+
+    // Desktop drag-and-drop for mini-activity reordering within clusters
+    document.querySelectorAll(".mini-activity").forEach((ma) => {
+        ma.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            const cluster = ma.closest(".activity-cluster");
+            if (cluster && cluster.contains(document.querySelector(`[data-id="${dragActivityId}"]`))) {
+                ma.classList.add("drag-over");
+            }
+        });
+        ma.addEventListener("dragleave", () => {
+            ma.classList.remove("drag-over");
+        });
+        ma.addEventListener("drop", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            ma.classList.remove("drag-over");
+            const cluster = ma.closest(".activity-cluster");
+            const draggedElement = document.querySelector(`[data-id="${dragActivityId}"]`);
+            
+            if (draggedElement && cluster && cluster.contains(draggedElement) && draggedElement !== ma) {
+                // Reorder activities within the cluster
+                const activities = Array.from(cluster.querySelectorAll(".mini-activity")).map(el => el.dataset.id);
+                const draggedIndex = activities.indexOf(dragActivityId);
+                const targetIndex = activities.indexOf(ma.dataset.id);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1) {
+                    // Update S.items order to match new visual order
+                    const [removed] = activities.splice(draggedIndex, 1);
+                    activities.splice(targetIndex, 0, removed);
+                    
+                    // Reorder in S.items
+                    activities.forEach((id, idx) => {
+                        const item = S.items.find(i => i.id === id);
+                        if (item) item.order = idx;
+                    });
+                    
+                    // Apply snap animation and save
+                    ma.classList.add("drag-snap");
+                    ma.addEventListener("animationend", () => {
+                        ma.classList.remove("drag-snap");
+                    }, { once: true });
+                    
+                    save();
+                    render();
+                    showToast("↕️ Activity reordered!");
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll(".fixture-card").forEach((fc) => {
+        fc.addEventListener("dragover", (e) => e.preventDefault());
+        fc.addEventListener("dragenter", () =>
+            fc.classList.add("drop-active"),
+        );
+        fc.addEventListener("dragleave", () =>
+            fc.classList.remove("drop-active"),
+        );
+        fc.addEventListener("drop", (e) => {
+            e.preventDefault();
+            fc.classList.remove("drop-active");
+            const act = S.items.find(
+                (i) => i.id === dragActivityId,
+            );
+            if (act && act.type === "activity") {
+                const fixtureId = fc.dataset.fixtureId;
+                act.fixtureId = fixtureId;
+                act.linkedFixtureId = fixtureId;
+                save();
+                render();
+                showToast("🏉 Activity linked to match!");
+            }
+        });
+    });
+
+    document
+        .querySelectorAll(".fixture-footer")
+        .forEach((footer) => {
+            footer.addEventListener(
+                "click",
+                (e) => {
+                    if (
+                        isDraggingActivity ||
+                        (dragEndTime &&
+                            Date.now() - dragEndTime < 500)
+                    ) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                    }
+                },
+                true,
+            );
+        });
+    document
+        .querySelectorAll(".fixture-acts-toggle")
+        .forEach((btn) => {
+            btn.addEventListener(
+                "click",
+                (e) => {
+                    if (
+                        isDraggingActivity ||
+                        (dragEndTime &&
+                            Date.now() - dragEndTime < 500)
+                    ) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                    }
+                },
+                true,
+            );
+        });
+
+    // ── Timeline-level drag: reorder rows and update date ──────────
+    document.querySelectorAll(".date-group").forEach((group) => {
+        group.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            const draggedRow =
+                document.querySelector(".tl-row.dragging");
+            if (
+                !draggedRow ||
+                draggedRow.closest(".activity-cluster")
+            )
+                return;
+
+            const date =
+                group.querySelector(".date-label")?.dataset.date;
+            if (!date) return;
+
+            // Remove any existing indicator inside this group
+            group
+                .querySelectorAll(".tl-drop-indicator")
+                .forEach((i) => i.remove());
+
+            // Find insertion point among rows in this group
+            const rows = [
+                ...group.querySelectorAll(":scope > .tl-row"),
+            ];
+            let afterRow = null;
+            let minAbsDist = Infinity;
+            for (const row of rows) {
+                if (row === draggedRow) continue;
+                const box = row.getBoundingClientRect();
+                const mid = box.top + box.height / 2;
+                const dist = e.clientY - mid;
+                if (dist > 0 && dist < minAbsDist) {
+                    minAbsDist = dist;
+                    afterRow = row;
+                }
+            }
+
+            // Insert indicator line
+            const indicator = document.createElement("div");
+            indicator.className = "tl-drop-indicator";
+            if (afterRow) {
+                afterRow.insertAdjacentElement(
+                    "afterend",
+                    indicator,
+                );
+            } else {
+                // Before all rows
+                const firstRow =
+                    group.querySelector(":scope > .tl-row");
+                if (firstRow)
+                    firstRow.insertAdjacentElement(
+                        "beforebegin",
+                        indicator,
+                    );
+                else group.appendChild(indicator);
+            }
+        });
+
+        group.addEventListener("dragleave", (e) => {
+            // Only remove if we're leaving the group entirely
+            if (!group.contains(e.relatedTarget)) {
+                group
+                    .querySelectorAll(".tl-drop-indicator")
+                    .forEach((i) => i.remove());
+            }
+        });
+
+        group.addEventListener("drop", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Clean up indicators
+            document
+                .querySelectorAll(".tl-drop-indicator")
+                .forEach((i) => i.remove());
+
+            const dragging =
+                document.querySelector(".tl-row.dragging");
+            if (!dragging || dragging.closest(".activity-cluster"))
+                return;
+            const date =
+                group.querySelector(".date-label")?.dataset.date;
+            if (!date) return;
+
+            // Re-read rows after potential DOM re-order
+            const rows = [
+                ...group.querySelectorAll(":scope > .tl-row"),
+            ].filter((r) => r !== dragging);
+            let afterRow = null;
+            let minAbsDist = Infinity;
+            for (const row of rows) {
+                const box = row.getBoundingClientRect();
+                const mid = box.top + box.height / 2;
+                const dist = e.clientY - mid;
+                if (dist > 0 && dist < minAbsDist) {
+                    minAbsDist = dist;
+                    afterRow = row;
+                }
+            }
+            if (afterRow) {
+                afterRow.insertAdjacentElement(
+                    "afterend",
+                    dragging,
+                );
+            } else {
+                const firstRow =
+                    group.querySelector(":scope > .tl-row");
+                if (firstRow)
+                    group.insertBefore(dragging, firstRow);
+                else group.appendChild(dragging);
+            }
+
+            // Collect the new order from the DOM and update dates + S.items order
+            const orderedIds = [
+                ...group.querySelectorAll(
+                    ":scope > .tl-row[data-id]",
+                ),
+            ]
+                .map((row) => row.dataset.id)
+                .filter(Boolean);
+            const dateItems = orderedIds
+                .map((id) => S.items.find((i) => i.id === id))
+                .filter(Boolean);
+            const otherItems = S.items.filter(
+                (i) => !orderedIds.includes(i.id),
+            );
+
+            // ── LIVE DATE UPDATE: assign the drop-target date ──
+            let dateChanged = false;
+            dateItems.forEach((item) => {
+                if (item.date !== date) {
+                    item.date = date;
+                    dateChanged = true;
+                }
+            });
+
+            S.items = [...otherItems, ...dateItems];
+            save();
+            // Re-render so the card date label refreshes
+            render();
+            if (dateChanged) {
+                showToast("📅 Date updated");
+            }
+        });
+    });
+
+    document
+        .querySelectorAll(".activity-cluster")
+        .forEach((cluster) => {
+            cluster.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                const dragging =
+                    document.querySelector(".dragging");
+                if (!dragging) return;
+
+                const existingPlaceholder =
+                    cluster.querySelector(".drag-placeholder");
+                if (existingPlaceholder)
+                    existingPlaceholder.remove();
+
+                const placeholder = createDragPlaceholder();
+                const after = getDragAfterElement(
+                    cluster,
+                    e.clientY,
+                );
+                after == null
+                    ? cluster.appendChild(placeholder)
+                    : cluster.insertBefore(placeholder, after);
+            });
+            cluster.addEventListener("drop", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const dragging =
+                    document.querySelector(".dragging");
+                if (!dragging) return;
+
+                const placeholder =
+                    cluster.querySelector(".drag-placeholder");
+                if (placeholder) {
+                    placeholder.replaceWith(dragging);
+                } else {
+                    cluster.appendChild(dragging);
+                }
+
+                const fixtureId = cluster.id.replace(
+                    "cluster-",
+                    "",
+                );
+                const draggedAct = S.items.find(
+                    (i) => i.id === dragActivityId,
+                );
+                if (draggedAct && draggedAct.type === "activity") {
+                    draggedAct.fixtureId = fixtureId;
+                    draggedAct.linkedFixtureId = fixtureId;
+                }
+                const order = Array.from(
+                    cluster.querySelectorAll(".mini-activity"),
+                ).map((e) => e.dataset.id);
+                const acts = S.items.filter(
+                    (i) =>
+                        i.fixtureId === fixtureId &&
+                        i.type === "activity",
+                );
+                const sorted = order
+                    .map((id) => acts.find((a) => a.id === id))
+                    .filter(Boolean);
+                S.items = S.items.filter(
+                    (i) => !order.includes(i.id),
+                );
+                sorted.forEach((a) => S.items.push(a));
+                save();
+                const btn = document.querySelector(
+                    `[onclick="toggleActCluster('${fixtureId}')"]`,
+                );
+                if (btn) {
+                    const orig = btn.getAttribute("onclick");
+                    btn.removeAttribute("onclick");
+                    btn.style.pointerEvents = "none";
+                    setTimeout(() => {
+                        btn.setAttribute("onclick", orig);
+                        btn.style.pointerEvents = "";
+                    }, 500);
+                }
+                ensureDropdownOpen(fixtureId);
+            });
+            cluster.addEventListener("dragleave", (e) => {
+                const placeholder =
+                    cluster.querySelector(".drag-placeholder");
+                if (
+                    placeholder &&
+                    !cluster.contains(e.relatedTarget)
+                ) {
+                    placeholder.remove();
+                }
+            });
+        });
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [
+        ...container.querySelectorAll(
+            ".mini-activity:not(.dragging)",
+        ),
+    ];
+
+    return draggableElements.reduce(
+        (closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset, element: child };
+            } else {
+                return closest;
+            }
+        },
+        { offset: Number.NEGATIVE_INFINITY },
+    ).element;
+}
+
+function createDragPlaceholder() {
+    const placeholder = document.createElement("div");
+    placeholder.className = "drag-placeholder pulse";
+    placeholder.setAttribute("data-placeholder", "true");
+    return placeholder;
+}
+    
+// Auto-snap helper: snap element to nearest valid position
+function snapToNearestPosition(element, container) {
+    if (!element || !container) return;
+    const items = Array.from(container.querySelectorAll(".mini-activity")).filter(
+        el => el !== element && el.offsetHeight > 0
+    );
+    
+    if (items.length === 0) {
+        container.appendChild(element);
+        return;
+    }
+    
+    const rect = element.getBoundingClientRect();
+    const elementCenter = rect.top + rect.height / 2;
+    
+    let closestItem = items[0];
+    let closestDistance = Math.abs(
+        closestItem.getBoundingClientRect().top + closestItem.offsetHeight / 2 - elementCenter
+    );
+    
+    for (let i = 1; i < items.length; i++) {
+        const itemRect = items[i].getBoundingClientRect();
+        const itemCenter = itemRect.top + itemRect.height / 2;
+        const distance = Math.abs(itemCenter - elementCenter);
+        
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestItem = items[i];
+        }
+    }
+    
+    const closestRect = closestItem.getBoundingClientRect();
+    if (elementCenter < closestRect.top + closestRect.height / 2) {
+        container.insertBefore(element, closestItem);
+    } else {
+        closestItem.parentNode.insertBefore(element, closestItem.nextSibling);
+    }
+}
+
+// Add skeleton pulse animation if not already in CSS
+function ensureSkeletonAnimation() {
+    const styleId = "skeleton-pulse-animation";
+    if (document.getElementById(styleId)) return;
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+        @keyframes skeleton-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+ensureSkeletonAnimation();
+
+// ─── MODAL CONTROLS ───────────────────────────────────────────
+function openModal(type, id) {
+    currentModal = {
+        type,
+        editId: id || null,
+        data: id ? S.items.find((i) => i.id === id) : null,
+        assignees: [],
+    };
+    if (id && currentModal.data)
+        currentModal.assignees = [
+            ...(currentModal.data.assignees || []),
+        ];
+    renderModal();
+    document.getElementById("modal-overlay").classList.add("open");
+}
+
+function closeModal() {
+    document
+        .getElementById("modal-overlay")
+        .classList.remove("open");
+    currentModal = null;
+}
+
+function toggleMobileDropdown() {
+    document
+        .getElementById("mobile-dropdown")
+        .classList.toggle("show");
+}
+
+document.addEventListener("click", (event) => {
+    const wrapper = document.querySelector(".mobile-add-wrapper");
+    const dropdown = document.getElementById("mobile-dropdown");
+    if (wrapper && dropdown && !wrapper.contains(event.target))
+        dropdown.classList.remove("show");
+});
+
+function editFixture(id) {
+    openModal("fixture", id);
+}
+function editActivity(id) {
+    openModal("activity", id);
+}
+function editMilestone(id) {
+    openModal("milestone", id);
+}
+function editNote(id) {
+    openModal("note", id);
+}
+
+function renderModal() {
+    const { type, editId, data } = currentModal;
+    const isEdit = !!editId;
+    document.getElementById("modal-title").textContent = isEdit
+        ? `Edit ${type.toUpperCase()}`
+        : `Add ${type.toUpperCase()}`;
+    const body = document.getElementById("modal-body");
+    document.getElementById("modal-delete").style.display = "none";
+
+    const assigneeSection = () => {
+        const chips = (currentModal.assignees || [])
+            .map(
+                (p, i) =>
+                    `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`,
+            )
+            .join("");
+        const quickPills = S.savedAssignees
+            .filter(
+                (n) => !(currentModal.assignees || []).includes(n),
+            )
+            .slice(0, 8)
+            .map(
+                (n) =>
+                    `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`,
+            )
+            .join("");
+        return `<div class="form-group"><div class="quick-add-row" id="quick-add-row"><span class="quick-add-label">Quick Add:</span>${quickPills}<button class="quick-add-settings-btn" onclick="openInlineSettings()" title="Manage names"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"></circle><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"></path></svg></button></div><div class="custom-assignee-row"><input class="form-input custom-assignee-input" id="custom-assignee-input" placeholder="Custom name" onkeypress="if(event.key==='Enter') addCustomAssignee()"><button class="btn btn-outline" onclick="addCustomAssignee()">Add</button></div><div class="assignee-list" id="assignee-list">${chips}</div></div>`;
+    };
+
+    if (type === "fixture") {
+        const f = data || {};
+        body.innerHTML = `<div class="form-group"><label class="form-label">Opponent *</label><input class="form-input" id="f-opponent" value="${esc(f.opponent || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="f-date" type="date" value="${f.date || todayStr()}"></div><div class="form-group"><label class="form-label">Match Type</label><select class="form-select" id="f-type">${["League", "Cup", "Playoff", "Friendly"].map((t) => `<option ${f.matchType === t ? "selected" : ""}>${t}</option>`).join("")}</select></div></div><div class="form-group"><label class="form-label">Team Type</label><div class="team-selector" id="f-teamtype">${TEAM_TYPES.map((t) => `<div class="team-opt ${f.teamType === t || (!f.teamType && t === "Men's") ? "selected" : ""}" data-value="${t}">${t}</div>`).join("")}</div></div><div class="form-group"><label class="form-label">Venue</label><input class="form-input" id="f-venue" value="${esc(f.venue || "")}"></div><div class="form-group"><label class="form-label">Venue Type *</label><div class="venue-selector" id="f-vtype"><div class="venue-opt home ${f.venueType === "home" ? "selected" : ""}" data-value="home">Home</div><div class="venue-opt away ${f.venueType === "away" ? "selected" : ""}" data-value="away">Away</div><div class="venue-opt neutral ${f.venueType === "neutral" ? "selected" : ""}" data-value="neutral">Neutral</div></div></div>`;
+        document
+            .querySelectorAll("#f-vtype .venue-opt")
+            .forEach((opt) =>
+                opt.addEventListener("click", function () {
+                    document
+                        .querySelectorAll("#f-vtype .venue-opt")
+                        .forEach((o) =>
+                            o.classList.remove("selected"),
+                        );
+                    this.classList.add("selected");
+                }),
+            );
+        document
+            .querySelectorAll("#f-teamtype .team-opt")
+            .forEach((opt) =>
+                opt.addEventListener("click", function () {
+                    document
+                        .querySelectorAll("#f-teamtype .team-opt")
+                        .forEach((o) =>
+                            o.classList.remove("selected"),
+                        );
+                    this.classList.add("selected");
+                }),
+            );
+    } else if (type === "activity") {
+        const a = data || {};
+        const selectedFixtureId =
+            a.fixtureId || a.linkedFixtureId || "";
+        const selectedFixture = findFixtureById(selectedFixtureId);
+        body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group fixture-link-picker"><label class="form-label">Linked Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+        renderFixtureLinkSelection();
+    } else if (type === "milestone") {
+        const m = data || {};
+        body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="m-title" value="${esc(m.title || "")}"></div><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="m-date" type="date" value="${m.date || todayStr()}"></div><div class="form-group"><label class="form-label">Style Color</label><div class="style-selector" id="m-style"><div class="style-opt red ${m.style === "red" ? "selected" : ""}" data-value="red" title="Red"></div><div class="style-opt gold ${m.style === "gold" ? "selected" : ""}" data-value="gold" title="Gold"></div><div class="style-opt neutral ${m.style === "neutral" ? "selected" : ""}" data-value="neutral" title="Neutral"></div></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="m-notes" rows="3">${esc(m.notes || "")}</textarea></div>`;
+        document
+            .querySelectorAll("#m-style .style-opt")
+            .forEach((opt) =>
+                opt.addEventListener("click", function () {
+                    document
+                        .querySelectorAll("#m-style .style-opt")
+                        .forEach((o) =>
+                            o.classList.remove("selected"),
+                        );
+                    this.classList.add("selected");
+                }),
+            );
+    } else if (type === "note") {
+        const n = data || {};
+        body.innerHTML = `<div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="n-date" type="date" value="${n.date || todayStr()}"></div><div class="form-group"><label class="form-label">Content *</label><textarea class="form-input" id="n-content" rows="5">${esc(n.content || "")}</textarea></div>`;
+    }
+}
+
+function quickAddAssignee(name) {
+    if (!currentModal.assignees.includes(name))
+        currentModal.assignees.push(name);
+    refreshAssigneeUI();
+}
+function addCustomAssignee() {
+    const inp = document.getElementById("custom-assignee-input");
+    const name = (inp.value || "").trim();
+    if (!name) return;
+    if (!currentModal.assignees.includes(name))
+        currentModal.assignees.push(name);
+    inp.value = "";
+    refreshAssigneeUI();
+}
+function addAssignee() {
+    const inp = document.getElementById("assignee-input");
+    const name = (inp.value || "").trim();
+    if (!name) return;
+    if (!currentModal.assignees.includes(name))
+        currentModal.assignees.push(name);
+    if (!S.savedAssignees.includes(name)) {
+        S.savedAssignees.push(name);
+        saveAssignees();
+    }
+    inp.value = "";
+    hideAssigneeSuggestions();
+    refreshAssigneeUI();
+}
+function refreshAssigneeUI() {
+    const list = document.getElementById("assignee-list");
+    if (list)
+        list.innerHTML = currentModal.assignees
+            .map(
+                (p, i) =>
+                    `<span class="assignee-remove-chip" onclick="removeAssignee(${i})">${esc(p)} ✕</span>`,
+            )
+            .join("");
+    const quickRow = document.getElementById("quick-add-row");
+    if (quickRow) {
+        const pills = S.savedAssignees
+            .filter((n) => !currentModal.assignees.includes(n))
+            .slice(0, 8)
+            .map(
+                (n) =>
+                    `<span class="quick-add-pill" onclick="quickAddAssignee('${esc(n)}')">${esc(n)}</span>`,
+            )
+            .join("");
+        quickRow.style.display = pills ? "" : "none";
+        if (pills)
+            quickRow.innerHTML = `<span class="quick-add-label">Quick Add:</span>${pills}<button class="quick-add-settings-btn" onclick="openInlineSettings()" title="Manage names"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"></circle><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"></path></svg></button>`;
+    }
+}
+
+function openInlineSettings() {
+    const modalBody = document.getElementById("modal-body");
+    if (!modalBody) return;
+
+    const namesList = S.savedAssignees
+        .map(
+            (name, idx) => `
+              <div class="settings-name-item">
+                <span class="settings-name-text">${esc(name)}</span>
+                <span class="settings-name-edit" onclick="editInlineName(${idx})" title="Edit">✎</span>
+                <span class="settings-name-delete" onclick="deleteInlineName(${idx})" title="Delete">✕</span>
+              </div>
+            `,
+        )
+        .join("");
+
+    const settingsHTML = `
+              <div class="inline-settings-panel" id="inline-settings-panel">
+                <div class="inline-settings-header">
+                  <h3>Manage Names</h3>
+                  <button class="inline-settings-close" onclick="closeInlineSettings()">✕</button>
+                </div>
+                <div class="inline-settings-body">
+                  <div class="settings-input-row">
+                    <input type="text" id="inline-name-input" placeholder="Enter a name..." class="settings-input">
+                    <button class="btn btn-primary" onclick="addInlineName()">Add</button>
+                  </div>
+                  <div id="inline-names-list" class="settings-names-list">${namesList}</div>
+                </div>
+              </div>
+            `;
+
+    // Insert the settings panel after the quick-add row
+    const quickRow = document.getElementById("quick-add-row");
+    if (quickRow) {
+        quickRow.insertAdjacentHTML("afterend", settingsHTML);
+    }
+
+    document.getElementById("inline-name-input").value = "";
+    document.getElementById("inline-name-input").focus();
+}
+
+function closeInlineSettings() {
+    const panel = document.getElementById("inline-settings-panel");
+    if (panel) panel.remove();
+}
+
+function addInlineName() {
+    const inp = document.getElementById("inline-name-input");
+    const name = (inp.value || "").trim();
+    if (!name) return;
+    if (S.savedAssignees.includes(name)) {
+        showToast("Name already exists");
+        return;
+    }
+    S.savedAssignees.push(name);
+    saveAssignees();
+    inp.value = "";
+    renderInlineNames();
+    refreshAssigneeUI();
+    showToast("Name added");
+}
+
+function deleteInlineName(idx) {
+    S.savedAssignees.splice(idx, 1);
+    saveAssignees();
+    renderInlineNames();
+    refreshAssigneeUI();
+    showToast("Name removed");
+}
+
+function editInlineName(idx) {
+    const name = S.savedAssignees[idx];
+    const inp = document.getElementById("inline-name-input");
+    inp.value = name;
+    inp.focus();
+    S.savedAssignees.splice(idx, 1);
+    renderInlineNames();
+    refreshAssigneeUI();
+}
+
+function renderInlineNames() {
+    const list = document.getElementById("inline-names-list");
+    if (!list) return;
+    list.innerHTML = S.savedAssignees
+        .map(
+            (name, idx) => `
+              <div class="settings-name-item">
+                <span class="settings-name-text">${esc(name)}</span>
+                <span class="settings-name-edit" onclick="editInlineName(${idx})" title="Edit">✎</span>
+                <span class="settings-name-delete" onclick="deleteInlineName(${idx})" title="Delete">✕</span>
+              </div>
+            `,
+        )
+        .join("");
+}
+function showAssigneeSuggestions(query) {
+    const dropdown = document.getElementById(
+        "autocomplete-dropdown",
+    );
+    if (!query || !query.trim()) {
+        hideAssigneeSuggestions();
+        return;
+    }
+    const matches = S.savedAssignees.filter(
+        (n) =>
+            n.toLowerCase().includes(query.toLowerCase()) &&
+            !currentModal.assignees.includes(n),
+    );
+    if (!matches.length) {
+        hideAssigneeSuggestions();
+        return;
+    }
+    dropdown.innerHTML = matches
+        .map(
+            (n) =>
+                `<div class="autocomplete-item" onclick="selectAssignee('${esc(n)}')">${esc(n)}</div>`,
+        )
+        .join("");
+    dropdown.style.display = "block";
+}
+function hideAssigneeSuggestions() {
+    const d = document.getElementById("autocomplete-dropdown");
+    if (d) d.style.display = "none";
+}
+function selectAssignee(name) {
+    const inp = document.getElementById("assignee-input");
+    inp.value = name;
+    addAssignee();
+}
+function handleAssigneeKeydown(event) {
+    const d = document.getElementById("autocomplete-dropdown");
+    if (event.key === "Enter") {
+        event.preventDefault();
+        if (
+            d.style.display === "block" &&
+            d.querySelector(".autocomplete-item")
+        )
+            d.querySelector(".autocomplete-item").click();
+        else addAssignee();
+    } else if (event.key === "Escape") hideAssigneeSuggestions();
+}
+function removeAssignee(idx) {
+    currentModal.assignees.splice(idx, 1);
+    refreshAssigneeUI();
+}
+
+function saveModal() {
+    const { type, editId } = currentModal;
+    if (type === "fixture") {
+        const opponent = document
+            .getElementById("f-opponent")
+            .value.trim();
+        const date = document.getElementById("f-date").value;
+        const venueType = document.querySelector(
+            "#f-vtype .venue-opt.selected",
+        )?.dataset.value;
+        if (!opponent || !date || !venueType)
+            return alert(
+                "Opponent, date, and venue type are required",
+            );
+        const teamType =
+            document.querySelector("#f-teamtype .team-opt.selected")
+                ?.dataset.value || "Men's";
+        const obj = {
+            id: editId || uid(),
+            type: "fixture",
+            date,
+            opponent,
+            venue: document.getElementById("f-venue").value,
+            matchType: document.getElementById("f-type").value,
+            venueType,
+            teamType,
+            assignees: [],
+        };
+        if (editId)
+            S.items[S.items.findIndex((i) => i.id === editId)] =
+                obj;
+        else S.items.push(obj);
+    } else if (type === "activity") {
+        const title = document
+            .getElementById("a-title")
+            .value.trim();
+        const date = document.getElementById("a-date").value;
+        const notes = document
+            .getElementById("a-notes")
+            .value.trim();
+        if (!title || !date)
+            return alert("Title and date are required");
+        const existing = editId
+            ? S.items.find((i) => i.id === editId)
+            : null;
+        const linkedFixtureInput = document.getElementById(
+            "a-linked-fixture-id",
+        );
+        const selectedLinkedFixtureId = linkedFixtureInput
+            ? linkedFixtureInput.value || null
+            : currentModal?.data?.linkedFixtureId ||
+              (existing ? existing.linkedFixtureId : null) ||
+              (existing ? existing.fixtureId : null) ||
+              null;
+        const placementMode =
+            currentModal?.data?._placementMode ||
+            (existing && existing.fixtureId
+                ? "fixture"
+                : "timeline");
+        const resolvedFixtureId =
+            placementMode === "fixture"
+                ? selectedLinkedFixtureId ||
+                  currentModal?.data?.fixtureId ||
+                  (existing ? existing.fixtureId : null) ||
+                  null
+                : null;
+        const resolvedLinkedFixtureId =
+            selectedLinkedFixtureId ||
+            (placementMode === "fixture"
+                ? resolvedFixtureId
+                : null);
+
+        const obj = {
+            id: editId || uid(),
+            type: "activity",
+            date,
+            title,
+            actType: document.getElementById("a-type").value,
+            assignees: currentModal.assignees,
+            notes,
+            complete: existing ? existing.complete : false,
+            fixtureId: resolvedFixtureId,
+            linkedFixtureId: resolvedLinkedFixtureId,
+        };
+        if (editId)
+            S.items[S.items.findIndex((i) => i.id === editId)] =
+                obj;
+        else S.items.push(obj);
+    } else if (type === "milestone") {
+        const title = document
+            .getElementById("m-title")
+            .value.trim();
+        const date = document.getElementById("m-date").value;
+        const notes = document
+            .getElementById("m-notes")
+            .value.trim();
+        const style =
+            document.querySelector("#m-style .style-opt.selected")
+                ?.dataset.value || "neutral";
+        if (!title || !date)
+            return alert("Title and date are required");
+        const obj = {
+            id: editId || uid(),
+            type: "milestone",
+            date,
+            title,
+            style,
+            notes,
+            assignees: [],
+        };
+        if (editId)
+            S.items[S.items.findIndex((i) => i.id === editId)] =
+                obj;
+        else S.items.push(obj);
+    } else if (type === "note") {
+        const date = document.getElementById("n-date").value;
+        const content = document
+            .getElementById("n-content")
+            .value.trim();
+        if (!date || !content)
+            return alert("Date and content are required");
+        const obj = {
+            id: editId || uid(),
+            type: "note",
+            date,
+            content,
+            assignees: [],
+        };
+        if (editId)
+            S.items[S.items.findIndex((i) => i.id === editId)] =
+                obj;
+        else S.items.push(obj);
+    }
+    const openDropdowns = Array.from(
+        document.querySelectorAll(".activity-cluster"),
+    )
+        .filter((el) => el.style.display !== "none")
+        .map((el) => el.id.replace("cluster-", ""));
+    save();
+    closeModal();
+    render();
+    openDropdowns.forEach((fid) => {
+        const cluster = document.getElementById("cluster-" + fid);
+        const btn = document.querySelector(
+            `[onclick="toggleActCluster('${fid}')"]`,
+        );
+        if (cluster) {
+            cluster.style.display = "";
+            if (btn)
+                btn.textContent =
+                    "▾ " +
+                    cluster.querySelectorAll(".mini-activity")
+                        .length +
+                    " Matchday Activities";
+        }
+    });
+    showToast("Changes saved.");
+}
+
+// ─── DELETE ───────────────────────────────────────────────────
+// FIX: deleteItem now records the item type in pendingDeleteOps before
+// removing from S.items so saveToSupabase can issue the correct DELETE
+// against the right table.
+let pendingDeleteId = null;
+
+function showDeleteConfirm(id) {
+    pendingDeleteId = id;
+    document.getElementById(
+        "delete-confirm-overlay",
+    ).style.display = "flex";
+    document.getElementById("confirm-delete-btn").onclick = () => {
+        if (!pendingDeleteId) return;
+        // FIX: record all items being deleted (fixture cascades linked activities)
+        const toDelete = S.items.filter(
+            (i) =>
+                i.id === pendingDeleteId ||
+                i.fixtureId === pendingDeleteId,
+        );
+        toDelete.forEach((i) =>
+            pendingDeleteOps.push({ id: i.id, type: i.type }),
+        );
+        const deletingFixture = S.items.find(
+            (i) => i.id === pendingDeleteId && i.type === "fixture",
+        );
+        S.items = S.items.filter(
+            (i) =>
+                i.id !== pendingDeleteId &&
+                i.fixtureId !== pendingDeleteId,
+        );
+        if (deletingFixture) {
+            S.items.forEach((item) => {
+                if (
+                    item.type === "activity" &&
+                    item.linkedFixtureId === pendingDeleteId
+                ) {
+                    item.linkedFixtureId = null;
+                }
+            });
+        }
+        save();
+        render();
+        showToast("Item deleted.");
+        closeDeleteConfirm();
+        pendingDeleteId = null;
+    };
+}
+
+function closeDeleteConfirm() {
+    document.getElementById(
+        "delete-confirm-overlay",
+    ).style.display = "none";
+    pendingDeleteId = null;
+}
+function deleteItem(id) {
+    showDeleteConfirm(id);
+}
+function deleteModalItem() {
+    if (!currentModal.editId) return;
+    closeModal();
+    showDeleteConfirm(currentModal.editId);
+}
+
+// ─── COMPLETE CONFIRM ─────────────────────────────────────────
+let pendingCompleteId = null;
+
+function showCompleteConfirm(id) {
+    pendingCompleteId = id;
+    document.getElementById(
+        "complete-confirm-overlay",
+    ).style.display = "flex";
+    document.getElementById("confirm-complete-btn").onclick =
+        () => {
+            if (!pendingCompleteId) return;
+            const item = S.items.find(
+                (i) => i.id === pendingCompleteId,
+            );
+            if (item) {
+                const openDropdowns = Array.from(
+                    document.querySelectorAll(".activity-cluster"),
+                )
+                    .filter((el) => el.style.display !== "none")
+                    .map((el) => el.id.replace("cluster-", ""));
+                item.complete = !item.complete;
+                save();
+                render();
+                openDropdowns.forEach((fid) => {
+                    const cluster = document.getElementById(
+                        "cluster-" + fid,
+                    );
+                    const btn = document.querySelector(
+                        `[onclick="toggleActCluster('${fid}')"]`,
+                    );
+                    if (cluster) {
+                        cluster.style.display = "";
+                        if (btn)
+                            btn.textContent =
+                                "▾ " +
+                                cluster.querySelectorAll(
+                                    ".mini-activity",
+                                ).length +
+                                " Matchday Activities";
+                    }
+                });
+                showToast(
+                    item.complete
+                        ? "✓ Marked complete"
+                        : "Marked incomplete",
+                );
+            }
+            closeCompleteConfirm();
+            pendingCompleteId = null;
+        };
+}
+function closeCompleteConfirm() {
+    document.getElementById(
+        "complete-confirm-overlay",
+    ).style.display = "none";
+    pendingCompleteId = null;
+}
+
+// ─── DATE POPUP ───────────────────────────────────────────────
+let currentPopupDate = null;
+
+let _lastClickedDate = null;
+
+function handleDateLabelClick(dateStr, el) {
+    if (_lastClickedDate === dateStr) {
+        // Second click on the same label — open popup
+        _lastClickedDate = null;
+        showDatePopup(dateStr);
+    } else {
+        // First click — scroll to date
+        _lastClickedDate = dateStr;
+        const dg = el.closest(".date-group");
+        if (dg)
+            window.scrollTo({
+                top:
+                    window.pageYOffset +
+                    dg.getBoundingClientRect().top -
+                    80,
+                behavior: "smooth",
+            });
+        // Reset after 2 s so a long pause starts the sequence over
+        setTimeout(() => {
+            if (_lastClickedDate === dateStr)
+                _lastClickedDate = null;
+        }, 2000);
+    }
+}
+
+function copyDateLink(dateStr) {
+    document.querySelectorAll(".date-label").forEach((label) => {
+        if (label.dataset.date !== dateStr) return;
+        const dg = label.closest(".date-group");
+        if (dg)
+            window.scrollTo({
+                top:
+                    window.pageYOffset +
+                    dg.getBoundingClientRect().top -
+                    80,
+                behavior: "smooth",
+            });
+    });
+}
+function showDatePopup(dateStr) {
+    currentPopupDate = dateStr;
+    document.getElementById("popup-current-date").textContent =
+        fmtDisplay(dateStr);
+    document.getElementById("popup-date-input").value = dateStr;
+    document.getElementById("date-popup-overlay").style.display =
+        "flex";
+}
+function closeDatePopup() {
+    document.getElementById("date-popup-overlay").style.display =
+        "none";
+    currentPopupDate = null;
+}
+function goToDate() {
+    const newDate =
+        document.getElementById("popup-date-input").value;
+    if (!newDate) {
+        alert("Please select a date");
+        return;
+    }
+    let nearest = null,
+        nearestDist = Infinity;
+    document.querySelectorAll(".date-label").forEach((label) => {
+        const dist = Math.abs(
+            new Date(newDate) - new Date(label.dataset.date),
+        );
+        if (label.dataset.date === newDate) {
+            const dg = label.closest(".date-group");
+            if (dg)
+                window.scrollTo({
+                    top:
+                        window.pageYOffset +
+                        dg.getBoundingClientRect().top -
+                        80,
+                    behavior: "smooth",
+                });
+        } else if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = label;
+        }
+    });
+    if (nearest) {
+        const dg = nearest.closest(".date-group");
+        if (dg) {
+            window.scrollTo({
+                top:
+                    window.pageYOffset +
+                    dg.getBoundingClientRect().top -
+                    80,
+                behavior: "smooth",
+            });
+            showToast(
+                `Nearest date: ${fmtDisplay(nearest.dataset.date)}`,
+            );
+        }
+    }
+    closeDatePopup();
+}
+document
+    .getElementById("date-popup-overlay")
+    .addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeDatePopup();
+    });
+
+// ─── SETTINGS MODAL ───────────────────────────────────────────
+function updateSyncStatus() {
+    const el = document.getElementById("sync-status");
+    if (!el) return;
+    if (!supabaseClient) {
+        el.textContent =
+            "⚠ Supabase not initialised — check credentials in HTML";
+        el.style.cssText =
+            "color:var(--orange);background:rgba(232,102,10,0.1);border-color:var(--orange);font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid;margin-bottom:12px;";
+    } else if (useCloudSync) {
+        el.textContent = "✓ Cloud sync active — saving to Supabase";
+        el.style.cssText =
+            "color:var(--green);background:rgba(46,125,50,0.1);border-color:var(--green);font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid;margin-bottom:12px;";
+    } else {
+        el.textContent =
+            "⚠ Cloud sync disabled — local storage only";
+        el.style.cssText =
+            "color:var(--orange);background:rgba(232,102,10,0.1);border-color:var(--orange);font-size:12px;padding:8px 12px;border-radius:6px;border:1px solid;margin-bottom:12px;";
+    }
+}
+
+// ─── TOASTS ───────────────────────────────────────────────────
+function showToast(msg, type = 'info', duration = 4000) {
+    const c = document.getElementById("toast-container");
+    const el = document.createElement("div");
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${esc(msg)}</span>`;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), duration);
+}
+
+function showOfflineBanner(show = true) {
+    const banner = document.getElementById("offline-banner");
+    if (!banner) return;
+    if (show) {
+        banner.classList.add("show");
+        document.body.style.paddingTop = "56px + 34px";
+    } else {
+        banner.classList.remove("show");
+        document.body.style.paddingTop = "0";
+    }
+}
+
+function updateConnectionIndicator(status) {
+    const indicator = document.getElementById("connection-indicator");
+    if (!indicator) return;
+
+    let statusText = "Online";
+    let statusClass = "good";
+
+    if (status.status === "offline") {
+        statusText = "Offline";
+        statusClass = "offline";
+        showOfflineBanner(true);
+    } else if (status.status === "connected") {
+        showOfflineBanner(false);
+        if (status.latency > 1000) {
+            statusText = "Slow";
+            statusClass = "poor";
+        } else if (status.latency > 500) {
+            statusText = "Fair";
+            statusClass = "fair";
+        } else {
+            statusText = "Good";
+            statusClass = "good";
+        }
+    }
+
+    indicator.className = statusClass;
+    indicator.innerHTML = `<span class="connection-dot"></span><span>${statusText}</span>`;
+}
+
+// ─── DOT HOVER ANIMATIONS ─────────────────────────────────────
+function setupDotHoverAnimations() {
+    document
+        .querySelectorAll(".tl-row.side-left .node-dot")
+        .forEach((dot) => {
+            const row = dot.closest(".tl-row.side-left");
+            const cardWrap = row?.querySelector(".tl-card-wrap");
+            if (!cardWrap) return;
+            cardWrap
+                .querySelectorAll(
+                    ".fixture-card,.activity-card,.milestone-card,.note-card",
+                )
+                .forEach((card) => {
+                    dot.addEventListener("mouseenter", () => {
+                        card.classList.add("card-highlight");
+                        if (dot.classList.contains("fixture-dot"))
+                            card.classList.add("highlight-red");
+                        else if (
+                            dot.classList.contains("milestone-dot")
+                        )
+                            card.classList.add("highlight-gold");
+                        else if (dot.classList.contains("past-dot"))
+                            card.classList.add("highlight-past");
+                        else if (
+                            dot.classList.contains("complete-dot")
+                        )
+                            card.classList.add(
+                                "highlight-complete",
+                            );
+                    });
+                    dot.addEventListener("mouseleave", () => {
+                        card.classList.remove(
+                            "card-highlight",
+                            "highlight-red",
+                            "highlight-gold",
+                            "highlight-past",
+                            "highlight-complete",
+                        );
+                    });
+                });
+        });
+}
+
+// ─── BOOTSTRAP ────────────────────────────────────────────────
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModal();
+});
+
+const _baseRender = render;
+render = function () {
+    _baseRender.apply(this, arguments);
+    setTimeout(setupDotHoverAnimations, 100);
+};
+
+document
+    .getElementById("brand-logo-wrap")
+    .addEventListener("click", () => {
+        document.getElementById("today-marker")?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+        });
+    });
+
+initAuth(); // load() and setupRealtime() fire only after password confirmed

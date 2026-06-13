@@ -1,3 +1,4 @@
+
 # Simple Setup Guide - Supabase Cloud Sync
 
 This is the simplified approach with Supabase. No server required - everything runs in the browser!
