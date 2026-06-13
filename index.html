@@ -396,6 +396,8 @@
                 border: 1.5px solid var(--line);
                 border-radius: 8px;
                 box-shadow: var(--shadow);
+                width: auto;
+                padding: 8px 16px;
             }
 
             #past-items {
@@ -2730,14 +2732,17 @@
                 }
 
                 #past-accordion {
-                    align-items: center;
+                     align-items: stretch;
                 }
 
                 #past-toggle {
-                    margin-left: 0;
-                    text-align: center;
-                    padding: 8px 16px;
+                    display: flex;
+                    justify-content: center;
+                    padding: 8px 12px 8px 60px;
+                    width: 100%;
+                    box-sizing: border-box;
                 }
+
                 #timeline-wrap::before {
                     left: 36px;
                     transform: none;
@@ -5011,7 +5016,7 @@
 
             function decorateLinkContainers(root = document) {
                 const targets = root.querySelectorAll(
-                    ".note-card .note-content, .activity-card .activity-meta, .milestone-card .milestone-date",
+                    ".note-card .note-content, .activity-card .activity-meta, .mini-activity .activity-meta, .milestone-card .milestone-date"
                 );
 
                 targets.forEach((el) => {
@@ -5296,19 +5301,9 @@
                 accordion.classList.remove("past-open");
 
                 if (reason === "auto") {
-                    // Auto-close with NO scroll position change:
-                    // Simply fade out and collapse without ANY scroll adjustment
-                    pastItems.style.overflow = "hidden";
-                    pastItems.style.transition = "max-height 200ms ease, opacity 150ms ease";
-                    pastItems.style.maxHeight = currentH + "px";
-                    pastItems.style.opacity = "1";
-
-                    requestAnimationFrame(() => {
-                        // Smoothly collapse to zero height - let CSS handle it
-                        pastItems.style.maxHeight = "0px";
-                        pastItems.style.opacity = "0";
-                    });
-
+                    const scrollBefore = window.scrollY;
+                    pastItems.style.cssText = "max-height:0;opacity:0;overflow:hidden;transition:none;";
+                    window.scrollTo({ top: Math.max(0, scrollBefore - currentH), behavior: "instant" });
                     return;
                 }
 
@@ -5353,18 +5348,15 @@
                             });
                     });
                 } else {
-                    // Click-close: use the same helper so UI behavior stays consistent.
-                    pastItems.style.cssText =
-                        "max-height:0;opacity:0;overflow:hidden;transition:none;";
+                    pastItems.style.cssText = "max-height:0;opacity:0;overflow:hidden;transition:none;";
                     btn.classList.remove("open");
                     btn.textContent = "show previous activity";
                     accordion?.classList.remove("past-open");
-
-                    todayMarker.scrollIntoView({
-                        behavior: "instant",
-                        block: "center",
+                    requestAnimationFrame(() => {
+                        const top = todayMarker.getBoundingClientRect().top + window.scrollY - 80;
+                        window.scrollTo({ top: Math.max(0, top), behavior: "instant" });
                     });
-                }
+                }    
             }
 
             function toggleActCluster(fid) {
@@ -5559,6 +5551,7 @@
                     )
                     .forEach((el) => {
                         el.addEventListener("dragstart", (e) => {
+                            e.stopPropagation();
                             dragActivityId = el.dataset.id;
                             isDraggingActivity = true;
                             disableToggle = true;
@@ -5586,7 +5579,7 @@
                                 .querySelectorAll(".tl-drop-indicator")
                                 .forEach((i) => i.remove());
                             document
-                                .querySelectorAll(".tl-row.dragging")
+                                .querySelectorAll(".dragging")
                                 .forEach((r) => r.classList.remove("dragging"));
                             document
                                 .querySelectorAll(".drag-placeholder")
@@ -5625,6 +5618,7 @@
                                 isTouchDrag = false;
                                 // Only initiate drag from the drag handle
                                 if (!e.target.closest(".drag-handle")) return;
+                                e.stopPropagation();
                                 dragActivityId = el.dataset.id;
                                 isDraggingActivity = true;
                                 disableToggle = true;
