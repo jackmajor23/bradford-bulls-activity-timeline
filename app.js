@@ -2124,10 +2124,11 @@ function attachEvents() {
                         touch.clientY - touchStartY,
                     );
                     if (deltaX < 10 && deltaY < 10) return;
+                    let ghost;
                     if (!isTouchDrag) {
                         isTouchDrag = true;
                         // Create ghost clone
-                        const ghost = el.cloneNode(true);
+                        ghost = el.cloneNode(true);
                         ghost.id = "touch-drag-ghost";
                         ghost.className =
                             (ghost.className || "") +
