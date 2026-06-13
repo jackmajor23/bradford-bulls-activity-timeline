@@ -2253,6 +2253,9 @@ function attachEvents() {
                 isDraggingActivity = false;
                 touchElement = null;
                 el.classList.remove("dragging");
+                // Ensure opacity is restored
+                el.style.opacity = "1";
+                el.style.transform = "";
                 document
                     .querySelectorAll(".fixture-acts-toggle")
                     .forEach((btn) => {
@@ -2274,6 +2277,10 @@ function attachEvents() {
             el.style.transform = "scale(1)";
             setTimeout(() => {
                 el.style.transition = "";
+                el.style.transform = "";
+                // Safety cleanup: remove any lingering ghost elements
+                const lingeringGhost = document.getElementById("touch-drag-ghost");
+                if (lingeringGhost) lingeringGhost.remove();
             }, 300);
             
             document
