@@ -2001,7 +2001,15 @@ function attachEvents() {
     }
     
     // Remove any remaining drop indicator lines
-    document.querySelectorAll(".tl-drop-indicator").forEach(el => el.remove());
+    document.querySelectorAll(".tl-drop-indicator").forEach(el => {
+        // Remove the parent row if it's an indicator row
+        const parentRow = el.closest(".tl-row");
+        if (parentRow && parentRow.style.pointerEvents === "none") {
+            parentRow.remove();
+        } else {
+            el.remove();
+        }
+    });
 
     document.querySelectorAll(".linked-match-chip").forEach((chip) => {
         chip.addEventListener("click", (e) => {
@@ -2055,7 +2063,15 @@ function attachEvents() {
                 // Remove all indicators and dragging classes
                 document
                     .querySelectorAll(".tl-drop-indicator")
-                    .forEach((i) => i.remove());
+                    .forEach((i) => {
+                        // Remove the parent row if it's an indicator row
+                        const parentRow = i.closest(".tl-row");
+                        if (parentRow && parentRow.style.pointerEvents === "none") {
+                            parentRow.remove();
+                        } else {
+                            i.remove();
+                        }
+                    });
                 document
                     .querySelectorAll(".dragging")
                     .forEach((r) => r.classList.remove("dragging"));
@@ -2380,7 +2396,7 @@ function attachEvents() {
                 save();
                 ensureDropdownOpen(fixtureId);
             } else {
-                // Drop onto a timeline date group — update the date
+                // Drop onto a timeline date group — update the date and remove fixture association
                 const dateGroup =
                     target?.closest(".date-group");
                 if (dateGroup) {
@@ -2391,11 +2407,14 @@ function attachEvents() {
                         const item = S.items.find(
                             (i) => i.id === dragActivityId,
                         );
-                        if (item && item.date !== date) {
-                            item.date = date;
+                        if (item) {
+                            item.fixtureId = null;
+                            if (item.date !== date) {
+                                item.date = date;
+                            }
                             save();
                             render();
-                            showToast("📅 Date updated");
+                            showToast("📅 Activity moved to timeline");
                         }
                     }
                 }
@@ -2574,13 +2593,56 @@ function attachEvents() {
                 }
             }
 
-            // Insert indicator line
+            // Determine which side (left or right) based on mouse position
+            const groupRect = group.getBoundingClientRect();
+            const isLeftSide = e.clientX < groupRect.left + groupRect.width / 2;
+
+            // Create a wrapper row for the indicator to match the grid layout
+            const indicatorRow = document.createElement("div");
+            indicatorRow.className = "tl-row";
+            indicatorRow.style.pointerEvents = "none";
+
+            // Create the three-column grid structure
+            const spacer1 = document.createElement("div");
+            spacer1.className = isLeftSide ? "tl-card-wrap" : "tl-spacer";
+            if (isLeftSide) {
+                spacer1.style.display = "flex";
+                spacer1.style.justifyContent = "flex-end";
+                spacer1.style.paddingRight = "16px";
+            }
+
+            const node = document.createElement("div");
+            node.className = "tl-node";
+
+            const spacer2 = document.createElement("div");
+            spacer2.className = isLeftSide ? "tl-spacer" : "tl-card-wrap";
+            if (!isLeftSide) {
+                spacer2.style.display = "flex";
+                spacer2.style.justifyContent = "flex-start";
+                spacer2.style.paddingLeft = "16px";
+            }
+
+            // Create the actual indicator box
             const indicator = document.createElement("div");
             indicator.className = "tl-drop-indicator";
+            indicator.style.width = "100%";
+
+            // Place indicator in the appropriate side
+            if (isLeftSide) {
+                spacer1.appendChild(indicator);
+            } else {
+                spacer2.appendChild(indicator);
+            }
+
+            indicatorRow.appendChild(spacer1);
+            indicatorRow.appendChild(node);
+            indicatorRow.appendChild(spacer2);
+
+            // Insert the indicator row
             if (afterRow) {
                 afterRow.insertAdjacentElement(
                     "afterend",
-                    indicator,
+                    indicatorRow,
                 );
             } else {
                 // Before all rows
@@ -2589,9 +2651,9 @@ function attachEvents() {
                 if (firstRow)
                     firstRow.insertAdjacentElement(
                         "beforebegin",
-                        indicator,
+                        indicatorRow,
                     );
-                else group.appendChild(indicator);
+                else group.appendChild(indicatorRow);
             }
         });
 
@@ -2600,17 +2662,32 @@ function attachEvents() {
             if (!group.contains(e.relatedTarget)) {
                 group
                     .querySelectorAll(".tl-drop-indicator")
-                    .forEach((i) => i.remove());
+                    .forEach((i) => {
+                        // Remove the parent row if it's an indicator row
+                        const parentRow = i.closest(".tl-row");
+                        if (parentRow && parentRow.style.pointerEvents === "none") {
+                            parentRow.remove();
+                        } else {
+                            i.remove();
+                        }
+                    });
             }
         });
 
         group.addEventListener("drop", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Clean up indicators
+            // Clean up indicators - remove parent rows if they're indicator rows
             document
                 .querySelectorAll(".tl-drop-indicator")
-                .forEach((i) => i.remove());
+                .forEach((i) => {
+                    const parentRow = i.closest(".tl-row");
+                    if (parentRow && parentRow.style.pointerEvents === "none") {
+                        parentRow.remove();
+                    } else {
+                        i.remove();
+                    }
+                });
 
             const dragging =
                 document.querySelector(".tl-row.dragging");
@@ -2620,10 +2697,14 @@ function attachEvents() {
                 group.querySelector(".date-label")?.dataset.date;
             if (!date) return;
 
+            // Determine which side (left or right) based on mouse position
+            const groupRect = group.getBoundingClientRect();
+            const isLeftSide = e.clientX < groupRect.left + groupRect.width / 2;
+
             // Re-read rows after potential DOM re-order
             const rows = [
                 ...group.querySelectorAll(":scope > .tl-row"),
-            ].filter((r) => r !== dragging);
+            ].filter((r) => r !== dragging && r.style.pointerEvents !== "none");
             let afterRow = null;
             let minAbsDist = Infinity;
             for (const row of rows) {
@@ -2647,6 +2728,10 @@ function attachEvents() {
                     group.insertBefore(dragging, firstRow);
                 else group.appendChild(dragging);
             }
+
+            // Update the side class based on drop position
+            dragging.classList.remove("side-left", "side-right");
+            dragging.classList.add(isLeftSide ? "side-left" : "side-right");
 
             // Collect the new order from the DOM and update dates + S.items order
             const orderedIds = [
