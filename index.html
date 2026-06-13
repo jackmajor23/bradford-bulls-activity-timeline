@@ -141,70 +141,6 @@
                 margin-left: auto;
             }
 
-            #connection-indicator {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                padding: 6px 12px;
-                border-radius: 16px;
-                font-size: 11px;
-                font-weight: 600;
-                background: rgba(46, 125, 50, 0.1);
-                color: #2e7d32;
-                transition: all 200ms ease;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-
-            #connection-indicator.good {
-                background: rgba(46, 125, 50, 0.1);
-                color: #2e7d32;
-            }
-
-            #connection-indicator.fair {
-                background: rgba(232, 102, 10, 0.1);
-                color: #e8660a;
-            }
-
-            #connection-indicator.poor {
-                background: rgba(242, 12, 35, 0.1);
-                color: #f20c23;
-            }
-
-            #connection-indicator.offline {
-                background: rgba(153, 153, 153, 0.1);
-                color: #666666;
-            }
-
-            .connection-dot {
-                width: 6px;
-                height: 6px;
-                border-radius: 50%;
-                display: inline-block;
-                animation: pulse 2s infinite;
-            }
-
-            #connection-indicator.good .connection-dot {
-                background: #2e7d32;
-            }
-
-            #connection-indicator.fair .connection-dot {
-                background: #e8660a;
-            }
-
-            #connection-indicator.poor .connection-dot {
-                background: #f20c23;
-            }
-
-            #connection-indicator.offline .connection-dot {
-                background: #999999;
-                animation: none;
-            }
-
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.5; }
-            }
 
             .btn {
                 display: inline-flex;
@@ -324,6 +260,10 @@
             #timeline-wrap {
                 position: relative;
                 padding: 0 0 120px;
+
+                /* Prevent browser scroll anchoring from adjusting scrollTop
+                   when we collapse the past timeline (avoids “jump”). */
+                overflow-anchor: none;
             }
 
             /* Spine */
@@ -408,6 +348,12 @@
                 );
                 pointer-events: none;
                 z-index: 0;
+                opacity: 0;
+                transition: opacity 0.15s ease;
+            }
+
+            #past-accordion.past-open::before {
+                opacity: 1;
             }
 
             #past-toggle {
@@ -1503,6 +1449,54 @@
                 color: var(--ink-mid);
             }
 
+            /* ─── LINKIFY (URLs in notes/activity/milestones) ─── */
+            .note-content a.note-link,
+            .activity-meta a.note-link,
+            .milestone-date a.note-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                color: inherit; /* keep same text colour */
+                text-decoration: none;
+                font-weight: 700;
+                border-radius: 6px;
+                padding: 1px 0;
+                transition:
+                    text-decoration-color 0.15s ease,
+                    transform 0.15s ease,
+                    background 0.15s ease,
+                    opacity 0.15s ease;
+            }
+
+            .note-content a.note-link:hover,
+            .activity-meta a.note-link:hover,
+            .milestone-date a.note-link:hover {
+                text-decoration: underline;
+                transform: translateY(-1px);
+                background: rgba(0, 0, 0, 0.04);
+                opacity: 0.95;
+            }
+
+            .note-content a.note-link .note-link-icon,
+            .activity-meta a.note-link .note-link-icon,
+            .milestone-date a.note-link .note-link-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 14px;
+                height: 14px;
+                flex: 0 0 auto;
+                transition: transform 0.15s ease;
+                opacity: 0.9;
+            }
+
+            .note-content a.note-link:hover .note-link-icon,
+            .activity-meta a.note-link:hover .note-link-icon,
+            .milestone-date a.note-link:hover .note-link-icon {
+                transform: translateY(-1px) rotate(-6deg);
+                opacity: 1;
+            }
+
             .note-date {
                 padding: 8px 14px;
                 background: var(--bg);
@@ -1607,23 +1601,23 @@
             }
 
             .modal-header {
-                padding: 22px 24px 16px;
+                padding: 16px 20px 12px;
                 border-bottom: 1px solid var(--line);
                 display: flex;
                 align-items: center;
-                gap: 12px;
+                gap: 10px;
             }
 
             .modal-title {
                 font-family: var(--font-display);
-                font-size: 24px;
+                font-size: 22px;
                 letter-spacing: 0.05em;
                 flex: 1;
             }
 
             .modal-close {
-                width: 32px;
-                height: 32px;
+                width: 28px;
+                height: 28px;
                 border: none;
                 background: var(--line);
                 border-radius: 6px;
@@ -1635,10 +1629,10 @@
             }
 
             .modal-body {
-                padding: 20px 24px;
+                padding: 14px 20px;
                 display: flex;
                 flex-direction: column;
-                gap: 14px;
+                gap: 12px;
             }
 
             .form-group {
@@ -1935,6 +1929,24 @@
                 position: relative;
             }
 
+            /* Render “Linked Match” selection as a pill below the input */
+            #a-linked-fixture-current {
+                position: static;
+                left: auto;
+                right: auto;
+                top: auto;
+                z-index: auto;
+                pointer-events: auto;
+
+                display: none;
+                margin-top: 8px;
+            }
+
+            #a-linked-fixture-current .fixture-link-pill {
+                pointer-events: auto;
+                max-width: 100%;
+            }
+
             .fixture-link-option {
                 display: flex;
                 flex-direction: column;
@@ -1966,11 +1978,11 @@
                 gap: 6px;
                 padding: 5px 10px;
                 border-radius: 999px;
-                background: rgba(26, 79, 139, 0.08);
-                border: 1px solid rgba(26, 79, 139, 0.14);
+                background: rgba(26, 79, 139, 0.12);
+                border: 1px solid rgba(26, 79, 139, 0.18);
                 color: var(--blue);
                 font-size: 11px;
-                font-weight: 600;
+                font-weight: 700;
             }
 
             .fixture-link-clear {
@@ -2990,7 +3002,7 @@
                     outline-offset: 2px;
                 }
             }
-        </script>
+        </style>
     </head>
 
     <body>
@@ -3177,10 +3189,6 @@
                     </div>
                 </div>
 
-                <div id="connection-indicator" class="good">
-                    <span class="connection-dot"></span>
-                    <span>Good</span>
-                </div>
             </div>
         </header>
 
@@ -3475,17 +3483,9 @@
             // ─── FAIL-SAFE SYNC UI HOOKS (prevent bootstrap crashes) ────────
             // If older builds are missing these functions, provide safe
             // fallbacks so sync bootstrap can't break rendering.
-            if (typeof window.updateConnectionIndicator !== 'function') {
-                window.updateConnectionIndicator = function () {
-                    // Best-effort: connection indicator is already styled in CSS.
-                    const el = document.getElementById('connection-indicator');
-                    if (!el) return;
-                    el.classList.remove('good','fair','poor','offline');
-                    el.classList.add('good');
-                    const dot = el.querySelector('.connection-dot');
-                    if (dot) dot.style.animation = '';
-                };
-            }
+            // Connection indicator UI removed from header.
+            // Keep this as a no-op fallback so sync bootstrap can’t crash.
+            window.updateConnectionIndicator = window.updateConnectionIndicator || function () {};
             if (typeof window.updateSyncStatus !== 'function') {
                 window.updateSyncStatus = function () {
                     // No-op (we already show toasts + heartbeat banner).
@@ -4626,16 +4626,23 @@
                     .map((entry) => entry.fixture);
             }
             function renderFixtureLinkSelection() {
-                const container = document.getElementById(
-                    "a-linked-fixture-current",
-                );
+                const container = document.getElementById("a-linked-fixture-current");
                 if (!container) return;
+
                 const selectedId =
                     document.getElementById("a-linked-fixture-id")?.value || "";
                 const fixture = findFixtureById(selectedId);
+
+                // Clear the input text while the pill is open.
+                const input = document.getElementById("a-linked-fixture-query");
+                if (input) input.value = fixture ? "" : input.value;
+
                 container.innerHTML = fixture
                     ? `<span class="fixture-link-pill">🏉 ${esc(fixtureDisplayLabel(fixture))}<button class="fixture-link-clear" type="button" onclick="clearLinkedFixtureSelection()" title="Clear linked match">✕</button></span>`
                     : "";
+
+                // If no fixture, hide the pill overlay.
+                container.style.display = fixture ? "block" : "none";
             }
             function selectLinkedFixture(fixtureId) {
                 const fixture = findFixtureById(fixtureId);
@@ -4643,7 +4650,10 @@
                 const input = document.getElementById("a-linked-fixture-query");
                 if (!hidden || !input) return;
                 hidden.value = fixture?.id || "";
-                input.value = fixture ? fixtureDisplayLabel(fixture) : "";
+
+                // Clear the input text while the pill is open (pill is the selection UI).
+                input.value = "";
+
                 renderFixtureLinkSelection();
                 hideFixtureLinkSuggestions();
             }
@@ -4677,7 +4687,22 @@
                 const input = document.getElementById("a-linked-fixture-query");
                 const hidden = document.getElementById("a-linked-fixture-id");
                 if (!input || !hidden) return;
-                hidden.value = "";
+
+                // Keep selection/pill while the user is editing within the field,
+                // but clear it once the text no longer matches the selected fixture label.
+                const selectedId = hidden.value || "";
+                if (selectedId) {
+                    const fixture = findFixtureById(selectedId);
+                    const selectedLabel = fixture
+                        ? fixtureDisplayLabel(fixture)
+                        : "";
+                    const typed = (input.value || "").trim();
+
+                    if (typed !== selectedLabel) {
+                        hidden.value = "";
+                    }
+                }
+
                 renderFixtureLinkSelection();
                 showFixtureLinkSuggestions(input.value);
             }
@@ -4768,6 +4793,68 @@
             }
 
             // ─── RENDER ENGINE ────────────────────────────────────────────
+            function linkifyText(text) {
+                const t = String(text ?? "");
+
+                // Simple URL detection:
+                //  - http(s)://...
+                //  - www....
+                // Stops on whitespace and common HTML delimiters.
+                const urlRegex = /(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"']+)/g;
+
+                let out = "";
+                let lastIndex = 0;
+
+                const matches = t.matchAll(urlRegex);
+                for (const m of matches) {
+                    const idx = m.index ?? 0;
+
+                    // Append text before match (escaped)
+                    out += esc(t.slice(lastIndex, idx));
+
+                    const raw = m[0];
+                    const href = raw.startsWith("www.")
+                        ? "https://" + raw
+                        : raw;
+
+                    // Link text: keep original raw string (escaped)
+                    const linkText = esc(raw);
+
+                    // External-link icon (inline SVG so it’s consistent)
+                    const iconSVG = `
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 3h7v7"/>
+                            <path d="M10 14L21 3"/>
+                            <path d="M21 14v7H3V3h7"/>
+                        </svg>
+                    `.trim();
+
+                    out += `<a class="note-link" href="${esc(
+                        href,
+                    )}" target="_blank" rel="noopener noreferrer">${linkText}<span class="note-link-icon" aria-hidden="true">${iconSVG}</span></a>`;
+
+                    lastIndex = idx + raw.length;
+                }
+
+                out += esc(t.slice(lastIndex));
+                return out;
+            }
+
+            function decorateLinkContainers(root = document) {
+                const targets = root.querySelectorAll(
+                    ".note-card .note-content, .activity-card .activity-meta, .milestone-card .milestone-date",
+                );
+
+                targets.forEach((el) => {
+                    // If already decorated, skip to avoid nesting links.
+                    if (el.dataset.linkified === "1") return;
+
+                    const rawText = el.textContent ?? "";
+                    el.innerHTML = linkifyText(rawText);
+                    el.dataset.linkified = "1";
+                });
+            }
+
             function render() {
                 const content = document.getElementById("timeline-content");
                 const today = todayStr();
@@ -4815,6 +4902,7 @@
                     html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
                 }
                 content.innerHTML = html;
+                decorateNoteLinks(content);
                 attachEvents();
             }
 
@@ -5024,12 +5112,80 @@
                 showToast("Activity moved to main timeline");
             }
 
+            let pastAutoCloseDebounce = null;
+
+            function closePast(reason = "click") {
+                const pastItems = document.getElementById("past-items");
+                const btn = document.getElementById("past-toggle");
+                const accordion = document.getElementById("past-accordion");
+                if (!btn || !pastItems || !accordion) return;
+                if (!btn.classList.contains("open")) return;
+
+                // Critical: auto-close must NOT change layout (height/max-height),
+                // otherwise the browser scrolls to the collapsed accordion bottom.
+                const currentH = pastItems.scrollHeight;
+
+                btn.classList.remove("open");
+                btn.textContent = "show previous activity";
+                accordion.classList.remove("past-open");
+
+                if (reason === "auto") {
+                    // Prevent the "jump to bottom" by doing a two-phase close:
+                    //  1) Immediately hide visually (no max-height/layout collapse yet)
+                    //  2) After a short delay, collapse layout while restoring scrollY
+                    //     to the captured value.
+                    const currentH = pastItems.scrollHeight;
+                    const y = window.scrollY;
+
+                    pastItems.style.visibility = "";
+                    pastItems.style.pointerEvents = "none";
+                    pastItems.style.overflow = "hidden";
+
+                    // Phase 1: visual-only
+                    pastItems.style.transition = "opacity 140ms ease";
+                    pastItems.style.opacity = "0";
+
+                    // Phase 2: layout collapse shortly after
+                    setTimeout(() => {
+                        pastItems.style.transition =
+                            "max-height 180ms ease, opacity 160ms ease";
+                        pastItems.style.maxHeight = currentH + "px";
+                        pastItems.style.opacity = "0";
+
+                        requestAnimationFrame(() => {
+                            pastItems.style.maxHeight = "0px";
+                            // Restore scroll position (attempt to eliminate the jump).
+                            window.scrollTo({
+                                top: y,
+                                behavior: "instant",
+                            });
+                        });
+                    }, 220);
+
+                    return;
+                }
+
+                // Direct click: subtle collapse with height change.
+                pastItems.style.visibility = "";
+                pastItems.style.pointerEvents = "";
+                pastItems.style.overflow = "hidden";
+                pastItems.style.transition = "max-height 180ms ease, opacity 160ms ease";
+                pastItems.style.maxHeight = currentH + "px";
+
+                requestAnimationFrame(() => {
+                    pastItems.style.maxHeight = "0px";
+                    pastItems.style.opacity = "0";
+                });
+            }
+
             function togglePast(e, btn) {
                 e.preventDefault();
                 e.stopPropagation();
                 const isOpening = !btn.classList.contains("open");
                 const todayMarker = document.getElementById("today-marker");
                 const pastItems = document.getElementById("past-items");
+                const accordion = document.getElementById("past-accordion");
+
                 if (isOpening) {
                     const viewportOffset =
                         todayMarker.getBoundingClientRect().top;
@@ -5037,6 +5193,8 @@
                         "max-height:none;opacity:1;overflow:visible;transition:none;";
                     btn.classList.add("open");
                     btn.textContent = "hide previous activity";
+                    accordion?.classList.add("past-open");
+
                     requestAnimationFrame(() => {
                         const newOffset =
                             todayMarker.getBoundingClientRect().top;
@@ -5048,10 +5206,13 @@
                             });
                     });
                 } else {
+                    // Click-close: use the same helper so UI behavior stays consistent.
                     pastItems.style.cssText =
                         "max-height:0;opacity:0;overflow:hidden;transition:none;";
                     btn.classList.remove("open");
                     btn.textContent = "show previous activity";
+                    accordion?.classList.remove("past-open");
+
                     todayMarker.scrollIntoView({
                         behavior: "instant",
                         block: "center",
@@ -5099,6 +5260,52 @@
                     if (attempts >= 60) clearInterval(iv);
                 }, 50);
             }
+
+            // Auto-close the "previous activity" toggle once the user scrolls
+            // below the Today marker (previous items are no longer visible).
+            let lastPastAutoCloseAt = 0;
+            let isAutoClosing = false;
+
+            window.addEventListener(
+                "scroll",
+                () => {
+                    if (isAutoClosing) return;
+
+                    const btn = document.getElementById("past-toggle");
+                    const todayMarker = document.getElementById("today-marker");
+                    if (!btn || !todayMarker) return;
+                    if (!btn.classList.contains("open")) return;
+
+                    const btnRect = btn.getBoundingClientRect();
+                    const todayRect = todayMarker.getBoundingClientRect();
+
+                    // Close as soon as the toggle overlaps the Today marker region.
+                    // (more responsive than waiting for Today to fully leave the viewport)
+                    const overlaps =
+                        btnRect.bottom >= todayRect.top + 2 &&
+                        btnRect.top <= todayRect.bottom - 2;
+
+                    // Fallback: if Today is already above viewport.
+                    const todayAbove = todayRect.bottom < btnRect.top + 8;
+
+                    if (overlaps || todayAbove) {
+                        const now = Date.now();
+                        // Throttle to avoid rapid flicker.
+                        if (now - lastPastAutoCloseAt < 120) return;
+                        lastPastAutoCloseAt = now;
+
+                        isAutoClosing = true;
+                        closePast("auto");
+
+                        // "Pause" scroll reactions briefly while layout is collapsing
+                        // and scrollTop is being corrected.
+                        setTimeout(() => {
+                            isAutoClosing = false;
+                        }, 380);
+                    }
+                },
+                { passive: true },
+            );
 
             document.addEventListener(
                 "click",
@@ -5166,6 +5373,36 @@
 
             // ─── DRAG & DROP ──────────────────────────────────────────────
             function attachEvents() {
+                // Linked-match navigation (activity chip -> linked fixture card)
+                // No accordion auto-expansion by design.
+                const headerOffset = 56 + 12; // fixed header + a small buffer
+                function scrollToEl(el) {
+                    if (!el) return;
+                    const y =
+                        el.getBoundingClientRect().top + window.scrollY - headerOffset;
+                    window.scrollTo({ top: y, behavior: "smooth" });
+                }
+
+                document.querySelectorAll(".linked-match-chip").forEach((chip) => {
+                    chip.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const activityCard = chip.closest(".activity-card");
+                        const activityId = activityCard?.dataset?.id;
+                        if (!activityId) return;
+
+                        const activity = S.items.find((i) => i.id === activityId && i.type === "activity");
+                        const fixtureId = activity?.linkedFixtureId;
+                        if (!fixtureId) return;
+
+                        const target = document.getElementById("fc-" + fixtureId);
+                        if (!target) return;
+
+                        scrollToEl(target);
+                    });
+                });
+
                 document
                     .querySelectorAll(
                         ".activity-card,.mini-activity,.note-card,.fixture-card,.milestone-card",
@@ -5210,7 +5447,7 @@
                             setTimeout(() => {
                                 disableToggle = false;
                                 document
-                                    .querySelectorAll(".fixture-acts-toggle")
+                                .querySelectorAll(".fixture-acts-toggle")
                                     .forEach((btn) => {
                                         if (btn.dataset.originalOnclick) {
                                             btn.setAttribute(
