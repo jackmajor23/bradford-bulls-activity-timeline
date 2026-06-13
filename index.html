@@ -3472,6 +3472,42 @@
             let supabaseClient = null;
             let useCloudSync = true;
 
+            // ─── FAIL-SAFE SYNC UI HOOKS (prevent bootstrap crashes) ────────
+            // If older builds are missing these functions, provide safe
+            // fallbacks so sync bootstrap can't break rendering.
+            if (typeof window.updateConnectionIndicator !== 'function') {
+                window.updateConnectionIndicator = function () {
+                    // Best-effort: connection indicator is already styled in CSS.
+                    const el = document.getElementById('connection-indicator');
+                    if (!el) return;
+                    el.classList.remove('good','fair','poor','offline');
+                    el.classList.add('good');
+                    const dot = el.querySelector('.connection-dot');
+                    if (dot) dot.style.animation = '';
+                };
+            }
+            if (typeof window.updateSyncStatus !== 'function') {
+                window.updateSyncStatus = function () {
+                    // No-op (we already show toasts + heartbeat banner).
+                };
+            }
+            if (typeof window.showOfflineBanner !== 'function') {
+                window.showOfflineBanner = function (show) {
+                    const banner = document.getElementById('offline-banner');
+                    if (!banner) return;
+                    if (show) banner.classList.add('show');
+                    else banner.classList.remove('show');
+                };
+            }
+
+            window.addEventListener('error', (ev) => {
+                // Keep console visibility for debugging “page not showing”.
+                console.error('Uncaught error:', ev.error || ev.message);
+            });
+            window.addEventListener('unhandledrejection', (ev) => {
+                console.error('Unhandled rejection:', ev.reason);
+            });
+
             try {
                 supabaseClient = supabase.createClient(
                     SUPABASE_URL,
@@ -3489,13 +3525,17 @@
 
                     // Start connection monitoring
                     window.connectionMonitor.startHeartbeat((status) => {
-                        updateConnectionIndicator(status);
-                        if (status.status === 'offline') {
-                            window.notificationManager.offlineMode();
-                            showOfflineBanner(true);
-                        } else if (status.status === 'connected') {
-                            window.notificationManager.backOnline();
-                            showOfflineBanner(false);
+                        try {
+                            window.updateConnectionIndicator?.(status);
+                            if (status.status === 'offline') {
+                                window.notificationManager.offlineMode();
+                                window.showOfflineBanner?.(true);
+                            } else if (status.status === 'connected') {
+                                window.notificationManager.backOnline();
+                                window.showOfflineBanner?.(false);
+                            }
+                        } catch (e) {
+                            console.error('Heartbeat callback failed:', e);
                         }
                     });
 
@@ -3506,6 +3546,7 @@
             } catch (e) {
                 console.error("Supabase save failed:", e.message || e);
             }
+
 
             // ─── SYNC STATE ────────────────────────────────────────────────
             // FIX: Track the timestamp of the last local write so realtime can
