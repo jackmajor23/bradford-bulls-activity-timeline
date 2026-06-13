@@ -1,4 +1,0 @@
-- [ ] Remove connection indicator element from header in `index.html`
-- [ ] Remove related CSS rules from `index.html`
-- [ ] Remove JS fallback that defines `window.updateConnectionIndicator` in `index.html` (leave heartbeat wiring harmless)
-- [ ] Sanity check: open `index.html` and confirm header no longer shows connection badge/dot

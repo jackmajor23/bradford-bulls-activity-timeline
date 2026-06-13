@@ -4802,41 +4802,85 @@
                 // Stops on whitespace and common HTML delimiters.
                 const urlRegex = /(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"']+)/g;
 
-                let out = "";
-                let lastIndex = 0;
+                const NOTES_OPEN = "[[NOTES]]";
+                const NOTES_CLOSE = "[[/NOTES]]";
 
-                const matches = t.matchAll(urlRegex);
-                for (const m of matches) {
-                    const idx = m.index ?? 0;
+                function linkifyPlain(str) {
+                    let out = "";
+                    let lastIndex = 0;
 
-                    // Append text before match (escaped)
-                    out += esc(t.slice(lastIndex, idx));
+                    // Reset regex state because urlRegex is global (/g).
+                    urlRegex.lastIndex = 0;
+                    const matches = str.matchAll(urlRegex);
+                    for (const m of matches) {
+                        const idx = m.index ?? 0;
 
-                    const raw = m[0];
-                    const href = raw.startsWith("www.")
-                        ? "https://" + raw
-                        : raw;
+                        // Append text before match (escaped)
+                        out += esc(str.slice(lastIndex, idx));
 
-                    // Link text: keep original raw string (escaped)
-                    const linkText = esc(raw);
+                        const raw = m[0];
+                        const href = raw.startsWith("www.")
+                            ? "https://" + raw
+                            : raw;
 
-                    // External-link icon (inline SVG so it’s consistent)
-                    const iconSVG = `
-                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M14 3h7v7"/>
-                            <path d="M10 14L21 3"/>
-                            <path d="M21 14v7H3V3h7"/>
-                        </svg>
-                    `.trim();
+                        const linkText = esc(raw);
 
-                    out += `<a class="note-link" href="${esc(
-                        href,
-                    )}" target="_blank" rel="noopener noreferrer">${linkText}<span class="note-link-icon" aria-hidden="true">${iconSVG}</span></a>`;
+                        const iconSVG = `
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M14 3h7v7"/>
+                                <path d="M10 14L21 3"/>
+                                <path d="M21 14v7H3V3h7"/>
+                            </svg>
+                        `.trim();
 
-                    lastIndex = idx + raw.length;
+                        out += `<a class="note-link" href="${esc(
+                            href,
+                        )}" target="_blank" rel="noopener noreferrer">${linkText}<span class="note-link-icon" aria-hidden="true">${iconSVG}</span></a>`;
+
+                        lastIndex = idx + raw.length;
+                    }
+
+                    out += esc(str.slice(lastIndex));
+                    return out;
                 }
 
-                out += esc(t.slice(lastIndex));
+                // If no markers, behave as before.
+                if (!t.includes(NOTES_OPEN) || !t.includes(NOTES_CLOSE)) {
+                    return linkifyPlain(t);
+                }
+
+                // Marker-aware: bold ONLY the user-entered notes segments.
+                let out = "";
+                let cursor = 0;
+
+                while (cursor < t.length) {
+                    const openIdx = t.indexOf(NOTES_OPEN, cursor);
+                    if (openIdx === -1) {
+                        out += linkifyPlain(t.slice(cursor));
+                        break;
+                    }
+
+                    // Text before notes segment
+                    out += linkifyPlain(t.slice(cursor, openIdx));
+
+                    const notesStart = openIdx + NOTES_OPEN.length;
+                    const closeIdx = t.indexOf(NOTES_CLOSE, notesStart);
+                    if (closeIdx === -1) {
+                        // Malformed marker; treat remainder as plain
+                        out += linkifyPlain(t.slice(notesStart));
+                        break;
+                    }
+
+                    const notesText = t.slice(notesStart, closeIdx);
+
+                    // Bold the whole linkified notes chunk (links inside are fine)
+                    out += `<strong class="notes-bold">${linkifyPlain(
+                        notesText,
+                    )}</strong>`;
+
+                    cursor = closeIdx + NOTES_CLOSE.length;
+                }
+
                 return out;
             }
 
@@ -4902,7 +4946,7 @@
                     html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
                 }
                 content.innerHTML = html;
-                decorateNoteLinks(content);
+                decorateLinkContainers(content);
                 attachEvents();
             }
 
@@ -4987,7 +5031,7 @@
                             `<span class="assignee-chip">👤 ${esc(p)}</span>`,
                     )
                     .join("");
-                return `<div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div>`;
+                return `<div class="mini-activity${completeCls}" data-id="${a.id}" draggable="true"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div><div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · [[NOTES]]" + esc(a.notes) + "[[/NOTES]]" : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn" title="Move to Timeline" onclick="moveToTimeline('${a.id}')">↗</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div>`;
             }
 
             function renderActivityGroup(g, side, isPast) {
@@ -5020,20 +5064,20 @@
                         return `<div class="activity-link-row"><span class="activity-link-label">Related match</span><span class="linked-match-chip">🏉 ${esc(linkedFixture.opponent)} <span class="match-days-indicator">${daysText}</span></span></div>`;
                     })()
                     : "";
-                return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · " + esc(a.notes) : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · [[NOTES]]" + esc(a.notes) + "[[/NOTES]]" : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
             }
 
             function renderMilestoneGroup(g, side, isPast) {
                 const m = g.item,
                     style = m.style || "red",
                     pastCls = isPast ? " past" : "";
-                return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? " · " + esc(m.notes) : ""}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${m.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot milestone-dot${isPast ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="milestone-card ${style}${pastCls}" data-id="${m.id}" id="milestone-${m.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="milestone-body"><div class="milestone-label">⚑ Milestone</div><div class="milestone-title">${esc(m.title)}</div><div class="milestone-date subtle-date">${fmtDisplay(m.date)}${m.notes ? " · [[NOTES]]" + esc(m.notes) + "[[/NOTES]]" : ""}</div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editMilestone('${m.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${m.id}')">✕</button></div></div></div></div></div>`;
             }
 
             function renderNoteGroup(g, side, isPast) {
                 const n = g.item,
                     pastCls = isPast ? " past" : "";
-                return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast ? " past-dot" : ""}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}" draggable="true"><div class="act-row"><div class="drag-handle">⋮⋮</div><div class="note-body"><div class="note-content">${esc(n.content)}</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
+                return `<div class="tl-row ${side}" data-id="${n.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${isPast ? " past-dot" : ""}" style="background:var(--ink-mid);box-shadow:0 0 0 2px var(--ink-mid);"></div></div><div class="tl-card-wrap"><div class="note-card${pastCls}" data-id="${n.id}" id="note-${n.id}" draggable="true"><div class="act-row"><div class="drag-handle">⋮⋮</div><div class="note-body"><div class="note-content">[[NOTES]]${esc(n.content)}[[/NOTES]]</div><div class="note-meta"><span class="subtle-date">${fmtDisplay(n.date)}</span></div></div><div class="activity-btns"><button class="activity-btn edit" title="Edit" onclick="editNote('${n.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="deleteItem('${n.id}')">✕</button></div></div></div></div></div>`;
             }
 
             function togglePasswordVisibility() {
