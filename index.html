@@ -5729,24 +5729,24 @@ if (
     );
 
 }
-                                }
-                                // Cluster placeholder
-                                const cluster =
+
+// Cluster placeholder
+const cluster =
     target?.closest(".activity-cluster");
 
 if (cluster) {
 
-    let placeholder =
-        document.querySelector(
-            ".drag-placeholder"
+let placeholder =
+     document.querySelector(
+          ".drag-placeholder"
         );
 
-    if (!placeholder) {
+if (!placeholder) {
 
-        placeholder =
-            createDragPlaceholder();
+    placeholder =
+          createDragPlaceholder();
 
-    }
+}
 
     const after =
         getDragAfterElement(
@@ -5767,12 +5767,12 @@ if (cluster) {
 
         }
     }
-                                } else {
-                                    if (placeholder.nextSibling !== after) {
-                                        cluster.insertBefore(placeholder, after);
-                                    }
-                                }
-                            },
+} else {
+if (placeholder.nextSibling !== after) {
+cluster.insertBefore(placeholder, after);
+}
+}
+},
                             { passive: false },
                         );
                         el.addEventListener("touchend", (e) => {
