@@ -925,14 +925,16 @@
             }
 
             .drag-placeholder {
-                background: rgba(26, 79, 139, 0.08);
-                border: 2px dashed var(--blue);
+                background: var(--card);
+                border: 2px solid var(--blue);
                 border-radius: 7px;
                 min-height: 46px;
                 height: 46px;
                 margin: 0;
                 transition: all 0.2s ease;
                 flex-shrink: 0;
+                opacity: 0.6;
+                box-shadow: inset 0 0 12px rgba(26, 79, 139, 0.15);
             }
 
             /* Drop indicator line shown between timeline rows */
@@ -2782,7 +2784,7 @@
                 #past-toggle {
                     margin-left: 0;
                     text-align: center;
-                    padding-left: 60px;
+                    padding: 8px 16px;
                 }
                 #timeline-wrap::before {
                     left: 36px;
@@ -2960,16 +2962,30 @@
 
                 /* Mobile ghost element during touch drag */
                 .touch-drag-ghost {
-                    position: fixed;
-                    pointer-events: none;
-                    z-index: 9999;
-                    opacity: 0.85;
-                    transform: scale(1.03);
-                    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-                    border-radius: var(--card-radius);
-                    transition: none;
-                    max-width: 85vw;
-                }
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+
+    opacity: 0.96;
+
+    transform:
+        rotate(2deg)
+        scale(1.04);
+
+    box-shadow:
+        0 20px 50px rgba(0,0,0,.30);
+
+    border-radius: var(--card-radius);
+
+    transition: none;
+
+    max-width: 85vw;
+
+    will-change:
+        transform,
+        left,
+        top;
+}
 
                 /* Mobile drag improvements */
                 .drag-handle {
@@ -2986,15 +3002,80 @@
                     touch-action: pan-y;
                 }
 
-                .mini-activity.dragging {
-                    opacity: 0.4;
-                    transform: scale(1);
-                }
+                .mini-activity.dragging,
+.activity-card.dragging,
+.note-card.dragging,
+.fixture-card.dragging,
+.milestone-card.dragging {
 
-                .mini-activity.drag-over {
-                    border: 2px dashed var(--blue);
-                    background: rgba(26, 79, 139, 0.08);
-                }
+    opacity: 0.15;
+
+    transform: scale(.98);
+
+    transition:
+        opacity .2s ease,
+        transform .2s ease;
+}
+
+                .mini-activity.drag-over,
+.activity-card.drag-over,
+.note-card.drag-over,
+.fixture-card.drag-over,
+.milestone-card.drag-over {
+
+    border: 2px dashed var(--blue);
+
+    background:
+        repeating-linear-gradient(
+            -45deg,
+            rgba(26,79,139,.08),
+            rgba(26,79,139,.08) 10px,
+            rgba(26,79,139,.14) 10px,
+            rgba(26,79,139,.14) 20px
+        );
+
+    min-height: 60px;
+
+    animation:
+        dragPlaceholderPulse
+        .8s ease-in-out infinite alternate;
+}
+
+@keyframes dragPlaceholderPulse {
+
+    from {
+        opacity: .45;
+    }
+
+    to {
+        opacity: .9;
+    }
+
+}
+
+/* Fixture receives drop */
+
+.fixture-card.touch-drop-target,
+.fixture-card.drag-over {
+
+    outline: 3px solid var(--gold);
+
+    outline-offset: 4px;
+
+    transform: scale(1.02);
+    transition: all .15s ease;
+}
+
+            .drag-placeholder {
+                min-height: 72px;
+                border-radius: 10px;
+                border: 2px solid var(--blue);
+                background: var(--card);
+                margin: 4px 0;
+                opacity: 0.6;
+                box-shadow: inset 0 0 12px rgba(26, 79, 139, 0.15);
+                animation: skeleton-pulse 1.5s ease-in-out infinite;
+            }
 
                 /* Drop highlight for timeline rows on mobile */
                 .tl-row.touch-drop-target .tl-card-wrap > * {
@@ -3627,6 +3708,15 @@
                     .toUpperCase();
             }
 
+            function shieldSVG(name) {
+                // Create a dark grey shield icon as fallback
+                const initials = teamInitials(name);
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+                  <path d="M 50 10 L 10 30 L 10 55 Q 10 75 50 90 Q 90 75 90 55 L 90 30 Z" fill="#808080" stroke="#666" stroke-width="1"/>
+                  <text x="50" y="55" text-anchor="middle" dominant-baseline="middle" font-size="32" font-weight="bold" fill="#fff" font-family="Arial, sans-serif">${esc(initials)}</text>
+                </svg>`;
+            }
+
             // ─── LOGO CACHE ───────────────────────────────────────────────
             // Persists discovered logos across sessions so we don't re-fetch
             const LOGO_CACHE_KEY = "bbLogoCache_v1";
@@ -3724,17 +3814,23 @@
                 if (!name) return null;
                 const lower = name.toLowerCase().trim();
 
-                // 1. Check static map
+                // 1. Check static map first (KNOWN_LOGOS has highest priority)
                 for (const [team, url] of Object.entries(KNOWN_LOGOS)) {
-                    if (team.toLowerCase() === lower) return url;
+                    if (team.toLowerCase() === lower) {
+                        return url;
+                    }
                 }
 
                 // 2. Check runtime cache (previously discovered logos)
-                if (logoCache[lower] === "NOT_FOUND") return null; // confirmed no logo
-                if (logoCache[lower]) return logoCache[lower];
+                if (logoCache[lower] === "NOT_FOUND") {
+                    return null; // confirmed no logo exists
+                }
+                if (logoCache[lower]) {
+                    return logoCache[lower]; // return cached discovery
+                }
 
-                // 3. Trigger async discovery in background — returns null for now,
-                //    the img tag will update itself when the fetch completes
+                // 3. Trigger async discovery in background
+                // Returns null immediately, img tag will update when discovery completes
                 discoverLogoAsync(name);
                 return null;
             }
@@ -3758,23 +3854,15 @@
                 for (const query of queries) {
                     try {
                         // Wikipedia opensearch to find the right article title
-                        const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=3&format=json&origin=*`;
+                        const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=5&format=json&origin=*`;
                         const searchRes = await fetch(searchUrl);
                         const searchData = await searchRes.json();
                         const titles = searchData[1] || [];
 
                         for (const title of titles) {
                             // Skip obviously wrong articles
-                            if (
-                                !title
-                                    .toLowerCase()
-                                    .includes(
-                                        name
-                                            .toLowerCase()
-                                            .split(" ")[0]
-                                            .toLowerCase(),
-                                    )
-                            )
+                            const firstWord = name.toLowerCase().split(" ")[0];
+                            if (!title.toLowerCase().includes(firstWord))
                                 continue;
 
                             // Fetch the page images
@@ -3798,6 +3886,7 @@
                                 if (isLikelyLogo) {
                                     logoCache[lower] = thumb;
                                     saveLogoCache();
+                                    console.log(`✓ Logo discovered: ${name} → ${thumb}`);
                                     updateLogoInDOM(name, thumb);
                                     pendingDiscovery.delete(lower);
                                     return;
@@ -3806,6 +3895,7 @@
                         }
                     } catch (e) {
                         // Network error — silently skip, shield fallback stays
+                        console.warn(`Logo discovery error for "${name}":`, e.message);
                     }
                 }
 
@@ -3816,9 +3906,10 @@
             }
 
             // ─── DOM UPDATER ──────────────────────────────────────────────
-            // When async discovery finds a logo, inject it into any visible
-            // fixture cards for that team without re-rendering the whole page
+            // When async discovery finds a logo, update all fixture cards for that team
+            // This function is called by async logo discovery to inject found logos
             function updateLogoInDOM(name, url) {
+                const lowerName = name.toLowerCase().trim();
                 document
                     .querySelectorAll(".fixture-logo-wrap")
                     .forEach((wrap) => {
@@ -3828,25 +3919,32 @@
                             ?.textContent?.trim();
                         if (
                             !opponent ||
-                            opponent.toLowerCase() !== name.toLowerCase().trim()
+                            opponent.toLowerCase() !== lowerName
                         )
                             return;
 
                         const img = wrap.querySelector("img");
-                        const fallback = wrap.querySelector(
-                            ".fixture-logo-initials",
-                        );
+                        const shield = wrap.querySelector(".fixture-logo-initials");
 
                         if (img) {
+                            // Update existing img tag
                             img.src = url;
                             img.style.display = "";
-                            if (fallback) fallback.style.display = "none";
+                            if (shield) shield.style.display = "none";
                         } else {
-                            // No img tag yet — insert one
-                            wrap.innerHTML = `
-                    <img src="${url}" alt="${esc(name)}"
-                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                    <div class="fixture-logo-initials" style="display:none">${shieldSVG(name)}</div>`;
+                            // Shouldn't happen with new render logic, but handle it
+                            const newImg = document.createElement("img");
+                            newImg.src = url;
+                            newImg.alt = name;
+                            newImg.style.width = "100%";
+                            newImg.style.height = "100%";
+                            newImg.style.objectFit = "contain";
+                            newImg.onerror = function() {
+                                this.style.display = "none";
+                                if (shield) shield.style.display = "flex";
+                            };
+                            wrap.insertBefore(newImg, shield);
+                            if (shield) shield.style.display = "none";
                         }
                     });
             }
@@ -5008,9 +5106,8 @@
                     countdownCls = "far";
                 }
                 const teamLogo = getTeamLogo(f.opponent);
-                const logoHtml = teamLogo
-                    ? `<img src="${teamLogo}" alt="${esc(f.opponent)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="fixture-logo-initials" style="display:none">${esc(teamInitials(f.opponent))}</div>`
-                    : `<div class="fixture-logo-initials">${esc(teamInitials(f.opponent))}</div>`;
+                // Always render both img and shield - img loads if available, falls back to shield
+                const logoHtml = `<img src="${teamLogo || ''}" alt="${esc(f.opponent)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" style="${teamLogo ? '' : 'display:none;'}"><div class="fixture-logo-initials" style="${teamLogo ? 'display:none;' : ''}">${shieldSVG(f.opponent)}</div>`;
                 const teamBadge = f.teamType
                     ? `<span class="team-badge">${esc(f.teamType)}</span>`
                     : "";
@@ -5165,8 +5262,6 @@
                 if (!btn || !pastItems || !accordion) return;
                 if (!btn.classList.contains("open")) return;
 
-                // Critical: auto-close must NOT change layout (height/max-height),
-                // otherwise the browser scrolls to the collapsed accordion bottom.
                 const currentH = pastItems.scrollHeight;
 
                 btn.classList.remove("open");
@@ -5174,37 +5269,18 @@
                 accordion.classList.remove("past-open");
 
                 if (reason === "auto") {
-                    // Prevent the "jump to bottom" by doing a two-phase close:
-                    //  1) Immediately hide visually (no max-height/layout collapse yet)
-                    //  2) After a short delay, collapse layout while restoring scrollY
-                    //     to the captured value.
-                    const currentH = pastItems.scrollHeight;
-                    const y = window.scrollY;
-
-                    pastItems.style.visibility = "";
-                    pastItems.style.pointerEvents = "none";
+                    // Auto-close with NO scroll position change:
+                    // Simply fade out and collapse without ANY scroll adjustment
                     pastItems.style.overflow = "hidden";
+                    pastItems.style.transition = "max-height 200ms ease, opacity 150ms ease";
+                    pastItems.style.maxHeight = currentH + "px";
+                    pastItems.style.opacity = "1";
 
-                    // Phase 1: visual-only
-                    pastItems.style.transition = "opacity 140ms ease";
-                    pastItems.style.opacity = "0";
-
-                    // Phase 2: layout collapse shortly after
-                    setTimeout(() => {
-                        pastItems.style.transition =
-                            "max-height 180ms ease, opacity 160ms ease";
-                        pastItems.style.maxHeight = currentH + "px";
+                    requestAnimationFrame(() => {
+                        // Smoothly collapse to zero height - let CSS handle it
+                        pastItems.style.maxHeight = "0px";
                         pastItems.style.opacity = "0";
-
-                        requestAnimationFrame(() => {
-                            pastItems.style.maxHeight = "0px";
-                            // Restore scroll position (attempt to eliminate the jump).
-                            window.scrollTo({
-                                top: y,
-                                behavior: "instant",
-                            });
-                        });
-                    }, 220);
+                    });
 
                     return;
                 }
@@ -5563,15 +5639,21 @@
                                 }
                                 e.preventDefault();
                                 // Move ghost
-                                const ghost =
-                                    document.getElementById("touch-drag-ghost");
                                 if (ghost) {
-                                    ghost.style.left =
-                                        touch.clientX -
-                                        ghost.offsetWidth / 2 +
-                                        "px";
-                                    ghost.style.top = touch.clientY - 30 + "px";
-                                }
+
+    requestAnimationFrame(() => {
+
+        ghost.style.left =
+            touch.clientX -
+            ghost.offsetWidth / 2 +
+            "px";
+
+        ghost.style.top =
+            touch.clientY - 30 + "px";
+
+    });
+
+}
                                 // Highlight drop target row
                                 document
                                     .querySelectorAll(
@@ -5580,44 +5662,97 @@
                                     .forEach((r) =>
                                         r.classList.remove("touch-drop-target"),
                                     );
-                                const target = document.elementFromPoint(
-                                    touch.clientX,
-                                    touch.clientY,
-                                );
+                                const target =
+    document.elementFromPoint(
+        touch.clientX,
+        touch.clientY + 20
+    );
                                 const targetRow = target?.closest(".tl-row");
                                 if (
                                     targetRow &&
                                     targetRow !== el.closest(".tl-row")
                                 ) {
-                                    targetRow.classList.add(
-                                        "touch-drop-target",
-                                    );
+                                    document
+    .querySelectorAll(
+        ".touch-drop-target"
+    )
+    .forEach(el =>
+        el.classList.remove(
+            "touch-drop-target"
+        )
+    );
+
+const fixtureCard =
+    target?.closest(
+        ".fixture-card"
+    );
+
+if (fixtureCard) {
+
+    fixtureCard.classList.add(
+        "touch-drop-target"
+    );
+
+}
+
+const targetRow =
+    target?.closest(
+        ".tl-row"
+    );
+
+if (
+    targetRow &&
+    targetRow !==
+    el.closest(".tl-row")
+) {
+
+    targetRow.classList.add(
+        "touch-drop-target"
+    );
+
+}
                                 }
                                 // Cluster placeholder
                                 const cluster =
-                                    target?.closest(".activity-cluster");
-                                if (cluster) {
-                                    const existingPlaceholder =
-                                        cluster.querySelector(
-                                            ".drag-placeholder",
-                                        );
-                                    if (existingPlaceholder)
-                                        existingPlaceholder.remove();
-                                    const placeholder = createDragPlaceholder();
-                                    const after = getDragAfterElement(
-                                        cluster,
-                                        touch.clientY,
-                                    );
-                                    after == null
-                                        ? cluster.appendChild(placeholder)
-                                        : cluster.insertBefore(
-                                              placeholder,
-                                              after,
-                                          );
+    target?.closest(".activity-cluster");
+
+if (cluster) {
+
+    let placeholder =
+        document.querySelector(
+            ".drag-placeholder"
+        );
+
+    if (!placeholder) {
+
+        placeholder =
+            createDragPlaceholder();
+
+    }
+
+    const after =
+        getDragAfterElement(
+            cluster,
+            touch.clientY
+        );
+
+    if (after == null) {
+
+        if (
+            placeholder.parentNode !== cluster ||
+            placeholder !== cluster.lastElementChild
+        ) {
+
+            cluster.appendChild(
+                placeholder
+            );
+
+        }
+    }
                                 } else {
-                                    document
-                                        .querySelectorAll(".drag-placeholder")
-                                        .forEach((p) => p.remove());
+                                    if (placeholder.nextSibling !== after) {
+                                        cluster.insertBefore(placeholder, after);
+                                    }
                                 }
                             },
                             { passive: false },
@@ -5665,10 +5800,11 @@
                             isDraggingActivity = false;
                             dragEndTime = Date.now();
                             const touch = e.changedTouches[0];
-                            const target = document.elementFromPoint(
-                                touch.clientX,
-                                touch.clientY,
-                            );
+                            const target =
+    document.elementFromPoint(
+        touch.clientX,
+        touch.clientY + 20
+    );
                             const fc = target?.closest(".fixture-card");
                             if (fc) {
                                 const act = S.items.find(
@@ -6093,8 +6229,26 @@
             function createDragPlaceholder() {
                 const placeholder = document.createElement("div");
                 placeholder.className = "drag-placeholder";
+                // Add a subtle skeleton animation to indicate drop zone
+                placeholder.style.animation = "skeleton-pulse 1.5s ease-in-out infinite";
                 return placeholder;
             }
+
+            // Add skeleton pulse animation if not already in CSS
+            function ensureSkeletonAnimation() {
+                const styleId = "skeleton-pulse-animation";
+                if (document.getElementById(styleId)) return;
+                const style = document.createElement("style");
+                style.id = styleId;
+                style.textContent = `
+                    @keyframes skeleton-pulse {
+                        0%, 100% { opacity: 0.5; }
+                        50% { opacity: 0.8; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            ensureSkeletonAnimation();
 
             // ─── MODAL CONTROLS ───────────────────────────────────────────
             function openModal(type, id) {
