@@ -3109,7 +3109,8 @@ function performTimelineDrop(group, draggedRow, clientY) {
         if (item.type === "activity" && item.fixtureId) { item.fixtureId = null; dateChanged = true; }
     });
 
-    S.items = [...otherItems, ...dateItems];
+    // Reassemble S.items and sort by date to preserve timeline order
+    S.items = [...otherItems, ...dateItems].sort((a, b) => a.date.localeCompare(b.date));
     save();
     render();
     if (dateChanged) showToast("📅 Date updated");
