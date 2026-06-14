@@ -4241,7 +4241,7 @@ function showDeleteConfirm(id) {
         }
         save();
         render();
-        showToast("Item deleted.");
+        showToast("Item deleted");
         closeDeleteConfirm();
         pendingDeleteId = null;
     };
