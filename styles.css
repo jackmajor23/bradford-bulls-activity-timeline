@@ -2831,7 +2831,7 @@ body {
 
     #past-toggle.open {
         padding: 8px 16px;
-        left: calc(50% + 16px);
+        left: calc(50% + 12px);
         transform: translateX(-50%);
         margin-left: 0;
     }
