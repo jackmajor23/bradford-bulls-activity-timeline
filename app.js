@@ -89,6 +89,36 @@ let saveDebounceTimer = null;
 let pendingDeleteOps = []; // [{id, type}]
 // Periodic sync check as fallback for realtime
 let periodicSyncInterval = null;
+// Retry tracking for failed saves
+let syncRetryCount = 0;
+let syncRetryTimer = null;
+const MAX_SYNC_RETRIES = 3;
+const SYNC_RETRY_DELAY_MS = 2000;
+
+// Network connectivity monitoring
+let isOnline = navigator.onLine;
+let lastOnlineCheck = Date.now();
+
+window.addEventListener('online', () => {
+    if (!isOnline) {
+        console.log('[Network] Connection restored');
+        isOnline = true;
+        // Trigger a sync when coming back online
+        if (useCloudSync && supabaseClient) {
+            console.log('[Network] Triggering sync after reconnection');
+            clearTimeout(saveDebounceTimer);
+            saveDebounceTimer = setTimeout(() => saveToSupabase(), 1000);
+        }
+    }
+});
+
+window.addEventListener('offline', () => {
+    if (isOnline) {
+        console.log('[Network] Connection lost');
+        isOnline = false;
+        setSyncState(SyncState.OFFLINE);
+    }
+});
 
 // ─── ACTIVITY / TEAM DEFINITIONS ───────────────────────────────
 const ACTIVITY_TYPES = [
@@ -687,9 +717,20 @@ async function loadFromSupabase() {
 //     our own saves back as remote changes (self-event suppression).
 //   - Pending deletes are processed first to respect FK ordering.
 async function saveToSupabase() {
-    if (!supabaseClient || !useCloudSync) return;
+    if (!supabaseClient || !useCloudSync) {
+        console.log(`[Sync] Skipping sync - supabaseClient: ${!!supabaseClient}, useCloudSync: ${useCloudSync}`);
+        return;
+    }
 
+    if (!isOnline) {
+        console.log('[Sync] Skipping sync - offline');
+        setSyncState(SyncState.OFFLINE);
+        return;
+    }
+
+    const syncStartTime = Date.now();
     lastWriteTime = Date.now();
+    console.log(`[Sync] Starting save at ${new Date(syncStartTime).toISOString()}`);
 
     try {
         // Process explicit deletes first (FK order: activities before fixtures)
@@ -916,18 +957,47 @@ async function saveToSupabase() {
             S.savedAssignees = mergedAssignees;
         }
 
-        console.log("✓ Saved to Supabase");
+        const syncDuration = Date.now() - syncStartTime;
+        console.log(`[Sync] ✓ Completed in ${syncDuration}ms`);
+        syncRetryCount = 0; // Reset retry count on success
         if (window.notificationManager) {
             window.notificationManager.syncSuccess();
         }
         showToast("✓ Synced to cloud", "success", 2000);
         updateSyncStatus();
     } catch (e) {
-        console.error("Supabase save failed:", e);
-        if (window.notificationManager) {
-            window.notificationManager.syncFailed(e.message || "Network error");
+        const syncDuration = Date.now() - syncStartTime;
+        console.error(`[Sync] ✗ Failed after ${syncDuration}ms:`, e);
+        console.error("[Sync] Error details:", {
+            message: e.message,
+            stack: e.stack,
+            itemsCount: S.items.length,
+            hasClient: !!supabaseClient,
+            useCloudSync,
+            retryCount: syncRetryCount,
+        });
+        
+        // Retry logic for transient failures
+        if (syncRetryCount < MAX_SYNC_RETRIES) {
+            syncRetryCount++;
+            const retryDelay = SYNC_RETRY_DELAY_MS * Math.pow(2, syncRetryCount - 1);
+            console.log(`[Sync] Retrying in ${retryDelay}ms (attempt ${syncRetryCount}/${MAX_SYNC_RETRIES})`);
+            
+            clearTimeout(syncRetryTimer);
+            syncRetryTimer = setTimeout(() => {
+                console.log(`[Sync] Executing retry ${syncRetryCount}`);
+                saveToSupabase();
+            }, retryDelay);
+            
+            showToast(`⚠ Sync failed, retrying... (${syncRetryCount}/${MAX_SYNC_RETRIES})`, "warning", 3000);
+        } else {
+            console.error("[Sync] Max retries exceeded, giving up");
+            syncRetryCount = 0;
+            if (window.notificationManager) {
+                window.notificationManager.syncFailed(e.message || "Network error");
+            }
+            showToast("⚠ Cloud save failed — data kept locally", "error", 5000);
         }
-        showToast("⚠ Cloud save failed — data kept locally", "error", 5000);
     }
 }
 
@@ -985,16 +1055,29 @@ function setupRealtime() {
             },
         )
         .subscribe((status, err) => {
-            console.log("Realtime status:", status, err ? `Error: ${err}` : "");
+            console.log(`[Realtime] Status: ${status}`, err ? `Error: ${err}` : "");
             if (status === "SUBSCRIBED") {
                 console.log("✓ Realtime subscription active");
                 setSyncState(SyncState.CONNECTED);
             } else if (status === "CHANNEL_ERROR") {
                 console.error("✗ Realtime channel error:", err);
                 setSyncState(SyncState.ERROR);
+                // Attempt to reconnect after 5 seconds
+                setTimeout(() => {
+                    console.log("[Realtime] Attempting to reconnect...");
+                    setupRealtime();
+                }, 5000);
             } else if (status === "TIMED_OUT") {
                 console.error("✗ Realtime subscription timed out");
                 setSyncState(SyncState.ERROR);
+                // Attempt to reconnect after 5 seconds
+                setTimeout(() => {
+                    console.log("[Realtime] Attempting to reconnect after timeout...");
+                    setupRealtime();
+                }, 5000);
+            } else if (status === "CLOSED") {
+                console.warn("[Realtime] Connection closed");
+                setSyncState(SyncState.OFFLINE);
             }
             updateSyncStatus();
         });
@@ -1128,6 +1211,29 @@ async function periodicSyncCheck() {
         console.error("Periodic sync check failed:", e);
     }
 }
+
+// Manual sync trigger for debugging
+window.forceSync = async function() {
+    console.log("[Sync] Manual sync triggered");
+    syncRetryCount = 0;
+    clearTimeout(saveDebounceTimer);
+    clearTimeout(syncRetryTimer);
+    await saveToSupabase();
+};
+
+// Get sync status for debugging
+window.getSyncStatus = function() {
+    return {
+        lastWriteTime,
+        saveDebounceTimer: !!saveDebounceTimer,
+        syncRetryCount,
+        syncRetryTimer: !!syncRetryTimer,
+        useCloudSync,
+        hasClient: !!supabaseClient,
+        realtimeChannel: !!realtimeChannel,
+        itemsCount: S.items.length,
+    };
+};
 
 // Start periodic sync check
 function startPeriodicSync() {
@@ -1272,7 +1378,11 @@ function save() {
     saveToLocal();
     if (!useCloudSync) return;
     clearTimeout(saveDebounceTimer);
-    saveDebounceTimer = setTimeout(() => saveToSupabase(), 800);
+    console.log(`[Sync] Debouncing save (800ms) at ${new Date().toISOString()}`);
+    saveDebounceTimer = setTimeout(() => {
+        console.log(`[Sync] Debounce timer fired, executing saveToSupabase`);
+        saveToSupabase();
+    }, 800);
 }
 
 function saveAssignees() {
