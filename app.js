@@ -567,6 +567,7 @@ function initAuth() {
 function dismissAuthGate() {
     const gate = document.getElementById("auth-gate");
     if (gate) gate.style.display = "none";
+    hideSkeleton(); // Ensure skeleton is dismissed when auth gate is dismissed
     load();
     setupRealtime();
 }
@@ -2140,7 +2141,7 @@ function attachEvents() {
                         touch.clientY - touchStartY,
                     );
                     if (deltaX < 10 && deltaY < 10) return;
-                    let ghost;
+                    let ghost = null;
                     if (!isTouchDrag) {
                         isTouchDrag = true;
                         // Create ghost clone
@@ -2574,7 +2575,14 @@ function attachEvents() {
             // Remove any existing indicator inside this group
             group
                 .querySelectorAll(".tl-drop-indicator")
-                .forEach((i) => i.remove());
+                .forEach((i) => {
+                    const parentRow = i.closest(".tl-row");
+                    if (parentRow && parentRow.style.pointerEvents === "none") {
+                        parentRow.remove();
+                    } else {
+                        i.remove();
+                    }
+                });
 
             // Find insertion point among rows in this group
             const rows = [
@@ -2593,9 +2601,8 @@ function attachEvents() {
                 }
             }
 
-            // Determine which side (left or right) based on mouse position
-            const groupRect = group.getBoundingClientRect();
-            const isLeftSide = e.clientX < groupRect.left + groupRect.width / 2;
+            // Determine the side based on the dragged row's current side
+            const isLeftSide = draggedRow.classList.contains("side-left");
 
             // Create a wrapper row for the indicator to match the grid layout
             const indicatorRow = document.createElement("div");
@@ -2627,7 +2634,7 @@ function attachEvents() {
             indicator.className = "tl-drop-indicator";
             indicator.style.width = "100%";
 
-            // Place indicator in the appropriate side
+            // Place indicator in the same side as the dragged row
             if (isLeftSide) {
                 spacer1.appendChild(indicator);
             } else {
@@ -2697,11 +2704,7 @@ function attachEvents() {
                 group.querySelector(".date-label")?.dataset.date;
             if (!date) return;
 
-            // Determine which side (left or right) based on mouse position
-            const groupRect = group.getBoundingClientRect();
-            const isLeftSide = e.clientX < groupRect.left + groupRect.width / 2;
-
-            // Re-read rows after potential DOM re-order
+            // Re-read rows after potential DOM re-order to find target row
             const rows = [
                 ...group.querySelectorAll(":scope > .tl-row"),
             ].filter((r) => r !== dragging && r.style.pointerEvents !== "none");
@@ -2716,6 +2719,17 @@ function attachEvents() {
                     afterRow = row;
                 }
             }
+
+            // Determine the side based on the target row's side (opposite for alternating pattern)
+            let isLeftSide;
+            if (afterRow) {
+                // Place on opposite side of the target row
+                isLeftSide = afterRow.classList.contains("side-right");
+            } else {
+                // Before all rows - use dragged row's current side
+                isLeftSide = dragging.classList.contains("side-left");
+            }
+
             if (afterRow) {
                 afterRow.insertAdjacentElement(
                     "afterend",
@@ -2729,7 +2743,7 @@ function attachEvents() {
                 else group.appendChild(dragging);
             }
 
-            // Update the side class based on drop position
+            // Update the side class to match the drop position (alternating pattern)
             dragging.classList.remove("side-left", "side-right");
             dragging.classList.add(isLeftSide ? "side-left" : "side-right");
 
@@ -2753,6 +2767,11 @@ function attachEvents() {
             dateItems.forEach((item) => {
                 if (item.date !== date) {
                     item.date = date;
+                    dateChanged = true;
+                }
+                // Remove fixture association when dropping to timeline
+                if (item.type === "activity" && item.fixtureId) {
+                    item.fixtureId = null;
                     dateChanged = true;
                 }
             });

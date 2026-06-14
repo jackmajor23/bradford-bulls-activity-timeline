@@ -352,8 +352,6 @@ body {
     border-radius: 8px;
     position: relative;
     z-index: 250;
-    left: 50%;
-    transform: translateX(-50%);
 }
 
 #past-toggle:hover {
@@ -2822,8 +2820,8 @@ body {
     #past-toggle {
         display: flex;
         justify-content: center;
-        padding: 8px 12px 8px 60px;
-        width: 100%;
+        padding: 8px 16px;
+        width: auto;
         box-sizing: border-box;
         background: transparent;
         border: none;
