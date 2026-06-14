@@ -2088,14 +2088,24 @@ function attachEvents() {
             el.addEventListener(
                 "touchstart",
                 (e) => {
+                    // Only initiate drag from the drag handle
+                    const handle = e.target.closest(".drag-handle");
+                    if (!handle) return;
+                    // Don't stop propagation to allow proper touch handling within accordions,
+                    // but ignore this event unless `el` is the closest draggable
+                    // ancestor of the touched handle — otherwise a touch on a
+                    // mini-activity's handle would bubble and also arm its
+                    // parent fixture-card, creating a duplicate ghost/drag.
+                    const owner = handle.closest(
+                        ".activity-card,.mini-activity,.note-card,.fixture-card,.milestone-card",
+                    );
+                    if (owner !== el) return;
+
                     const touch = e.touches[0];
                     touchStartX = touch.clientX;
                     touchStartY = touch.clientY;
                     touchElement = el;
                     isTouchDrag = false;
-                    // Only initiate drag from the drag handle
-                    if (!e.target.closest(".drag-handle")) return;
-                    // Don't stop propagation to allow proper touch handling within accordions
                     dragActivityId = el.dataset.id;
                     isDraggingActivity = true;
                     disableToggle = true;
@@ -2732,37 +2742,30 @@ function showDropIndicator(group, draggedRow, clientY) {
     clearDropIndicators();
     const { afterRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
 
+    // Match the real row markup (spacer, node, card-wrap) and side class so
+    // both the desktop 3-column grid and the mobile 2-column grid position
+    // the indicator exactly like a real card.
     const indicatorRow = document.createElement("div");
-    indicatorRow.className = "tl-row";
+    indicatorRow.className = "tl-row " + (isLeftSide ? "side-left" : "side-right");
     indicatorRow.style.pointerEvents = "none";
 
-    const spacer1 = document.createElement("div");
-    spacer1.className = isLeftSide ? "tl-card-wrap" : "tl-spacer";
-    if (isLeftSide) {
-        spacer1.style.display = "flex";
-        spacer1.style.justifyContent = "flex-end";
-        spacer1.style.paddingRight = "16px";
-    }
+    const spacer = document.createElement("div");
+    spacer.className = "tl-spacer";
 
     const node = document.createElement("div");
     node.className = "tl-node";
 
-    const spacer2 = document.createElement("div");
-    spacer2.className = isLeftSide ? "tl-spacer" : "tl-card-wrap";
-    if (!isLeftSide) {
-        spacer2.style.display = "flex";
-        spacer2.style.justifyContent = "flex-start";
-        spacer2.style.paddingLeft = "16px";
-    }
+    const cardWrap = document.createElement("div");
+    cardWrap.className = "tl-card-wrap";
 
     const indicator = document.createElement("div");
     indicator.className = "tl-drop-indicator";
     indicator.style.width = "100%";
-    (isLeftSide ? spacer1 : spacer2).appendChild(indicator);
+    cardWrap.appendChild(indicator);
 
-    indicatorRow.appendChild(spacer1);
+    indicatorRow.appendChild(spacer);
     indicatorRow.appendChild(node);
-    indicatorRow.appendChild(spacer2);
+    indicatorRow.appendChild(cardWrap);
 
     if (afterRow) {
         afterRow.insertAdjacentElement("afterend", indicatorRow);

@@ -2833,6 +2833,7 @@ body {
         padding: 8px 16px;
         left: 50%;
         transform: translateX(-50%);
+        margin-left: 0;
     }
 
     #timeline-wrap::before {
