@@ -2672,7 +2672,10 @@ function attachEvents() {
                 S.items = S.items.filter(
                     (i) => !order.includes(i.id),
                 );
-                sorted.forEach((a) => S.items.push(a));
+                sorted.forEach((a, idx) => {
+                    a.clusterOrder = idx;
+                    S.items.push(a);
+                });
                 save();
                 ensureDropdownOpen(fixtureId);
             } else if (fc && draggedItem && draggedItem.type === "activity") {
@@ -2773,7 +2776,7 @@ function attachEvents() {
                     // Reorder in S.items
                     activities.forEach((id, idx) => {
                         const item = S.items.find(i => i.id === id);
-                        if (item) item.order = idx;
+                        if (item) item.clusterOrder = idx;
                     });
                     
                     // Apply snap animation and save
@@ -3603,6 +3606,7 @@ function saveModal() {
             complete: existing ? existing.complete : false,
             fixtureId: resolvedFixtureId,
             linkedFixtureId: resolvedLinkedFixtureId,
+            clusterOrder: existing ? existing.clusterOrder : 0,
         };
         if (editId)
             S.items[S.items.findIndex((i) => i.id === editId)] =
