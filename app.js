@@ -97,17 +97,21 @@ const SYNC_RETRY_DELAY_MS = 2000;
 
 // Network connectivity monitoring
 let isOnline = navigator.onLine;
-let lastOnlineCheck = Date.now();
+let lastOnlineCheck = Date.now;
 
 window.addEventListener('online', () => {
     if (!isOnline) {
         console.log('[Network] Connection restored');
         isOnline = true;
         // Trigger a sync when coming back online
-        if (useCloudSync && supabaseClient) {
+        if (typeof useCloudSync !== 'undefined' && useCloudSync && supabaseClient) {
             console.log('[Network] Triggering sync after reconnection');
-            clearTimeout(saveDebounceTimer);
-            saveDebounceTimer = setTimeout(() => saveToSupabase(), 1000);
+            if (typeof saveDebounceTimer !== 'undefined') {
+                clearTimeout(saveDebounceTimer);
+            }
+            if (typeof saveToSupabase === 'function') {
+                setTimeout(() => saveToSupabase(), 1000);
+            }
         }
     }
 });
@@ -116,7 +120,9 @@ window.addEventListener('offline', () => {
     if (isOnline) {
         console.log('[Network] Connection lost');
         isOnline = false;
-        setSyncState(SyncState.OFFLINE);
+        if (typeof setSyncState === 'function' && typeof SyncState !== 'undefined') {
+            setSyncState(SyncState.OFFLINE);
+        }
     }
 });
 
