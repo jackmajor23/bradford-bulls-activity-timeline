@@ -3017,17 +3017,16 @@ function computeDropPosition(group, draggedRow, clientY) {
         if (dist < 0 && Math.abs(dist) < minAbsDist) { minAbsDist = Math.abs(dist); beforeRow = row; }
     }
 
-    let isLeftSide;
-    // For empty groups or when dropping as first item, always start on left side
-    if (rows.length === 0 || (!beforeRow && !afterRow)) {
-        isLeftSide = true;
+    // Calculate insertion index to determine correct side for alternating pattern
+    let insertionIndex = 0;
+    if (afterRow) {
+        insertionIndex = rows.indexOf(afterRow) + 1;
     } else if (beforeRow) {
-        isLeftSide = beforeRow.classList.contains("side-right");
-    } else if (afterRow) {
-        isLeftSide = afterRow.classList.contains("side-right");
-    } else {
-        isLeftSide = draggedRow.classList.contains("side-left");
+        insertionIndex = rows.indexOf(beforeRow);
     }
+    
+    // Alternating pattern: even index = left, odd index = right
+    let isLeftSide = insertionIndex % 2 === 0;
 
     let targetRow = afterRow, checkRow = targetRow;
     while (checkRow) {
@@ -3043,13 +3042,13 @@ function computeDropPosition(group, draggedRow, clientY) {
             }
         } else break;
     }
-    return { afterRow: targetRow, isLeftSide };
+    return { afterRow: targetRow, beforeRow, isLeftSide };
 }
 
 // Renders the "blue box" placement indicator (desktop dragover + mobile touchmove)
 function showDropIndicator(group, draggedRow, clientY) {
     clearDropIndicators();
-    const { afterRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
+    const { afterRow, beforeRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
 
     // Match the real row markup (spacer, node, card-wrap) and side class so
     // both the desktop 3-column grid and the mobile 2-column grid position
@@ -3076,7 +3075,9 @@ function showDropIndicator(group, draggedRow, clientY) {
     indicatorRow.appendChild(node);
     indicatorRow.appendChild(cardWrap);
 
-    if (afterRow) {
+    if (beforeRow) {
+        beforeRow.insertAdjacentElement("beforebegin", indicatorRow);
+    } else if (afterRow) {
         afterRow.insertAdjacentElement("afterend", indicatorRow);
     } else {
         const firstRow = group.querySelector(":scope > .tl-row");
@@ -3091,9 +3092,11 @@ function performTimelineDrop(group, draggedRow, clientY) {
     const date = group.querySelector(".date-label")?.dataset.date;
     if (!date) return;
 
-    const { afterRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
+    const { afterRow, beforeRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
 
-    if (afterRow) {
+    if (beforeRow) {
+        beforeRow.insertAdjacentElement("beforebegin", draggedRow);
+    } else if (afterRow) {
         afterRow.insertAdjacentElement("afterend", draggedRow);
     } else {
         const firstRow = group.querySelector(":scope > .tl-row");
