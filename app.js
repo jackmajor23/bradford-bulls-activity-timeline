@@ -2589,6 +2589,7 @@ function attachEvents() {
                 ...group.querySelectorAll(":scope > .tl-row"),
             ];
             let afterRow = null;
+            let beforeRow = null;
             let minAbsDist = Infinity;
             for (const row of rows) {
                 if (row === draggedRow) continue;
@@ -2599,10 +2600,50 @@ function attachEvents() {
                     minAbsDist = dist;
                     afterRow = row;
                 }
+                if (dist < 0 && Math.abs(dist) < minAbsDist) {
+                    minAbsDist = Math.abs(dist);
+                    beforeRow = row;
+                }
             }
 
-            // Determine the side based on the dragged row's current side
-            const isLeftSide = draggedRow.classList.contains("side-left");
+            // Determine the side based on the row above (beforeRow) for alternating pattern
+            // If placing below a card, use that card's opposite side
+            let isLeftSide;
+            if (beforeRow) {
+                // Show indicator on opposite side of the row above
+                isLeftSide = beforeRow.classList.contains("side-right");
+            } else if (afterRow) {
+                // If no row above (at top), use opposite of row below
+                isLeftSide = afterRow.classList.contains("side-right");
+            } else {
+                // Before all rows - use dragged row's current side
+                isLeftSide = draggedRow.classList.contains("side-left");
+            }
+
+            // Check if there's already a card on the opposite side at this position
+            // If so, find the next available position
+            let targetRow = afterRow;
+            let checkRow = targetRow;
+            while (checkRow) {
+                const isCheckRowLeft = checkRow.classList.contains("side-left");
+                if ((isLeftSide && !isCheckRowLeft) || (!isLeftSide && isCheckRowLeft)) {
+                    // Found a row on the opposite side at this position
+                    // Move to the next position
+                    const nextRow = checkRow.nextElementSibling;
+                    if (nextRow && nextRow.classList.contains("tl-row")) {
+                        targetRow = nextRow;
+                        checkRow = nextRow;
+                    } else {
+                        // No more rows, place at the end
+                        targetRow = null;
+                        break;
+                    }
+                } else {
+                    // No conflict at this position
+                    break;
+                }
+            }
+            afterRow = targetRow;
 
             // Create a wrapper row for the indicator to match the grid layout
             const indicatorRow = document.createElement("div");
@@ -2709,6 +2750,7 @@ function attachEvents() {
                 ...group.querySelectorAll(":scope > .tl-row"),
             ].filter((r) => r !== dragging && r.style.pointerEvents !== "none");
             let afterRow = null;
+            let beforeRow = null;
             let minAbsDist = Infinity;
             for (const row of rows) {
                 const box = row.getBoundingClientRect();
@@ -2718,17 +2760,49 @@ function attachEvents() {
                     minAbsDist = dist;
                     afterRow = row;
                 }
+                if (dist < 0 && Math.abs(dist) < minAbsDist) {
+                    minAbsDist = Math.abs(dist);
+                    beforeRow = row;
+                }
             }
 
-            // Determine the side based on the target row's side (opposite for alternating pattern)
+            // Determine the side based on the row above (beforeRow) for alternating pattern
             let isLeftSide;
-            if (afterRow) {
-                // Place on opposite side of the target row
+            if (beforeRow) {
+                // Place on opposite side of the row above
+                isLeftSide = beforeRow.classList.contains("side-right");
+            } else if (afterRow) {
+                // If no row above (at top), use opposite of row below
                 isLeftSide = afterRow.classList.contains("side-right");
             } else {
                 // Before all rows - use dragged row's current side
                 isLeftSide = dragging.classList.contains("side-left");
             }
+
+            // Check if there's already a card on the opposite side at this position
+            // If so, find the next available position
+            let targetRow = afterRow;
+            let checkRow = targetRow;
+            while (checkRow) {
+                const isCheckRowLeft = checkRow.classList.contains("side-left");
+                if ((isLeftSide && !isCheckRowLeft) || (!isLeftSide && isCheckRowLeft)) {
+                    // Found a row on the opposite side at this position
+                    // Move to the next position
+                    const nextRow = checkRow.nextElementSibling;
+                    if (nextRow && nextRow.classList.contains("tl-row")) {
+                        targetRow = nextRow;
+                        checkRow = nextRow;
+                    } else {
+                        // No more rows, place at the end
+                        targetRow = null;
+                        break;
+                    }
+                } else {
+                    // No conflict at this position
+                    break;
+                }
+            }
+            afterRow = targetRow;
 
             if (afterRow) {
                 afterRow.insertAdjacentElement(
