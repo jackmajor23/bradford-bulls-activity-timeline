@@ -208,6 +208,10 @@ const KNOWN_LOGO_MAP = Object.fromEntries(
     ]),
 );
 
+// Branded fallback used when a team's logo cannot be resolved/loaded
+const TEAM_LOGO_FALLBACK =
+    "https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/team-placeholder.png";
+
 // FIX: Render a proper SVG shield as the terminal fallback — never blank
 function shieldSVG(name) {
     const initials = teamInitials(name);
@@ -228,8 +232,9 @@ function logoImgWithFallback(url, name) {
       src="${url}"
       alt="${escaped}"
       data-team="${escaped}"
+      data-fallback="${TEAM_LOGO_FALLBACK}"
       onload="this.style.display='block';this.nextElementSibling&&(this.nextElementSibling.style.display='none')"
-      onerror="this.style.display='none';var fb=this.nextElementSibling;if(fb){fb.style.display='flex';}discoverLogoAsync(this.dataset.team);"
+      onerror="if(this.src!==this.dataset.fallback){this.src=this.dataset.fallback;}else{this.style.display='none';var fb=this.nextElementSibling;if(fb){fb.style.display='flex';}}"
     ><div class="logo-shield-wrap" style="display:none">${shieldSVG(name)}</div>`;
 }
 
@@ -941,7 +946,7 @@ function handleRealtimeEvent(payload, itemType) {
                 if (window.notificationManager) {
                     window.notificationManager.conflictDetected(conflict);
                 }
-                showSyncToast("⚠ Conflict resolved (merged)");
+                showSyncToast("⚠ Conflict resolved (merged)", "warning");
             }
         }
         S.items[idx] = finalItem;
@@ -1048,7 +1053,7 @@ async function loadFromCloud() {
                 : S.savedAssignees;
             saveToLocal();
             render();
-            showToast("✓ Synced from cloud");
+            showToast("✓ Synced from cloud", "success", 2000);
         } else {
             // Cloud is empty (first run) — push local data up.
             console.log(
@@ -1617,8 +1622,8 @@ function renderFixtureGroup(g, side, isPast) {
         countdownCls = "far";
     }
     const teamLogo = getTeamLogo(f.opponent);
-    // Always render both img and shield - img loads if available, falls back to shield
-    const logoHtml = `<img src="${teamLogo || ''}" alt="${esc(f.opponent)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" style="${teamLogo ? '' : 'display:none;'}"><div class="fixture-logo-initials" style="${teamLogo ? 'display:none;' : ''}">${shieldSVG(f.opponent)}</div>`;
+    // Real logo -> Bradford Bulls placeholder -> SVG shield
+    const logoHtml = `<img src="${teamLogo || TEAM_LOGO_FALLBACK}" alt="${esc(f.opponent)}" data-fallback="${TEAM_LOGO_FALLBACK}" onerror="if(this.src!==this.dataset.fallback){this.src=this.dataset.fallback;}else{this.style.display='none';this.nextElementSibling.style.display='flex';}"><div class="fixture-logo-initials" style="display:none;">${shieldSVG(f.opponent)}</div>`;
     const teamBadge = f.teamType
         ? `<span class="team-badge">${esc(f.teamType)}</span>`
         : "";
@@ -1703,13 +1708,15 @@ function togglePasswordVisibility() {
 
 let syncToastTimer = null;
 let syncToastMsg = null;
+let syncToastType = "success";
 
-function showSyncToast(msg = "🔄 Synced from another device") {
+function showSyncToast(msg = "🔄 Synced from another device", type = "success") {
     // Keep the most recent message but only show one toast
     syncToastMsg = msg;
+    syncToastType = type;
     if (syncToastTimer) return; // already pending, do nothing
     syncToastTimer = setTimeout(() => {
-        showToast(syncToastMsg);
+        showToast(syncToastMsg, syncToastType);
         syncToastTimer = null;
         syncToastMsg = null;
     }, 300); // 300ms window batches all table events from one sync
@@ -2084,6 +2091,7 @@ function attachEvents() {
             let touchStartX,
                 touchStartY,
                 touchElement,
+                touchGhostEl = null,
                 isTouchDrag = false;
             el.addEventListener(
                 "touchstart",
@@ -2132,12 +2140,11 @@ function attachEvents() {
                     const deltaY = Math.abs(
                         touch.clientY - touchStartY,
                     );
-                    if (deltaX < 10 && deltaY < 10) return;
-                    let ghost = null;
+                    if (deltaX < 4 && deltaY < 4) return;
                     if (!isTouchDrag) {
                         isTouchDrag = true;
                         // Create ghost clone
-                        ghost = el.cloneNode(true);
+                        const ghost = el.cloneNode(true);
                         ghost.id = "touch-drag-ghost";
                         ghost.className =
                             (ghost.className || "") +
@@ -2149,10 +2156,12 @@ function attachEvents() {
                             "px";
                         ghost.style.top = touch.clientY - 30 + "px";
                         document.body.appendChild(ghost);
+                        touchGhostEl = ghost;
                     }
                     e.preventDefault();
-                    // Move ghost with smooth easing
-                    if (ghost) {
+                    // Move ghost with smooth easing, tracked across every move
+                    if (touchGhostEl) {
+                        const ghost = touchGhostEl;
                         requestAnimationFrame(() => {
                             const targetX = touch.clientX - ghost.offsetWidth / 2;
                             const targetY = touch.clientY - 30;
@@ -2249,6 +2258,7 @@ function attachEvents() {
             const ghost =
                 document.getElementById("touch-drag-ghost");
             if (ghost) ghost.remove();
+            touchGhostEl = null;
             // Remove drop highlights
             document
                 .querySelectorAll(".fixture-card.touch-drop-target")
