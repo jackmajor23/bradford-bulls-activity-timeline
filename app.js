@@ -3374,7 +3374,7 @@ function saveModal() {
                     " Matchday Activities";
         }
     });
-    showToast("Changes saved.");
+    showToast("Changes saved");
 }
 
 // ─── DELETE ───────────────────────────────────────────────────
