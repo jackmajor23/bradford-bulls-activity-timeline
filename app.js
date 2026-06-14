@@ -2403,7 +2403,7 @@ function renderFixtureGroup(g, side, isPast) {
     // Real logo -> Bradford Bulls placeholder -> SVG shield
     const logoHtml = `<img src="${teamLogo || TEAM_LOGO_FALLBACK}" alt="${esc(f.opponent)}" data-fallback="${TEAM_LOGO_FALLBACK}" onerror="if(this.src!==this.dataset.fallback){this.src=this.dataset.fallback;}else{this.style.display='none';this.nextElementSibling.style.display='flex';}"><div class="fixture-logo-initials" style="display:none;">${shieldSVG(f.opponent)}</div>`;
     const teamBadge = f.teamType
-        ? `<span class="team-badge">${esc(f.teamType)}</span>`
+        ? `<span class="team-badge" data-team-type="${esc(f.teamType)}">${esc(f.teamType)}</span>`
         : "";
     const actsHtml = acts
         .map((a) => renderMiniActivity(a))
@@ -3805,23 +3805,36 @@ function setupDateInputListeners() {
     const dateInputs = document.querySelectorAll('input[type="date"]');
     dateInputs.forEach(input => {
         let originalValue = input.value;
+        let hasInteracted = false;
 
-        input.addEventListener('focus', function() {
-            originalValue = this.value;
-            // Temporarily clear the value to prevent cross-month highlighting
-            this.value = '';
+        input.addEventListener('focusin', function(e) {
+            // Store original value when picker is about to open
+            if (!hasInteracted) {
+                originalValue = this.value;
+                this.setAttribute('data-original-value', this.value);
+                hasInteracted = true;
+                
+                // Clear value to prevent cross-month highlighting
+                this.value = '';
+                
+                // Force a repaint to ensure the browser registers the clear
+                this.blur();
+                this.focus();
+            }
         });
 
-        input.addEventListener('blur', function() {
+        input.addEventListener('focusout', function(e) {
+            hasInteracted = false;
             // If no new value was selected, restore the original
             if (!this.value) {
-                this.value = originalValue;
+                this.value = this.getAttribute('data-original-value') || originalValue;
             }
         });
 
         input.addEventListener('change', function() {
-            // When a new date is selected, update the original value
-            originalValue = this.value;
+            // When a new date is selected, update the stored value
+            this.setAttribute('data-original-value', this.value);
+            hasInteracted = false;
         });
     });
 }

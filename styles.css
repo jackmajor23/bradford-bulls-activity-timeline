@@ -720,6 +720,12 @@ body {
     margin-top: 2px;
 }
 
+/* Team type gradient backgrounds - Bulls colors */
+.team-badge[data-team-type="Men's"] {
+    background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+    color: #fff;
+}
+
 .fixture-meta {
     flex: 1;
 }
