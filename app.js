@@ -3018,9 +3018,16 @@ function computeDropPosition(group, draggedRow, clientY) {
     }
 
     let isLeftSide;
-    if (beforeRow) isLeftSide = beforeRow.classList.contains("side-right");
-    else if (afterRow) isLeftSide = afterRow.classList.contains("side-right");
-    else isLeftSide = draggedRow.classList.contains("side-left");
+    // For empty groups or when dropping as first item, always start on left side
+    if (rows.length === 0 || (!beforeRow && !afterRow)) {
+        isLeftSide = true;
+    } else if (beforeRow) {
+        isLeftSide = beforeRow.classList.contains("side-right");
+    } else if (afterRow) {
+        isLeftSide = afterRow.classList.contains("side-right");
+    } else {
+        isLeftSide = draggedRow.classList.contains("side-left");
+    }
 
     let targetRow = afterRow, checkRow = targetRow;
     while (checkRow) {
@@ -3109,8 +3116,22 @@ function performTimelineDrop(group, draggedRow, clientY) {
         if (item.type === "activity" && item.fixtureId) { item.fixtureId = null; dateChanged = true; }
     });
 
-    // Reassemble S.items and sort by date to preserve timeline order
-    S.items = [...otherItems, ...dateItems].sort((a, b) => a.date.localeCompare(b.date));
+    // Reassemble S.items: preserve order within each date group
+    // Items in the current date keep their DOM order (orderedIds)
+    // Items in other dates keep their original order
+    const dateMap = {};
+    otherItems.forEach(item => {
+        if (!dateMap[item.date]) dateMap[item.date] = [];
+        dateMap[item.date].push(item);
+    });
+    if (!dateMap[date]) dateMap[date] = [];
+    dateItems.forEach(item => dateMap[date].push(item));
+
+    // Flatten back to S.items, sorted by date, preserving order within each date
+    S.items = Object.entries(dateMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .flatMap(([, items]) => items);
+
     save();
     render();
     if (dateChanged) showToast("📅 Date updated");
