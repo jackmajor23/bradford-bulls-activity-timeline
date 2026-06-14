@@ -2002,15 +2002,7 @@ function attachEvents() {
     }
     
     // Remove any remaining drop indicator lines
-    document.querySelectorAll(".tl-drop-indicator").forEach(el => {
-        // Remove the parent row if it's an indicator row
-        const parentRow = el.closest(".tl-row");
-        if (parentRow && parentRow.style.pointerEvents === "none") {
-            parentRow.remove();
-        } else {
-            el.remove();
-        }
-    });
+    clearDropIndicators();
 
     document.querySelectorAll(".linked-match-chip").forEach((chip) => {
         chip.addEventListener("click", (e) => {
@@ -2062,17 +2054,7 @@ function attachEvents() {
                 isDraggingActivity = false;
                 dragEndTime = Date.now();
                 // Remove all indicators and dragging classes
-                document
-                    .querySelectorAll(".tl-drop-indicator")
-                    .forEach((i) => {
-                        // Remove the parent row if it's an indicator row
-                        const parentRow = i.closest(".tl-row");
-                        if (parentRow && parentRow.style.pointerEvents === "none") {
-                            parentRow.remove();
-                        } else {
-                            i.remove();
-                        }
-                    });
+                clearDropIndicators();
                 document
                     .querySelectorAll(".dragging")
                     .forEach((r) => r.classList.remove("dragging"));
@@ -2168,54 +2150,21 @@ function attachEvents() {
                             ghost.style.top = targetY + "px";
                         });
                     }
-                    // Highlight drop target row
+                    // Clear previous highlights/indicators
                     document
-                        .querySelectorAll(
-                            ".tl-row.touch-drop-target",
-                        )
+                        .querySelectorAll(".fixture-card.touch-drop-target")
                         .forEach((r) =>
                             r.classList.remove("touch-drop-target"),
                         );
+                    clearDropIndicators();
+
                     const target =
                         document.elementFromPoint(
                             touch.clientX,
                             touch.clientY + 20
                         );
-                    const targetRow = target?.closest(".tl-row");
-                    const currentRow = el.closest(".tl-row");
-                    
-                    // Allow dropping within the same row for reordering
-                    if (targetRow) {
-                        document
-                            .querySelectorAll(
-                                ".touch-drop-target"
-                            )
-                            .forEach(el =>
-                                el.classList.remove(
-                                    "touch-drop-target"
-                                )
-                            );
-                    }
 
-                    const fixtureCard =
-                        target?.closest(
-                            ".fixture-card"
-                        );
-
-                    if (fixtureCard) {
-                        fixtureCard.classList.add(
-                            "touch-drop-target"
-                        );
-                    }
-
-                    // Allow same-row drops for reordering within the same date
-                    if (targetRow) {
-                        targetRow.classList.add(
-                            "touch-drop-target"
-                        );
-                    }
-
-                    // Cluster placeholder
+                    // Cluster placeholder (reordering activities within an accordion)
                     const cluster =
                         target?.closest(".activity-cluster");
 
@@ -2250,6 +2199,35 @@ function attachEvents() {
                                 cluster.insertBefore(placeholder, after);
                             }
                         }
+                    } else {
+                        document
+                            .querySelectorAll(".drag-placeholder")
+                            .forEach((p) => p.remove());
+
+                        const draggedAct = S.items.find(
+                            (i) => i.id === dragActivityId,
+                        );
+                        const fixtureCard =
+                            target?.closest(".fixture-card");
+
+                        if (fixtureCard && draggedAct?.type === "activity") {
+                            // Hovering a fixture card — highlight as a link target
+                            fixtureCard.classList.add(
+                                "touch-drop-target"
+                            );
+                        } else if (!el.classList.contains("mini-activity")) {
+                            // Hovering the main timeline — show blue placement box
+                            const dateGroup =
+                                target?.closest(".date-group");
+                            const draggedRow = el.closest(".tl-row");
+                            if (
+                                dateGroup &&
+                                draggedRow &&
+                                !draggedRow.closest(".activity-cluster")
+                            ) {
+                                showDropIndicator(dateGroup, draggedRow, touch.clientY);
+                            }
+                        }
                     }
                 },
                 { passive: false }
@@ -2263,10 +2241,11 @@ function attachEvents() {
             if (ghost) ghost.remove();
             // Remove drop highlights
             document
-                .querySelectorAll(".tl-row.touch-drop-target")
+                .querySelectorAll(".fixture-card.touch-drop-target")
                 .forEach((r) =>
                     r.classList.remove("touch-drop-target"),
                 );
+            clearDropIndicators();
             if (!isTouchDrag) {
                 isDraggingActivity = false;
                 touchElement = null;
@@ -2321,32 +2300,13 @@ function attachEvents() {
                     touch.clientX,
                     touch.clientY + 20
                 );
+            const draggedItem = S.items.find(
+                (i) => i.id === dragActivityId,
+            );
+            const cluster = target?.closest(".activity-cluster");
             const fc = target?.closest(".fixture-card");
-            if (fc) {
-                const act = S.items.find(
-                    (i) => i.id === dragActivityId,
-                );
-                if (act && act.type === "activity") {
-                    const fixtureId =
-                        fc.dataset.fixtureId || fc.dataset.id;
-                    act.fixtureId = fixtureId;
-                    act.linkedFixtureId = fixtureId;
-                    // Animate fixture card feedback
-                    fc.style.transition = "all 0.3s ease";
-                    fc.style.transform = "scale(1.02)";
-                    setTimeout(() => {
-                        fc.style.transform = "scale(1)";
-                        setTimeout(() => {
-                            fc.style.transition = "";
-                        }, 300);
-                    }, 100);
-                    save();
-                    render();
-                    showToast("🏉 Activity linked to match!");
-                }
-            }
-            const cluster =
-                target?.closest(".activity-cluster");
+            const dateGroup = target?.closest(".date-group");
+
             if (cluster) {
                 const placeholder =
                     cluster.querySelector(".drag-placeholder");
@@ -2357,27 +2317,24 @@ function attachEvents() {
                 }
                 // Auto-snap to nearest position
                 snapToNearestPosition(el, cluster);
-                
+
                 // Smooth animate back to final position
                 el.style.transition = "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
                 el.style.transform = "scale(1)";
                 setTimeout(() => {
                     el.style.transition = "";
                 }, 400);
-                
+
                 const fixtureId = cluster.id.replace(
                     "cluster-",
                     "",
                 );
-                const draggedAct = S.items.find(
-                    (i) => i.id === dragActivityId,
-                );
                 if (
-                    draggedAct &&
-                    draggedAct.type === "activity"
+                    draggedItem &&
+                    draggedItem.type === "activity"
                 ) {
-                    draggedAct.fixtureId = fixtureId;
-                    draggedAct.linkedFixtureId = fixtureId;
+                    draggedItem.fixtureId = fixtureId;
+                    draggedItem.linkedFixtureId = fixtureId;
                 }
                 const order = Array.from(
                     cluster.querySelectorAll(".mini-activity"),
@@ -2396,27 +2353,45 @@ function attachEvents() {
                 sorted.forEach((a) => S.items.push(a));
                 save();
                 ensureDropdownOpen(fixtureId);
-            } else {
-                // Drop onto a timeline date group — update the date and remove fixture association
-                const dateGroup =
-                    target?.closest(".date-group");
-                if (dateGroup) {
+            } else if (fc && draggedItem && draggedItem.type === "activity") {
+                // Drop onto a fixture card — link activity to that match
+                const fixtureId =
+                    fc.dataset.fixtureId || fc.dataset.id;
+                draggedItem.fixtureId = fixtureId;
+                draggedItem.linkedFixtureId = fixtureId;
+                // Animate fixture card feedback
+                fc.style.transition = "all 0.3s ease";
+                fc.style.transform = "scale(1.02)";
+                setTimeout(() => {
+                    fc.style.transform = "scale(1)";
+                    setTimeout(() => {
+                        fc.style.transition = "";
+                    }, 300);
+                }, 100);
+                save();
+                render();
+                showToast("🏉 Activity linked to match!");
+            } else if (dateGroup) {
+                if (el.classList.contains("mini-activity")) {
+                    // Drag a matchday activity back out onto the main timeline
                     const date =
                         dateGroup.querySelector(".date-label")
                             ?.dataset.date;
-                    if (date) {
-                        const item = S.items.find(
-                            (i) => i.id === dragActivityId,
-                        );
-                        if (item) {
-                            item.fixtureId = null;
-                            if (item.date !== date) {
-                                item.date = date;
-                            }
-                            save();
-                            render();
-                            showToast("📅 Activity moved to timeline");
+                    if (date && draggedItem) {
+                        draggedItem.fixtureId = null;
+                        draggedItem.linkedFixtureId = null;
+                        if (draggedItem.date !== date) {
+                            draggedItem.date = date;
                         }
+                        save();
+                        render();
+                        showToast("📅 Activity moved to timeline");
+                    }
+                } else {
+                    // Reorder/move this row within the timeline (same or different date)
+                    const draggedRow = el.closest(".tl-row");
+                    if (draggedRow && !draggedRow.closest(".activity-cluster")) {
+                        performTimelineDrop(dateGroup, draggedRow, touch.clientY);
                     }
                 }
             }
@@ -2567,296 +2542,28 @@ function attachEvents() {
                 draggedRow.closest(".activity-cluster")
             )
                 return;
-
-            const date =
-                group.querySelector(".date-label")?.dataset.date;
-            if (!date) return;
-
-            // Remove any existing indicator inside this group
-            group
-                .querySelectorAll(".tl-drop-indicator")
-                .forEach((i) => {
-                    const parentRow = i.closest(".tl-row");
-                    if (parentRow && parentRow.style.pointerEvents === "none") {
-                        parentRow.remove();
-                    } else {
-                        i.remove();
-                    }
-                });
-
-            // Find insertion point among rows in this group
-            const rows = [
-                ...group.querySelectorAll(":scope > .tl-row"),
-            ];
-            let afterRow = null;
-            let beforeRow = null;
-            let minAbsDist = Infinity;
-            for (const row of rows) {
-                if (row === draggedRow) continue;
-                const box = row.getBoundingClientRect();
-                const mid = box.top + box.height / 2;
-                const dist = e.clientY - mid;
-                if (dist > 0 && dist < minAbsDist) {
-                    minAbsDist = dist;
-                    afterRow = row;
-                }
-                if (dist < 0 && Math.abs(dist) < minAbsDist) {
-                    minAbsDist = Math.abs(dist);
-                    beforeRow = row;
-                }
-            }
-
-            // Determine the side based on the row above (beforeRow) for alternating pattern
-            // If placing below a card, use that card's opposite side
-            let isLeftSide;
-            if (beforeRow) {
-                // Show indicator on opposite side of the row above
-                isLeftSide = beforeRow.classList.contains("side-right");
-            } else if (afterRow) {
-                // If no row above (at top), use opposite of row below
-                isLeftSide = afterRow.classList.contains("side-right");
-            } else {
-                // Before all rows - use dragged row's current side
-                isLeftSide = draggedRow.classList.contains("side-left");
-            }
-
-            // Check if there's already a card on the opposite side at this position
-            // If so, find the next available position
-            let targetRow = afterRow;
-            let checkRow = targetRow;
-            while (checkRow) {
-                const isCheckRowLeft = checkRow.classList.contains("side-left");
-                if ((isLeftSide && !isCheckRowLeft) || (!isLeftSide && isCheckRowLeft)) {
-                    // Found a row on the opposite side at this position
-                    // Move to the next position
-                    const nextRow = checkRow.nextElementSibling;
-                    if (nextRow && nextRow.classList.contains("tl-row")) {
-                        targetRow = nextRow;
-                        checkRow = nextRow;
-                    } else {
-                        // No more rows, place at the end
-                        targetRow = null;
-                        break;
-                    }
-                } else {
-                    // No conflict at this position
-                    break;
-                }
-            }
-            afterRow = targetRow;
-
-            // Create a wrapper row for the indicator to match the grid layout
-            const indicatorRow = document.createElement("div");
-            indicatorRow.className = "tl-row";
-            indicatorRow.style.pointerEvents = "none";
-
-            // Create the three-column grid structure
-            const spacer1 = document.createElement("div");
-            spacer1.className = isLeftSide ? "tl-card-wrap" : "tl-spacer";
-            if (isLeftSide) {
-                spacer1.style.display = "flex";
-                spacer1.style.justifyContent = "flex-end";
-                spacer1.style.paddingRight = "16px";
-            }
-
-            const node = document.createElement("div");
-            node.className = "tl-node";
-
-            const spacer2 = document.createElement("div");
-            spacer2.className = isLeftSide ? "tl-spacer" : "tl-card-wrap";
-            if (!isLeftSide) {
-                spacer2.style.display = "flex";
-                spacer2.style.justifyContent = "flex-start";
-                spacer2.style.paddingLeft = "16px";
-            }
-
-            // Create the actual indicator box
-            const indicator = document.createElement("div");
-            indicator.className = "tl-drop-indicator";
-            indicator.style.width = "100%";
-
-            // Place indicator in the same side as the dragged row
-            if (isLeftSide) {
-                spacer1.appendChild(indicator);
-            } else {
-                spacer2.appendChild(indicator);
-            }
-
-            indicatorRow.appendChild(spacer1);
-            indicatorRow.appendChild(node);
-            indicatorRow.appendChild(spacer2);
-
-            // Insert the indicator row
-            if (afterRow) {
-                afterRow.insertAdjacentElement(
-                    "afterend",
-                    indicatorRow,
-                );
-            } else {
-                // Before all rows
-                const firstRow =
-                    group.querySelector(":scope > .tl-row");
-                if (firstRow)
-                    firstRow.insertAdjacentElement(
-                        "beforebegin",
-                        indicatorRow,
-                    );
-                else group.appendChild(indicatorRow);
-            }
+            if (!group.querySelector(".date-label")?.dataset.date) return;
+            showDropIndicator(group, draggedRow, e.clientY);
         });
 
         group.addEventListener("dragleave", (e) => {
             // Only remove if we're leaving the group entirely
             if (!group.contains(e.relatedTarget)) {
-                group
-                    .querySelectorAll(".tl-drop-indicator")
-                    .forEach((i) => {
-                        // Remove the parent row if it's an indicator row
-                        const parentRow = i.closest(".tl-row");
-                        if (parentRow && parentRow.style.pointerEvents === "none") {
-                            parentRow.remove();
-                        } else {
-                            i.remove();
-                        }
-                    });
+                clearDropIndicators();
             }
         });
 
         group.addEventListener("drop", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Clean up indicators - remove parent rows if they're indicator rows
-            document
-                .querySelectorAll(".tl-drop-indicator")
-                .forEach((i) => {
-                    const parentRow = i.closest(".tl-row");
-                    if (parentRow && parentRow.style.pointerEvents === "none") {
-                        parentRow.remove();
-                    } else {
-                        i.remove();
-                    }
-                });
+            clearDropIndicators();
 
             const dragging =
                 document.querySelector(".tl-row.dragging");
             if (!dragging || dragging.closest(".activity-cluster"))
                 return;
-            const date =
-                group.querySelector(".date-label")?.dataset.date;
-            if (!date) return;
 
-            // Re-read rows after potential DOM re-order to find target row
-            const rows = [
-                ...group.querySelectorAll(":scope > .tl-row"),
-            ].filter((r) => r !== dragging && r.style.pointerEvents !== "none");
-            let afterRow = null;
-            let beforeRow = null;
-            let minAbsDist = Infinity;
-            for (const row of rows) {
-                const box = row.getBoundingClientRect();
-                const mid = box.top + box.height / 2;
-                const dist = e.clientY - mid;
-                if (dist > 0 && dist < minAbsDist) {
-                    minAbsDist = dist;
-                    afterRow = row;
-                }
-                if (dist < 0 && Math.abs(dist) < minAbsDist) {
-                    minAbsDist = Math.abs(dist);
-                    beforeRow = row;
-                }
-            }
-
-            // Determine the side based on the row above (beforeRow) for alternating pattern
-            let isLeftSide;
-            if (beforeRow) {
-                // Place on opposite side of the row above
-                isLeftSide = beforeRow.classList.contains("side-right");
-            } else if (afterRow) {
-                // If no row above (at top), use opposite of row below
-                isLeftSide = afterRow.classList.contains("side-right");
-            } else {
-                // Before all rows - use dragged row's current side
-                isLeftSide = dragging.classList.contains("side-left");
-            }
-
-            // Check if there's already a card on the opposite side at this position
-            // If so, find the next available position
-            let targetRow = afterRow;
-            let checkRow = targetRow;
-            while (checkRow) {
-                const isCheckRowLeft = checkRow.classList.contains("side-left");
-                if ((isLeftSide && !isCheckRowLeft) || (!isLeftSide && isCheckRowLeft)) {
-                    // Found a row on the opposite side at this position
-                    // Move to the next position
-                    const nextRow = checkRow.nextElementSibling;
-                    if (nextRow && nextRow.classList.contains("tl-row")) {
-                        targetRow = nextRow;
-                        checkRow = nextRow;
-                    } else {
-                        // No more rows, place at the end
-                        targetRow = null;
-                        break;
-                    }
-                } else {
-                    // No conflict at this position
-                    break;
-                }
-            }
-            afterRow = targetRow;
-
-            if (afterRow) {
-                afterRow.insertAdjacentElement(
-                    "afterend",
-                    dragging,
-                );
-            } else {
-                const firstRow =
-                    group.querySelector(":scope > .tl-row");
-                if (firstRow)
-                    group.insertBefore(dragging, firstRow);
-                else group.appendChild(dragging);
-            }
-
-            // Update the side class to match the drop position (alternating pattern)
-            dragging.classList.remove("side-left", "side-right");
-            dragging.classList.add(isLeftSide ? "side-left" : "side-right");
-
-            // Collect the new order from the DOM and update dates + S.items order
-            const orderedIds = [
-                ...group.querySelectorAll(
-                    ":scope > .tl-row[data-id]",
-                ),
-            ]
-                .map((row) => row.dataset.id)
-                .filter(Boolean);
-            const dateItems = orderedIds
-                .map((id) => S.items.find((i) => i.id === id))
-                .filter(Boolean);
-            const otherItems = S.items.filter(
-                (i) => !orderedIds.includes(i.id),
-            );
-
-            // ── LIVE DATE UPDATE: assign the drop-target date ──
-            let dateChanged = false;
-            dateItems.forEach((item) => {
-                if (item.date !== date) {
-                    item.date = date;
-                    dateChanged = true;
-                }
-                // Remove fixture association when dropping to timeline
-                if (item.type === "activity" && item.fixtureId) {
-                    item.fixtureId = null;
-                    dateChanged = true;
-                }
-            });
-
-            S.items = [...otherItems, ...dateItems];
-            save();
-            // Re-render so the card date label refreshes
-            render();
-            if (dateChanged) {
-                showToast("📅 Date updated");
-            }
+            performTimelineDrop(group, dragging, e.clientY);
         });
     });
 
@@ -2971,6 +2678,136 @@ function getDragAfterElement(container, y) {
         },
         { offset: Number.NEGATIVE_INFINITY },
     ).element;
+}
+
+function clearDropIndicators() {
+    document.querySelectorAll(".tl-drop-indicator").forEach((i) => {
+        const parentRow = i.closest(".tl-row");
+        if (parentRow && parentRow.style.pointerEvents === "none") {
+            parentRow.remove();
+        } else {
+            i.remove();
+        }
+    });
+}
+
+// Shared insertion-point calculation for timeline date-group drops
+function computeDropPosition(group, draggedRow, clientY) {
+    const rows = [...group.querySelectorAll(":scope > .tl-row")].filter(
+        (r) => r !== draggedRow && r.style.pointerEvents !== "none",
+    );
+    let afterRow = null, beforeRow = null, minAbsDist = Infinity;
+    for (const row of rows) {
+        const box = row.getBoundingClientRect();
+        const mid = box.top + box.height / 2;
+        const dist = clientY - mid;
+        if (dist > 0 && dist < minAbsDist) { minAbsDist = dist; afterRow = row; }
+        if (dist < 0 && Math.abs(dist) < minAbsDist) { minAbsDist = Math.abs(dist); beforeRow = row; }
+    }
+
+    let isLeftSide;
+    if (beforeRow) isLeftSide = beforeRow.classList.contains("side-right");
+    else if (afterRow) isLeftSide = afterRow.classList.contains("side-right");
+    else isLeftSide = draggedRow.classList.contains("side-left");
+
+    let targetRow = afterRow, checkRow = targetRow;
+    while (checkRow) {
+        const isCheckRowLeft = checkRow.classList.contains("side-left");
+        if ((isLeftSide && !isCheckRowLeft) || (!isLeftSide && isCheckRowLeft)) {
+            const nextRow = checkRow.nextElementSibling;
+            if (nextRow && nextRow.classList.contains("tl-row")) {
+                targetRow = nextRow;
+                checkRow = nextRow;
+            } else {
+                targetRow = null;
+                break;
+            }
+        } else break;
+    }
+    return { afterRow: targetRow, isLeftSide };
+}
+
+// Renders the "blue box" placement indicator (desktop dragover + mobile touchmove)
+function showDropIndicator(group, draggedRow, clientY) {
+    clearDropIndicators();
+    const { afterRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
+
+    const indicatorRow = document.createElement("div");
+    indicatorRow.className = "tl-row";
+    indicatorRow.style.pointerEvents = "none";
+
+    const spacer1 = document.createElement("div");
+    spacer1.className = isLeftSide ? "tl-card-wrap" : "tl-spacer";
+    if (isLeftSide) {
+        spacer1.style.display = "flex";
+        spacer1.style.justifyContent = "flex-end";
+        spacer1.style.paddingRight = "16px";
+    }
+
+    const node = document.createElement("div");
+    node.className = "tl-node";
+
+    const spacer2 = document.createElement("div");
+    spacer2.className = isLeftSide ? "tl-spacer" : "tl-card-wrap";
+    if (!isLeftSide) {
+        spacer2.style.display = "flex";
+        spacer2.style.justifyContent = "flex-start";
+        spacer2.style.paddingLeft = "16px";
+    }
+
+    const indicator = document.createElement("div");
+    indicator.className = "tl-drop-indicator";
+    indicator.style.width = "100%";
+    (isLeftSide ? spacer1 : spacer2).appendChild(indicator);
+
+    indicatorRow.appendChild(spacer1);
+    indicatorRow.appendChild(node);
+    indicatorRow.appendChild(spacer2);
+
+    if (afterRow) {
+        afterRow.insertAdjacentElement("afterend", indicatorRow);
+    } else {
+        const firstRow = group.querySelector(":scope > .tl-row");
+        if (firstRow) firstRow.insertAdjacentElement("beforebegin", indicatorRow);
+        else group.appendChild(indicatorRow);
+    }
+}
+
+// Executes a timeline reorder/date-change drop (desktop drop + mobile touchend)
+function performTimelineDrop(group, draggedRow, clientY) {
+    clearDropIndicators();
+    const date = group.querySelector(".date-label")?.dataset.date;
+    if (!date) return;
+
+    const { afterRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
+
+    if (afterRow) {
+        afterRow.insertAdjacentElement("afterend", draggedRow);
+    } else {
+        const firstRow = group.querySelector(":scope > .tl-row");
+        if (firstRow) group.insertBefore(draggedRow, firstRow);
+        else group.appendChild(draggedRow);
+    }
+
+    draggedRow.classList.remove("side-left", "side-right");
+    draggedRow.classList.add(isLeftSide ? "side-left" : "side-right");
+
+    const orderedIds = [...group.querySelectorAll(":scope > .tl-row[data-id]")]
+        .map((row) => row.dataset.id)
+        .filter(Boolean);
+    const dateItems = orderedIds.map((id) => S.items.find((i) => i.id === id)).filter(Boolean);
+    const otherItems = S.items.filter((i) => !orderedIds.includes(i.id));
+
+    let dateChanged = false;
+    dateItems.forEach((item) => {
+        if (item.date !== date) { item.date = date; dateChanged = true; }
+        if (item.type === "activity" && item.fixtureId) { item.fixtureId = null; dateChanged = true; }
+    });
+
+    S.items = [...otherItems, ...dateItems];
+    save();
+    render();
+    if (dateChanged) showToast("📅 Date updated");
 }
 
 function createDragPlaceholder() {
