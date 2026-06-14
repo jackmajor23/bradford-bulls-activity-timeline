@@ -3084,6 +3084,51 @@ will-change: transform, left, top;
         z-index: 10 !important;
     }
 
+    /* ─── MOBILE SKELETON SCREEN ─── */
+    .skeleton-timeline-wrap {
+        padding: 40px 12px;
+    }
+
+    .skeleton-spine {
+        left: 36px;
+        transform: none;
+    }
+
+    .skeleton-row {
+        grid-template-columns: 48px 1fr;
+        padding: 0 12px;
+        margin-bottom: 16px;
+    }
+
+    .skeleton-row.side-left .skeleton-card,
+    .skeleton-row.side-right .skeleton-card {
+        grid-column: 2;
+        justify-self: start;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .skeleton-row.side-left .skeleton-node,
+    .skeleton-row.side-right .skeleton-node {
+        grid-column: 1;
+        justify-self: center;
+    }
+
+    .skeleton-card {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .skeleton-card.short {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .skeleton-card.milestone {
+        width: 100%;
+        max-width: 100%;
+    }
+
     .mini-activity.dragging,
 .activity-card.dragging,
 .note-card.dragging,
