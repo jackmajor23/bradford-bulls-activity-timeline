@@ -1093,11 +1093,19 @@ function setupRealtime() {
 // Self-events (within 1 s of a local write) are discarded to prevent
 // the save → realtime → reload → save loop.
 // Enhanced: Detects conflicts and resolves using conflict resolver.
+// FIX: Only suppress events from THIS device by checking _device_id, not just time window
 function handleRealtimeEvent(payload, itemType) {
-    // Suppress events that we ourselves triggered (matches sync-config.js SELF_EVENT_WINDOW_MS)
-    if (Date.now() - lastWriteTime < 2500) return;
-
     const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    // Only suppress events that came from THIS device (check _device_id)
+    const remoteDeviceId = newRecord?._device_id || oldRecord?._device_id;
+    const myDeviceId = window.deviceManager?.deviceId;
+    
+    // Suppress if it's from our device AND within the time window
+    if (remoteDeviceId === myDeviceId && Date.now() - lastWriteTime < 2500) {
+        console.log(`[Realtime] Suppressing self-event from device ${myDeviceId}`);
+        return;
+    }
 
     if (eventType === "DELETE") {
         const deletedId = oldRecord && oldRecord.id;
@@ -1146,10 +1154,17 @@ function handleRealtimeEvent(payload, itemType) {
 
 // Handle saved_assignees realtime events
 function handleAssigneesRealtimeEvent(payload) {
-    // Suppress events that we ourselves triggered (matches sync-config.js SELF_EVENT_WINDOW_MS)
-    if (Date.now() - lastWriteTime < 2500) return;
-
-    const { eventType } = payload;
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    // Only suppress events that came from THIS device (check _device_id)
+    const remoteDeviceId = newRecord?._device_id || oldRecord?._device_id;
+    const myDeviceId = window.deviceManager?.deviceId;
+    
+    // Suppress if it's from our device AND within the time window
+    if (remoteDeviceId === myDeviceId && Date.now() - lastWriteTime < 2500) {
+        console.log(`[Realtime] Suppressing assignees self-event from device ${myDeviceId}`);
+        return;
+    }
 
     // For saved_assignees, we reload the full list since it's a simple list
     // This ensures we stay in sync with the complete set of assignees
@@ -2742,56 +2757,6 @@ function attachEvents() {
         });
     });
 
-    // Desktop drag-and-drop for mini-activity reordering within clusters
-    document.querySelectorAll(".mini-activity").forEach((ma) => {
-        ma.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            const cluster = ma.closest(".activity-cluster");
-            if (cluster && cluster.contains(document.querySelector(`[data-id="${dragActivityId}"]`))) {
-                ma.classList.add("drag-over");
-            }
-        });
-        ma.addEventListener("dragleave", () => {
-            ma.classList.remove("drag-over");
-        });
-        ma.addEventListener("drop", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            ma.classList.remove("drag-over");
-            const cluster = ma.closest(".activity-cluster");
-            const draggedElement = document.querySelector(`[data-id="${dragActivityId}"]`);
-            
-            if (draggedElement && cluster && cluster.contains(draggedElement) && draggedElement !== ma) {
-                // Reorder activities within the cluster
-                const activities = Array.from(cluster.querySelectorAll(".mini-activity")).map(el => el.dataset.id);
-                const draggedIndex = activities.indexOf(dragActivityId);
-                const targetIndex = activities.indexOf(ma.dataset.id);
-                
-                if (draggedIndex !== -1 && targetIndex !== -1) {
-                    // Update S.items order to match new visual order
-                    const [removed] = activities.splice(draggedIndex, 1);
-                    activities.splice(targetIndex, 0, removed);
-                    
-                    // Reorder in S.items
-                    activities.forEach((id, idx) => {
-                        const item = S.items.find(i => i.id === id);
-                        if (item) item.clusterOrder = idx;
-                    });
-                    
-                    // Apply snap animation and save
-                    ma.classList.add("drag-snap");
-                    ma.addEventListener("animationend", () => {
-                        ma.classList.remove("drag-snap");
-                    }, { once: true });
-                    
-                    save();
-                    render();
-                    showToast("↕️ Activity reordered!");
-                }
-            }
-        });
-    });
 
     document.querySelectorAll(".fixture-card").forEach((fc) => {
         fc.addEventListener("dragover", (e) => e.preventDefault());
@@ -2897,23 +2862,36 @@ function attachEvents() {
         .forEach((cluster) => {
             cluster.addEventListener("dragover", (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 const dragging =
                     document.querySelector(".dragging");
                 if (!dragging) return;
 
-                const existingPlaceholder =
-                    cluster.querySelector(".drag-placeholder");
-                if (existingPlaceholder)
-                    existingPlaceholder.remove();
-
-                const placeholder = createDragPlaceholder();
+                // Only update placeholder if position actually changed
                 const after = getDragAfterElement(
                     cluster,
                     e.clientY,
                 );
-                after == null
-                    ? cluster.appendChild(placeholder)
-                    : cluster.insertBefore(placeholder, after);
+                const existingPlaceholder =
+                    cluster.querySelector(".drag-placeholder");
+
+                if (!existingPlaceholder) {
+                    const placeholder = createDragPlaceholder();
+                    after == null
+                        ? cluster.appendChild(placeholder)
+                        : cluster.insertBefore(placeholder, after);
+                } else {
+                    // Move existing placeholder to new position
+                    if (after == null) {
+                        if (existingPlaceholder !== cluster.lastElementChild) {
+                            cluster.appendChild(existingPlaceholder);
+                        }
+                    } else {
+                        if (existingPlaceholder.nextSibling !== after) {
+                            cluster.insertBefore(existingPlaceholder, after);
+                        }
+                    }
+                }
             });
             cluster.addEventListener("drop", (e) => {
                 e.preventDefault();
@@ -2924,10 +2902,16 @@ function attachEvents() {
 
                 const placeholder =
                     cluster.querySelector(".drag-placeholder");
+                
+                // Get the dragged element from the DOM
+                const draggedElement = document.querySelector(`[data-id="${dragActivityId}"]`);
+                if (!draggedElement) return;
+
+                // Insert dragged element at placeholder position
                 if (placeholder) {
-                    placeholder.replaceWith(dragging);
+                    placeholder.replaceWith(draggedElement);
                 } else {
-                    cluster.appendChild(dragging);
+                    cluster.appendChild(draggedElement);
                 }
 
                 const fixtureId = cluster.id.replace(
@@ -2941,6 +2925,8 @@ function attachEvents() {
                     draggedAct.fixtureId = fixtureId;
                     draggedAct.linkedFixtureId = fixtureId;
                 }
+                
+                // Update clusterOrder based on new visual order
                 const order = Array.from(
                     cluster.querySelectorAll(".mini-activity"),
                 ).map((e) => e.dataset.id);
@@ -2949,13 +2935,13 @@ function attachEvents() {
                         i.fixtureId === fixtureId &&
                         i.type === "activity",
                 );
-                const sorted = order
-                    .map((id) => acts.find((a) => a.id === id))
-                    .filter(Boolean);
-                S.items = S.items.filter(
-                    (i) => !order.includes(i.id),
-                );
-                sorted.forEach((a) => S.items.push(a));
+                
+                // Update clusterOrder for each activity
+                order.forEach((id, idx) => {
+                    const item = S.items.find(i => i.id === id);
+                    if (item) item.clusterOrder = idx;
+                });
+                
                 save();
                 const btn = document.querySelector(
                     `[onclick="toggleActCluster('${fixtureId}')"]`,
@@ -2970,6 +2956,7 @@ function attachEvents() {
                     }, 500);
                 }
                 ensureDropdownOpen(fixtureId);
+                showToast("↕️ Activity reordered!");
             });
             cluster.addEventListener("dragleave", (e) => {
                 const placeholder =
