@@ -45,7 +45,26 @@ CREATE INDEX IF NOT EXISTS idx_activities_linked_fixture_id
     ON activities (linked_fixture_id)
     WHERE linked_fixture_id IS NOT NULL;
 
--- ─── 4. Optional: tighten RLS policies ───────────────────────
+-- ─── 4. Metadata tracking for sync conflict resolution ───────
+-- Adds device tracking and modification timestamps to enable
+-- proper conflict resolution and audit trails.
+ALTER TABLE fixtures
+    ADD COLUMN IF NOT EXISTS _device_id TEXT NULL,
+    ADD COLUMN IF NOT EXISTS _last_modified BIGINT NULL;
+
+ALTER TABLE activities
+    ADD COLUMN IF NOT EXISTS _device_id TEXT NULL,
+    ADD COLUMN IF NOT EXISTS _last_modified BIGINT NULL;
+
+ALTER TABLE milestones
+    ADD COLUMN IF NOT EXISTS _device_id TEXT NULL,
+    ADD COLUMN IF NOT EXISTS _last_modified BIGINT NULL;
+
+ALTER TABLE notes
+    ADD COLUMN IF NOT EXISTS _device_id TEXT NULL,
+    ADD COLUMN IF NOT EXISTS _last_modified BIGINT NULL;
+
+-- ─── 5. Optional: tighten RLS policies ───────────────────────
 -- Uncomment and adapt these if you want to lock down each table
 -- to authenticated users only (recommended for production).
 

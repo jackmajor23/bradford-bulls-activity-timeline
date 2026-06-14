@@ -87,6 +87,8 @@ let lastWriteTime = 0;
 let saveDebounceTimer = null;
 // FIX: Track deletes explicitly so upsert-only saves don't orphan rows.
 let pendingDeleteOps = []; // [{id, type}]
+// Periodic sync check as fallback for realtime
+let periodicSyncInterval = null;
 
 // ─── ACTIVITY / TEAM DEFINITIONS ───────────────────────────────
 const ACTIVITY_TYPES = [
@@ -478,6 +480,8 @@ function convertSupabaseRecord(record, itemType) {
                     matchType: record.match_type || "League",
                     teamType: record.team_type || "Men's",
                     assignees: [],
+                    _deviceId: record._device_id || null,
+                    _lastModified: record._last_modified || null,
                 };
             case "activity":
                 return {
@@ -494,6 +498,9 @@ function convertSupabaseRecord(record, itemType) {
                     fixtureId: record.fixture_id || null,
                     linkedFixtureId:
                         record.linked_fixture_id || null,
+                    clusterOrder: record.cluster_order || 0,
+                    _deviceId: record._device_id || null,
+                    _lastModified: record._last_modified || null,
                 };
             case "milestone":
                 return {
@@ -504,6 +511,8 @@ function convertSupabaseRecord(record, itemType) {
                     style: record.color || "red",
                     notes: record.notes || "",
                     assignees: [],
+                    _deviceId: record._device_id || null,
+                    _lastModified: record._last_modified || null,
                 };
             case "note":
                 return {
@@ -512,6 +521,8 @@ function convertSupabaseRecord(record, itemType) {
                     date: (record.date || "").split("T")[0],
                     content: record.content || "",
                     assignees: [],
+                    _deviceId: record._device_id || null,
+                    _lastModified: record._last_modified || null,
                 };
             default:
                 return null;
@@ -572,9 +583,9 @@ function initAuth() {
 function dismissAuthGate() {
     const gate = document.getElementById("auth-gate");
     if (gate) gate.style.display = "none";
-    hideSkeleton(); // Ensure skeleton is dismissed when auth gate is dismissed
     load();
     setupRealtime();
+    startPeriodicSync();
 }
 
 async function submitPassword() {
@@ -711,6 +722,22 @@ async function saveToSupabase() {
                       : d.type === "milestone"
                         ? "milestones"
                         : "notes";
+            
+            // Cascade: if deleting a fixture, unlink all activities that reference it
+            if (d.type === "fixture") {
+                const { error: unlinkError } = await supabaseClient
+                    .from("activities")
+                    .update({ fixture_id: null, linked_fixture_id: null })
+                    .or(`fixture_id.eq.${d.id},linked_fixture_id.eq.${d.id}`);
+                if (unlinkError) {
+                    console.error(
+                        `Unlink activities for fixture ${d.id} failed:`,
+                        JSON.stringify(unlinkError),
+                    );
+                    // Don't throw - continue with the delete
+                }
+            }
+            
             const { error } = await supabaseClient
                 .from(table)
                 .delete()
@@ -749,6 +776,8 @@ async function saveToSupabase() {
                         team_type: f.teamType || "Men's",
                         venue: f.venue || "",
                         venue_type: f.venueType || "home",
+                        _device_id: window.deviceManager?.deviceId || null,
+                        _last_modified: f._lastModified || Date.now(),
                     })),
                     { onConflict: "id" },
                 );
@@ -771,6 +800,9 @@ async function saveToSupabase() {
                             fixture_id: a.fixtureId || null,
                             linked_fixture_id:
                                 a.linkedFixtureId || null,
+                            cluster_order: a.clusterOrder || 0,
+                            _device_id: window.deviceManager?.deviceId || null,
+                            _last_modified: a._lastModified || Date.now(),
                         };
                     }),
                     { onConflict: "id" },
@@ -794,6 +826,8 @@ async function saveToSupabase() {
                         color: m.style || "red",
                         date: m.date,
                         notes: m.notes || "",
+                        _device_id: window.deviceManager?.deviceId || null,
+                        _last_modified: m._lastModified || Date.now(),
                     })),
                     { onConflict: "id" },
                 );
@@ -814,6 +848,8 @@ async function saveToSupabase() {
                         id: n.id,
                         content: n.content || "",
                         date: n.date,
+                        _device_id: window.deviceManager?.deviceId || null,
+                        _last_modified: n._lastModified || Date.now(),
                     })),
                     { onConflict: "id" },
                 );
@@ -826,13 +862,33 @@ async function saveToSupabase() {
             }
         }
 
-        // Sync saved assignees using delete-all + re-insert pattern
-        // This is appropriate for a simple list of names without stable identifiers
-        if (S.savedAssignees && S.savedAssignees.length > 0) {
+        // Sync saved assignees using merge logic to prevent race conditions
+        // Instead of delete-all + re-insert, we fetch remote assignees and merge with local
+        if (S.savedAssignees) {
+            const { data: remoteAssignees, error: fetchError } = await supabaseClient
+                .from("saved_assignees")
+                .select("name");
+            
+            if (fetchError) {
+                console.error(
+                    "Saved assignees fetch error:",
+                    JSON.stringify(fetchError),
+                );
+                throw new Error(`Failed to fetch saved assignees: ${JSON.stringify(fetchError)}`);
+            }
+
+            const remoteNames = new Set((remoteAssignees || []).map(a => a.name));
+            const localNames = new Set(S.savedAssignees);
+            
+            // Merge: union of remote and local assignees
+            const mergedAssignees = [...new Set([...remoteNames, ...localNames])];
+            
+            // Delete all remote assignees
             const { error: deleteError } = await supabaseClient
                 .from("saved_assignees")
                 .delete()
                 .neq("id", "00000000-0000-0000-0000-000000000000");
+            
             if (deleteError) {
                 console.error(
                     "Saved assignees delete error:",
@@ -841,16 +897,23 @@ async function saveToSupabase() {
                 throw new Error(`Failed to delete saved assignees: ${JSON.stringify(deleteError)}`);
             }
 
-            const { error: insertError } = await supabaseClient
-                .from("saved_assignees")
-                .insert(S.savedAssignees.map((name) => ({ name })));
-            if (insertError) {
-                console.error(
-                    "Saved assignees insert error:",
-                    JSON.stringify(insertError),
-                );
-                throw new Error(`Failed to insert saved assignees: ${JSON.stringify(insertError)}`);
+            // Insert merged assignees
+            if (mergedAssignees.length > 0) {
+                const { error: insertError } = await supabaseClient
+                    .from("saved_assignees")
+                    .insert(mergedAssignees.map((name) => ({ name })));
+                
+                if (insertError) {
+                    console.error(
+                        "Saved assignees insert error:",
+                        JSON.stringify(insertError),
+                    );
+                    throw new Error(`Failed to insert saved assignees: ${JSON.stringify(insertError)}`);
+                }
             }
+
+            // Update local state with merged assignees
+            S.savedAssignees = mergedAssignees;
         }
 
         console.log("✓ Saved to Supabase");
@@ -877,41 +940,73 @@ let realtimeChannel = null;
 function setupRealtime() {
     if (!supabaseClient || !useCloudSync) return;
 
+    console.log("Setting up realtime subscription...");
+
     realtimeChannel = supabaseClient
         .channel("timeline_changes")
         .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "fixtures" },
-            (p) => handleRealtimeEvent(p, "fixture"),
+            (p) => {
+                console.log("Realtime event: fixtures", p);
+                handleRealtimeEvent(p, "fixture");
+            },
         )
         .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "activities" },
-            (p) => handleRealtimeEvent(p, "activity"),
+            (p) => {
+                console.log("Realtime event: activities", p);
+                handleRealtimeEvent(p, "activity");
+            },
         )
         .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "milestones" },
-            (p) => handleRealtimeEvent(p, "milestone"),
+            (p) => {
+                console.log("Realtime event: milestones", p);
+                handleRealtimeEvent(p, "milestone");
+            },
         )
         .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "notes" },
-            (p) => handleRealtimeEvent(p, "note"),
+            (p) => {
+                console.log("Realtime event: notes", p);
+                handleRealtimeEvent(p, "note");
+            },
         )
-        .subscribe((status) => {
-            console.log("Realtime status:", status);
+        .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "saved_assignees" },
+            (p) => {
+                console.log("Realtime event: saved_assignees", p);
+                handleAssigneesRealtimeEvent(p);
+            },
+        )
+        .subscribe((status, err) => {
+            console.log("Realtime status:", status, err ? `Error: ${err}` : "");
+            if (status === "SUBSCRIBED") {
+                console.log("✓ Realtime subscription active");
+                setSyncState(SyncState.CONNECTED);
+            } else if (status === "CHANNEL_ERROR") {
+                console.error("✗ Realtime channel error:", err);
+                setSyncState(SyncState.ERROR);
+            } else if (status === "TIMED_OUT") {
+                console.error("✗ Realtime subscription timed out");
+                setSyncState(SyncState.ERROR);
+            }
             updateSyncStatus();
         });
 }
 
 // FIX: Incremental state merge on realtime events.
-// Self-events (within 3 s of a local write) are discarded to prevent
+// Self-events (within 1 s of a local write) are discarded to prevent
 // the save → realtime → reload → save loop.
 // Enhanced: Detects conflicts and resolves using conflict resolver.
 function handleRealtimeEvent(payload, itemType) {
-    // Suppress events that we ourselves triggered
-    if (Date.now() - lastWriteTime < 1500) return;
+    // Suppress events that we ourselves triggered (matches sync-config.js SELF_EVENT_WINDOW_MS)
+    if (Date.now() - lastWriteTime < 2500) return;
 
     const { eventType, new: newRecord, old: oldRecord } = payload;
 
@@ -958,6 +1053,97 @@ function handleRealtimeEvent(payload, itemType) {
     render();
     if (idx < 0) showSyncToast("🔄 Remote: item added");
     else if (idx >= 0 && !window.conflictResolver) showSyncToast("🔄 Remote: item updated");
+}
+
+// Handle saved_assignees realtime events
+function handleAssigneesRealtimeEvent(payload) {
+    // Suppress events that we ourselves triggered (matches sync-config.js SELF_EVENT_WINDOW_MS)
+    if (Date.now() - lastWriteTime < 2500) return;
+
+    const { eventType } = payload;
+
+    // For saved_assignees, we reload the full list since it's a simple list
+    // This ensures we stay in sync with the complete set of assignees
+    loadFromSupabase().then(data => {
+        if (data && data.savedAssignees) {
+            S.savedAssignees = data.savedAssignees;
+            saveToLocal();
+            render();
+            showSyncToast("🔄 Remote: assignees updated");
+        }
+    }).catch(e => {
+        console.error("Failed to sync assignees:", e);
+    });
+}
+
+// Periodic sync check as fallback for realtime
+async function periodicSyncCheck() {
+    if (!supabaseClient || !useCloudSync) return;
+
+    // Skip if we recently wrote (to avoid conflicts)
+    if (Date.now() - lastWriteTime < 2000) return;
+
+    try {
+        const data = await loadFromSupabase();
+        if (data && data.items) {
+            // Check if there are any differences
+            const localIds = new Set(S.items.map(i => i.id));
+            const remoteIds = new Set(data.items.map(i => i.id));
+
+            // Check for new or updated items
+            let hasChanges = false;
+            for (const remoteItem of data.items) {
+                const localItem = S.items.find(i => i.id === remoteItem.id);
+                if (!localItem) {
+                    hasChanges = true;
+                    break;
+                }
+                // Simple comparison - check if key fields differ
+                if (JSON.stringify(localItem) !== JSON.stringify(remoteItem)) {
+                    hasChanges = true;
+                    break;
+                }
+            }
+
+            // Check for deleted items
+            for (const localId of localIds) {
+                if (!remoteIds.has(localId)) {
+                    hasChanges = true;
+                    break;
+                }
+            }
+
+            if (hasChanges) {
+                console.log("Periodic sync detected changes, reloading...");
+                S.items = data.items;
+                if (data.savedAssignees && data.savedAssignees.length > 0) {
+                    S.savedAssignees = data.savedAssignees;
+                }
+                saveToLocal();
+                render();
+                showSyncToast("🔄 Synced from cloud", "success", 2000);
+            }
+        }
+    } catch (e) {
+        console.error("Periodic sync check failed:", e);
+    }
+}
+
+// Start periodic sync check
+function startPeriodicSync() {
+    if (periodicSyncInterval) clearInterval(periodicSyncInterval);
+    // Check every 30 seconds
+    periodicSyncInterval = setInterval(periodicSyncCheck, 30000);
+    console.log("✓ Periodic sync check started (30s interval)");
+}
+
+// Stop periodic sync check
+function stopPeriodicSync() {
+    if (periodicSyncInterval) {
+        clearInterval(periodicSyncInterval);
+        periodicSyncInterval = null;
+        console.log("✓ Periodic sync check stopped");
+    }
 }
 
 // ─── STATE ─────────────────────────────────────────────────────
@@ -1363,7 +1549,7 @@ function buildGroups(items) {
                 type: "fixture",
                 fixture: item,
                 activities: linked.sort((a, b) =>
-                    a.date.localeCompare(b.date),
+                    (a.clusterOrder || 0) - (b.clusterOrder || 0),
                 ),
             });
         } else if (item.type === "milestone") {
