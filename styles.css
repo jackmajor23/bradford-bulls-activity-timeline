@@ -2289,7 +2289,8 @@ body {
 }
 /* ─── DELETE CONFIRM MODAL ─── */
 #delete-confirm-overlay,
-#complete-confirm-overlay {
+#complete-confirm-overlay,
+#move-confirm-overlay {
     position: fixed;
     top: 0;
     left: 0;

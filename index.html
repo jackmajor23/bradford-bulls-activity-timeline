@@ -303,6 +303,31 @@
             </div>
         </div>
 
+        <div id="move-confirm-overlay" style="display: none">
+            <div class="delete-confirm-modal">
+                <div class="delete-confirm-header">
+                    <div class="delete-confirm-icon">📅</div>
+                    <div class="delete-confirm-title">Move to Different Date</div>
+                </div>
+                <div class="delete-confirm-body">
+                    <p>
+                        Are you sure you want to move this fixture to a different date?
+                    </p>
+                </div>
+                <div class="delete-confirm-footer">
+                    <button
+                        class="btn btn-outline"
+                        onclick="closeMoveConfirm()"
+                    >
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary" id="confirm-move-btn">
+                        Move
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div id="date-popup-overlay" style="display: none">
             <div id="date-popup-modal">
                 <div class="popup-header">

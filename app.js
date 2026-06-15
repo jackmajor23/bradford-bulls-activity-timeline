@@ -3092,6 +3092,10 @@ function performTimelineDrop(group, draggedRow, clientY) {
     const date = group.querySelector(".date-label")?.dataset.date;
     if (!date) return;
 
+    // Store original position before moving
+    const originalParent = draggedRow.parentNode;
+    const originalNextSibling = draggedRow.nextSibling;
+
     const { afterRow, beforeRow, isLeftSide } = computeDropPosition(group, draggedRow, clientY);
 
     if (beforeRow) {
@@ -3111,6 +3115,34 @@ function performTimelineDrop(group, draggedRow, clientY) {
         .map((row) => row.dataset.id)
         .filter(Boolean);
     const dateItems = orderedIds.map((id) => S.items.find((i) => i.id === id)).filter(Boolean);
+    const otherItems = S.items.filter((i) => !orderedIds.includes(i.id));
+
+    // Check if any fixture is changing to a different date
+    let fixtureDateChanging = false;
+    dateItems.forEach((item) => {
+        if (item.type === "fixture" && item.date !== date) {
+            fixtureDateChanging = true;
+        }
+    });
+
+    // If a fixture is changing dates, show confirmation
+    if (fixtureDateChanging) {
+        showMoveConfirm(group, draggedRow, clientY, dateItems, originalParent, originalNextSibling);
+        return;
+    }
+
+    // Otherwise execute directly
+    executeTimelineDrop(group, draggedRow, clientY, dateItems);
+}
+
+// Executes the actual timeline drop (called after confirmation or if no date change)
+function executeTimelineDrop(group, draggedRow, clientY, dateItems) {
+    const date = group.querySelector(".date-label")?.dataset.date;
+    if (!date) return;
+
+    const orderedIds = [...group.querySelectorAll(":scope > .tl-row[data-id]")]
+        .map((row) => row.dataset.id)
+        .filter(Boolean);
     const otherItems = S.items.filter((i) => !orderedIds.includes(i.id));
 
     let dateChanged = false;
@@ -3814,6 +3846,41 @@ function closeCompleteConfirm() {
         "complete-confirm-overlay",
     ).style.display = "none";
     pendingCompleteId = null;
+}
+
+// ─── MOVE CONFIRM ───────────────────────────────────────────────
+let pendingMoveData = null;
+
+function showMoveConfirm(group, draggedRow, clientY, dateItems, originalParent, originalNextSibling) {
+    pendingMoveData = { group, draggedRow, clientY, dateItems, originalParent, originalNextSibling };
+    document.getElementById("move-confirm-overlay").style.display = "flex";
+    document.getElementById("confirm-move-btn").onclick = () => {
+        if (!pendingMoveData) return;
+        executeTimelineDrop(
+            pendingMoveData.group,
+            pendingMoveData.draggedRow,
+            pendingMoveData.clientY,
+            pendingMoveData.dateItems,
+        );
+        closeMoveConfirm();
+        pendingMoveData = null;
+    };
+}
+
+function closeMoveConfirm() {
+    document.getElementById("move-confirm-overlay").style.display = "none";
+    // Restore the dragged row to its original position if cancelled
+    if (pendingMoveData && pendingMoveData.originalParent) {
+        if (pendingMoveData.originalNextSibling) {
+            pendingMoveData.originalParent.insertBefore(
+                pendingMoveData.draggedRow,
+                pendingMoveData.originalNextSibling
+            );
+        } else {
+            pendingMoveData.originalParent.appendChild(pendingMoveData.draggedRow);
+        }
+    }
+    pendingMoveData = null;
 }
 
 // ─── DATE POPUP ───────────────────────────────────────────────
