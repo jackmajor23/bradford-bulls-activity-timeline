@@ -207,409 +207,139 @@ function shieldSVG(name) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// LOGO SYSTEM (FIX: robust fallback chain)
+// LOGO SYSTEM v3 — fuzzy team matching, variant fallback, recency cache
 // ═══════════════════════════════════════════════════════════════
-const LOGO_CACHE_KEY = "bbLogoCache_v2";
+//
+// DROP-IN REPLACEMENT for the existing "LOGO SYSTEM" block in app.js
+// (everything from the `// LOGO SYSTEM (FIX: robust fallback chain)`
+// comment down to the end of `updateLogoInDOM()`).
+//
+// Public API kept identical so nothing else in app.js needs to change:
+//   getTeamLogo(name)        -> string | null   (used at line ~2402)
+//   shieldSVG(name)          -> svg string      (used in renderFixtureGroup)
+//   logoImgWithFallback(url, name) -> html       (used in updateLogoInDOM)
+//   TEAM_LOGO_FALLBACK       -> string
+//   updateLogoInDOM(name, url)
+//   discoverLogoAsync(...)   -> async, self-managing
+//
+// Removed (dead code, not referenced anywhere else in app.js):
+//   RUGBY_LEAGUE_SOURCES, brokenLogoUrls, handleLogoError
+//
+// ───────────────────────────────────────────────────────────────
+// HOW MATCHING WORKS (the "logic framework")
+// ───────────────────────────────────────────────────────────────
+// 1. normalizeTeamQuery(raw)
+//      - lowercases, strips punctuation
+//      - detects a "variant" (women / academy / reserves / wheelchair)
+//        from suffixes like "Women", "U18s", "Reserves", "Academy"
+//        and removes it from the string
+//      - strips generic club-suffix words (RLFC, R.F.C., FC, "Rugby
+//        League Club", etc.)
+//      -> returns { core, variant }
+//
+// 2. fuzzyFindTeam(core)
+//      - exact lookup in ALIAS_INDEX (every alias for every team)
+//      - if no exact hit, runs Levenshtein distance against every
+//        alias and accepts the best match above a similarity
+//        threshold (handles typos / abbreviations like "Wigan
+//        Warroirs" or "Cas Tigers")
+//
+// 3. resolveRegistryLogo(name)
+//      - combines 1 + 2, then looks up `logos[variant] || logos.default`
+//        on the matched team -> graceful fallback to the main club
+//        crest if there's no dedicated women's/academy badge
+//
+// 4. getTeamLogo(name)
+//      - registry (curated, "source of truth") wins first — this is
+//        what gives you RECENCY: when a club rebrands, you edit ONE
+//        line in TEAM_REGISTRY and every fixture using any alias of
+//        that club updates immediately, with no cache to bust
+//      - if the registry has no match, falls back to a TTL'd
+//        discovery cache (re-checks Wikipedia every
+//        LOGO_CACHE_TTL_DAYS so newly-uploaded badges for clubs
+//        NOT in the registry eventually get picked up)
+//      - if nothing cached (or the cache entry expired), kicks off
+//        discoverLogoAsync() in the background and returns the best
+//        currently-known value (stale logo if we have one, else null
+//        -> shield SVG)
+//
+// ADDING / FIXING A TEAM
+//   -> find or add an entry in TEAM_REGISTRY, add every spelling you
+//      expect ("Man Utd"-style variants) to `aliases`, and set
+//      logos.default.url. Done — no other code to touch.
+//
+// ADDING A WOMEN'S / ACADEMY / RESERVES BADGE
+//   -> add `women: { url: "..." }` / `academy: { url: "..." }` /
+//      `reserves: { url: "..." }` next to `default` on that team's
+//      `logos` object. If you don't add one, that variant
+//      automatically falls back to `default`.
+// ═══════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────
+// Recency-aware cache (for teams discovered via Wikipedia, i.e.
+// NOT in TEAM_REGISTRY). Entries expire after LOGO_CACHE_TTL_DAYS
+// so a club that gets a new crest on Wikipedia is eventually
+// re-discovered even if we cached "NOT_FOUND" or an old URL.
+// ─────────────────────────────────────────────────────────────
+const LOGO_CACHE_KEY = "bbLogoCache_v3";
+const LOGO_CACHE_TTL_DAYS = 60;
+
 let logoCache = {};
 try {
-    logoCache = JSON.parse(
-        localStorage.getItem(LOGO_CACHE_KEY) || "{}",
-    );
+    logoCache = JSON.parse(localStorage.getItem(LOGO_CACHE_KEY) || "{}");
 } catch (e) {
     logoCache = {};
 }
+
 function saveLogoCache() {
     try {
-        localStorage.setItem(
-            LOGO_CACHE_KEY,
-            JSON.stringify(logoCache),
-        );
+        localStorage.setItem(LOGO_CACHE_KEY, JSON.stringify(logoCache));
     } catch (e) {}
 }
 
-// Official team websites for logo discovery (prioritized sources)
-const TEAM_WEBSITES = {
-    // Super League
-    "bradford bulls": "https://bradfordbulls.co.uk",
-    "leeds rhinos": "https://leedsrhinos.co.uk",
-    "wigan warriors": "https://wiganwarriors.com",
-    "hull fc": "https://hullfc.com",
-    "hull kr": "https://hullkr.co.uk",
-    "castleford tigers": "https://castletigers.com",
-    "wakefield trinity": "https://wakefieldtrinity.co.uk",
-    "huddersfield giants": "https://giantsrl.com",
-    "st helens": "https://saintsrlfc.com",
-    "catalan dragons": "https://catalansdragons.com",
-    "toulouse olympique": "https://toulouseolympique.fr",
-    "london broncos": "https://londonbroncosrl.com",
-    "salford red devils": "https://salfordreddevils.co.uk",
-    "warrington wolves": "https://warringtonwolves.com",
-    "leigh leopards": "https://leighleopards.com",
-    
-    // Championship
-    "fev rovers": "https://fevrovers.co.uk",
-    "featherstone rovers": "https://fevrovers.co.uk",
-    "halifax panthers": "https://halifaxpanthers.co.uk",
-    "batley bulldogs": "https://batleybulldogs.com",
-    "dewsbury rams": "https://dewsburyrams.co.uk",
-    "sheffield eagles": "https://sheffieldeagles.com",
-    "swinton lions": "https://swintonlions.com",
-    "widnes vikings": "https://widnesvikings.co.uk",
-    "york knights": "https://yorkknightsrlfc.com",
-    "doncaster": "https://doncasterrlfc.com",
-    "doncaster rlfc": "https://doncasterrlfc.com",
-    "whitehaven": "https://whitehavenrl.co.uk",
-    "barrow": "https://barrowrlfc.com",
-    "barrow raiders": "https://barrowrlfc.com",
-    "newcastle thunder": "https://newcastlethunder.com",
-    "cornwall pirates": "https://cornwall-pirates.com",
-    "london skolars": "https://londonskolars.com",
-    "north wales crusaders": "https://crusadersrl.co",
-    "coventry bears": "https://coventrybearsrl.com",
-    "midlands hurricanes": "https://midlandshurricanes.co.uk",
-    
-    // League 1
-    "oldham": "https://oldhamrl.co.uk",
-    "oldham roughyeds": "https://oldhamrl.co.uk",
-    "rochdale hornets": "https://rochdalehornets.co.uk",
-    "keighley cougars": "https://keighleycougars.com",
-    "hunslet": "https://hunsletrlfc.co.uk",
-    "hunslet rlfc": "https://hunsletrlfc.co.uk",
-    "newcastle thunder": "https://newcastlethunder.com",
-    "cornwall pirates": "https://cornwall-pirates.com",
-    "london skolars": "https://londonskolars.com",
-    "north wales crusaders": "https://crusadersrl.co",
-    "coventry bears": "https://coventrybearsrl.com",
-    "midlands hurricanes": "https://midlandshurricanes.co.uk",
-    "doncaster": "https://doncasterrlfc.com",
-    "doncaster rlfc": "https://doncasterrlfc.com",
-    "whitehaven": "https://whitehavenrl.co.uk",
-    "barrow": "https://barrowrlfc.com",
-    "barrow raiders": "https://barrowrlfc.com",
-    
-    // NRL (Australia)
-    "newcastle knights": "https://knights.com.au",
-    "canterbury bulldogs": "https://bulldogs.com.au",
-    "melbourne storm": "https://melbournestorm.com.au",
-    "sydney roosters": "https://roosters.com.au",
-    "penrith panthers": "https://panthers.com.au",
-    "brisbane broncos": "https://broncos.com.au",
-    "canberra raiders": "https://raiders.com.au",
-    "cronulla sharks": "https://sharks.com.au",
-    "manly sea eagles": "https://seaeagles.com.au",
-    "south sydney rabbitohs": "https://rabbitohs.com.au",
-    "parramatta eels": "https://parraeels.com.au",
-    "north queensland cowboys": "https://cowboys.com.au",
-    "wests tigers": "https://weststigers.com.au",
-    "st george illawarra dragons": "https://dragons.com.au",
-    "gold coast titans": "https://titans.com.au",
-    "new zealand warriors": "https://warriors.co.nz",
-    "dolphins": "https://dolphins.com.au",
-    "manly": "https://seaeagles.com.au",
-    "sea eagles": "https://seaeagles.com.au",
-    "rabbitohs": "https://rabbitohs.com.au",
-    "eels": "https://parraeels.com.au",
-    "cowboys": "https://cowboys.com.au",
-    "titans": "https://titans.com.au",
-    "warriors": "https://warriors.co.nz",
-};
-
-// Major rugby league websites for logo discovery
-const RUGBY_LEAGUE_SOURCES = {
-    "super league": "https://superleague.co.uk",
-    "rugby football league": "https://rfl.co.uk",
-};
-
-// Confirmed working URLs (verified via Wikipedia File API).
-// All other clubs are resolved asynchronously by discoverLogoAsync.
-const KNOWN_LOGOS = {
-    // Super League
-    "Bradford Bulls":
-        "https://upload.wikimedia.org/wikipedia/en/1/1f/2025_Bradford_Bulls_Logo.png",
-    "Leeds Rhinos":
-        "https://upload.wikimedia.org/wikipedia/en/6/6f/Leeds_Rhinos_logo.svg",
-    "Wigan Warriors":
-        "https://upload.wikimedia.org/wikipedia/en/d/d7/Wigan_Warriors_Logo%2C_November_2020.svg",
-    "Hull FC":
-        "https://upload.wikimedia.org/wikipedia/en/5/5a/Hull_FC_logo.svg",
-    "Hull KR":
-        "https://upload.wikimedia.org/wikipedia/en/2/2c/Hull_KR_logo.svg",
-    "Castleford Tigers":
-        "https://upload.wikimedia.org/wikipedia/en/8/8c/Castleford_Tigers_logo.svg",
-    "Wakefield Trinity":
-        "https://upload.wikimedia.org/wikipedia/en/2/2d/Wakefield_Trinity_logo.svg",
-    "Huddersfield Giants":
-        "https://upload.wikimedia.org/wikipedia/en/4/4f/Huddersfield_Giants_logo.svg",
-    "St Helens R.F.C.":
-        "https://upload.wikimedia.org/wikipedia/en/3/3c/St_Helens_RFC_logo.svg",
-    "Catalan Dragons":
-        "https://upload.wikimedia.org/wikipedia/en/a/a6/Catalan_Dragons_logo.svg",
-    "Toulouse Olympique":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/Toulouse_Olympique_logo.svg",
-    "London Broncos":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/London_Broncos_logo.svg",
-    "Salford Red Devils":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Salford_Red_Devils_logo.svg",
-    "Warrington Wolves":
-        "https://upload.wikimedia.org/wikipedia/en/7/7b/Warrington_Wolves_logo.svg",
-    "Leigh Leopards":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Leigh_Leopards_logo.svg",
-    
-    // Championship
-    "Featherstone Rovers":
-        "https://upload.wikimedia.org/wikipedia/en/4/4e/Featherstone_Rovers_logo.svg",
-    "Halifax Panthers":
-        "https://upload.wikimedia.org/wikipedia/en/2/2e/Halifax_Panthers_logo.svg",
-    "Batley Bulldogs":
-        "https://upload.wikimedia.org/wikipedia/en/8/8c/Batley_Bulldogs_logo.svg",
-    "Dewsbury Rams":
-        "https://upload.wikimedia.org/wikipedia/en/4/4d/Dewsbury_Rams_logo.svg",
-    "Sheffield Eagles":
-        "https://upload.wikimedia.org/wikipedia/en/2/2c/Sheffield_Eagles_logo.svg",
-    "Swinton Lions":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/Swinton_Lions_logo.svg",
-    "Widnes Vikings":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Widnes_Vikings_logo.svg",
-    "York Knights":
-        "https://upload.wikimedia.org/wikipedia/en/2/2d/York_Knights_logo.svg",
-    "Doncaster RLFC":
-        "https://upload.wikimedia.org/wikipedia/en/4/4e/Doncaster_RLFC_logo.svg",
-    "Whitehaven":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/Whitehaven_logo.svg",
-    "Barrow Raiders":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Barrow_Raiders_logo.svg",
-    "Newcastle Thunder":
-        "https://upload.wikimedia.org/wikipedia/en/2/2e/Newcastle_Thunder_logo.svg",
-    "Cornwall Pirates":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Cornwall_Pirates_logo.svg",
-    "London Skolars":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/London_Skolars_logo.svg",
-    "North Wales Crusaders":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/North_Wales_Crusaders_logo.svg",
-    "Coventry Bears":
-        "https://upload.wikimedia.org/wikipedia/en/2/2e/Coventry_Bears_logo.svg",
-    "Midlands Hurricanes":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Midlands_Hurricanes_logo.svg",
-    
-    // League 1
-    "Oldham R.L.F.C.":
-        "https://upload.wikimedia.org/wikipedia/en/4/4e/Oldham_RLFC_logo.svg",
-    "Rochdale Hornets":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/Rochdale_Hornets_logo.svg",
-    "Keighley Cougars":
-        "https://upload.wikimedia.org/wikipedia/en/2/2c/Keighley_Cougars_logo.svg",
-    "Hunslet R.L.F.C.":
-        "https://upload.wikimedia.org/wikipedia/en/4/4e/Hunslet_RLFC_logo.svg",
-    
-    // NRL
-    "Newcastle Knights":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Newcastle_Knights_logo.svg",
-    "Canterbury-Bankstown Bulldogs":
-        "https://upload.wikimedia.org/wikipedia/en/2/2c/Canterbury_Bulldogs_logo.svg",
-    "Melbourne Storm":
-        "https://upload.wikimedia.org/wikipedia/en/4/4e/Melbourne_Storm_logo.svg",
-    "Sydney Roosters":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/Sydney_Roosters_logo.svg",
-    "Penrith Panthers":
-        "https://upload.wikimedia.org/wikipedia/en/2/2d/Penrith_Panthers_logo.svg",
-    "Brisbane Broncos":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/Brisbane_Broncos_logo.svg",
-    "Canberra Raiders":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/Canberra_Raiders_logo.svg",
-    "Cronulla-Sutherland Sharks":
-        "https://upload.wikimedia.org/wikipedia/en/2/2c/Cronulla_Sharks_logo.svg",
-    "Manly Warringah Sea Eagles":
-        "https://upload.wikimedia.org/wikipedia/en/4/4e/Manly_Sea_Eagles_logo.svg",
-    "South Sydney Rabbitohs":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/South_Sydney_Rabbitohs_logo.svg",
-    "Parramatta Eels":
-        "https://upload.wikimedia.org/wikipedia/en/2/2d/Parramatta_Eels_logo.svg",
-    "North Queensland Cowboys":
-        "https://upload.wikimedia.org/wikipedia/en/4/4c/North_Queensland_Cowboys_logo.svg",
-    "Wests Tigers":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/Wests_Tigers_logo.svg",
-    "St. George Illawarra Dragons":
-        "https://upload.wikimedia.org/wikipedia/en/2/2c/St_George_Illawarra_Dragons_logo.svg",
-    "Gold Coast Titans":
-        "https://upload.wikimedia.org/wikipedia/en/4/4e/Gold_Coast_Titans_logo.svg",
-    "New Zealand Warriors":
-        "https://upload.wikimedia.org/wikipedia/en/6/6e/New_Zealand_Warriors_logo.svg",
-    "Dolphins":
-        "https://upload.wikimedia.org/wikipedia/en/2/2d/Dolphins_NRL_logo.svg",
-};
-
-// Lowercase-keyed map for fast, case-insensitive logo lookups
-const KNOWN_LOGO_MAP = Object.fromEntries(
-    Object.entries(KNOWN_LOGOS).map(([k, v]) => [
-        k.toLowerCase().trim(),
-        v,
-    ]),
-);
-
-// Team suffix patterns to strip for matching (Academy, U16s, Reserves, etc.)
-const TEAM_SUFFIXES = [
-    /\s+academy$/i,
-    /\s+u\d+s?$/i,  // U16s, U18s, U19s, etc.
-    /\s+u\d+$/i,    // U16, U18, U19, etc.
-    /\s+reserves$/i,
-    /\s+reserve$/i,
-    /\s+scholarship$/i,
-    /\s+women'?s?$/i,
-    /\s+ladies$/i,
-    /\s+development$/i,
-    /\s+dev$/i,
-    /\s+a$/i,       // common abbreviation for Academy
-    /\s+r$/i,       // common abbreviation for Reserves
-];
-
-// Strip team suffixes to get the base team name
-function stripTeamSuffix(name) {
-    let baseName = name;
-    for (const suffix of TEAM_SUFFIXES) {
-        baseName = baseName.replace(suffix, '');
-    }
-    return baseName.trim();
+// Returns the cache entry only if it's still "fresh" (within TTL).
+// Returns null if missing OR expired (caller decides what to do).
+function getCachedEntry(key) {
+    const entry = logoCache[key];
+    if (!entry || typeof entry !== "object") return null;
+    const ageDays = (Date.now() - (entry.ts || 0)) / 86400000;
+    if (ageDays > LOGO_CACHE_TTL_DAYS) return null;
+    return entry;
 }
 
-// Team name normalization map for fuzzy matching
-const TEAM_NAME_ALIASES = {
-    // Super League
-    "bradford": "bradford bulls",
-    "bulls": "bradford bulls",
-    "leeds": "leeds rhinos",
-    "rhinos": "leeds rhinos",
-    "wigan": "wigan warriors",
-    "warriors": "wigan warriors",
-    "hull fc": "hull fc",
-    "hull": "hull fc",
-    "hull kr": "hull kr",
-    "red crabs": "hull kr",
-    "robins": "hull kr",
-    "castleford": "castleford tigers",
-    "tigers": "castleford tigers",
-    "cas": "castleford tigers",
-    "wakefield": "wakefield trinity",
-    "trinity": "wakefield trinity",
-    "wildcats": "wakefield trinity",
-    "huddersfield": "huddersfield giants",
-    "giants": "huddersfield giants",
-    "st helens": "st helens",
-    "st helens r.f.c.": "st helens",
-    "saints": "st helens",
-    "catalan": "catalan dragons",
-    "dragons": "catalan dragons",
-    "perpignan": "catalan dragons",
-    "toulouse": "toulouse olympique",
-    "olympique": "toulouse olympique",
-    "london broncos": "london broncos",
-    "broncos": "london broncos",
-    "salford": "salford red devils",
-    "red devils": "salford red devils",
-    "warrington": "warrington wolves",
-    "wolves": "warrington wolves",
-    "wire": "warrington wolves",
-    "leigh": "leigh leopards",
-    "leigh leopards": "leigh leopards",
-    "leopards": "leigh leopards",
-    
-    // Championship
-    "fev": "featherstone rovers",
-    "fev rovers": "featherstone rovers",
-    "featherstone": "featherstone rovers",
-    "rovers": "featherstone rovers",
-    "halifax": "halifax panthers",
-    "panthers": "halifax panthers",
-    "fax": "halifax panthers",
-    "batley": "batley bulldogs",
-    "bulldogs": "batley bulldogs",
-    "dewsbury": "dewsbury rams",
-    "rams": "dewsbury rams",
-    "sheffield": "sheffield eagles",
-    "eagles": "sheffield eagles",
-    "swinton": "swinton lions",
-    "widnes": "widnes vikings",
-    "vikings": "widnes vikings",
-    "york": "york knights",
-    "knights": "york knights",
-    "doncaster": "doncaster rlfc",
-    "dons": "doncaster rlfc",
-    "whitehaven": "whitehaven",
-    "haven": "whitehaven",
-    "barrow": "barrow raiders",
-    "raiders": "barrow raiders",
-    "newcastle thunder": "newcastle thunder",
-    "thunder": "newcastle thunder",
-    "cornwall": "cornwall pirates",
-    "pirates": "cornwall pirates",
-    "skolars": "london skolars",
-    "crusaders": "north wales crusaders",
-    "north wales": "north wales crusaders",
-    "coventry": "coventry bears",
-    "bears": "coventry bears",
-    "midlands": "midlands hurricanes",
-    "hurricanes": "midlands hurricanes",
-    
-    // League 1
-    "oldham": "oldham roughyeds",
-    "oldham rlfc": "oldham roughyeds",
-    "oldham r.l.f.c.": "oldham roughyeds",
-    "roughyeds": "oldham roughyeds",
-    "rochdale": "rochdale hornets",
-    "hornets": "rochdale hornets",
-    "keighley": "keighley cougars",
-    "cougars": "keighley cougars",
-    "hunslet": "hunslet rlfc",
-    "hunslet rlfc": "hunslet rlfc",
-    
-    // NRL
-    "newcastle": "newcastle knights",
-    "knights": "newcastle knights",
-    "canterbury": "canterbury-bankstown bulldogs",
-    "canterbury-bankstown": "canterbury-bankstown bulldogs",
-    "bulldogs": "canterbury-bankstown bulldogs",
-    "dogs": "canterbury-bankstown bulldogs",
-    "melbourne": "melbourne storm",
-    "storm": "melbourne storm",
-    "sydney": "sydney roosters",
-    "roosters": "sydney roosters",
-    "chooks": "sydney roosters",
-    "penrith": "penrith panthers",
-    "panthers": "penrith panthers",
-    "brisbane": "brisbane broncos",
-    "broncos": "brisbane broncos",
-    "canberra": "canberra raiders",
-    "raiders": "canberra raiders",
-    "cronulla": "cronulla-sutherland sharks",
-    "cronulla-sutherland": "cronulla-sutherland sharks",
-    "sharks": "cronulla-sutherland sharks",
-    "manly": "manly warringah sea eagles",
-    "manly warringah": "manly warringah sea eagles",
-    "sea eagles": "manly warringah sea eagles",
-    "south sydney": "south sydney rabbitohs",
-    "rabbitohs": "south sydney rabbitohs",
-    "bunnies": "south sydney rabbitohs",
-    "parramatta": "parramatta eels",
-    "eels": "parramatta eels",
-    "parra": "parramatta eels",
-    "north queensland": "north queensland cowboys",
-    "cowboys": "north queensland cowboys",
-    "wests": "wests tigers",
-    "tigers": "wests tigers",
-    "st george": "st. george illawarra dragons",
-    "st. george": "st. george illawarra dragons",
-    "illawarra": "st. george illawarra dragons",
-    "gold coast": "gold coast titans",
-    "titans": "gold coast titans",
-    "new zealand": "new zealand warriors",
-    "nz warriors": "new zealand warriors",
-    "dolphins": "dolphins",
-};
+function setCachedLogo(key, url) {
+    logoCache[key] = { url, ts: Date.now() };
+    saveLogoCache();
+    logoLookupMemo.clear();
+}
 
-// Branded fallback used when a team's logo cannot be resolved/loaded
+function setCachedNotFound(key) {
+    logoCache[key] = { url: "NOT_FOUND", ts: Date.now() };
+    saveLogoCache();
+}
+
+// Dev helper — run `auditLogoCache()` in the console to see what's
+// cached, how stale it is, and what will be re-checked next.
+function auditLogoCache() {
+    const rows = Object.entries(logoCache).map(([key, entry]) => {
+        const ageDays = ((Date.now() - (entry.ts || 0)) / 86400000).toFixed(1);
+        return {
+            team: key,
+            value: entry.url,
+            ageDays: Number(ageDays),
+            expired: Number(ageDays) > LOGO_CACHE_TTL_DAYS,
+        };
+    });
+    console.table(rows);
+    return rows;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Fallback shield + branded placeholder
+// ─────────────────────────────────────────────────────────────
 const TEAM_LOGO_FALLBACK =
     "https://bradfordbulls.co.uk/wp-content/themes/bradford-bulls/assets/images/team-placeholder.png";
 
-// FIX: Render a proper SVG shield as the terminal fallback — never blank
 function shieldSVG(name) {
     const initials = teamInitials(name);
     return `<svg viewBox="0 0 40 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -618,7 +348,7 @@ function shieldSVG(name) {
       <path d="M20 6 L32 10.5 L32 23 C32 29.6 20 37.2 20 37.2 C20 37.2 8 29.6 8 23 L8 10.5 Z"
         fill="#e8ebf0" opacity="0.92"/>
       <text x="20" y="27.5" text-anchor="middle" font-family="'Bebas Neue',sans-serif"
-        font-size="13" fill="#626b76" letter-spacing="0.5">${initials}</text>
+        font-size="13" fill="#626b76" letter-spacing="0.5">${esc(initials)}</text>
     </svg>`;
 }
 
@@ -635,104 +365,743 @@ function logoImgWithFallback(url, name) {
     ><div class="logo-shield-wrap" style="display:none">${shieldSVG(name)}</div>`;
 }
 
-const logoLookupMemo = new Map();
+// ═══════════════════════════════════════════════════════════════
+// TEAM REGISTRY — single source of truth
+// ═══════════════════════════════════════════════════════════════
+// Each entry:
+//   id       canonical slug
+//   name     display name (used for search queries if discovery is needed)
+//   aliases  every spelling/nickname/abbreviation that should resolve
+//            here. Lowercase, no punctuation (matching is normalized).
+//            Ambiguous one-word nicknames shared by two real clubs
+//            (e.g. "Tigers" = Castleford AND Wests Tigers NRL) are only
+//            assigned to ONE club — the one Bradford Bulls is far more
+//            likely to face — and the other club keeps only its
+//            unambiguous full-name aliases.
+//   logos    { default: {url, updated?}, women?, academy?, reserves?,
+//              wheelchair? } — anything other than `default` is optional
+//              and falls back to `default` automatically.
+const TEAM_REGISTRY = [
+    // ── Super League ──────────────────────────────────────────
+    {
+        id: "bradford-bulls",
+        name: "Bradford Bulls",
+        aliases: ["bradford", "bulls", "bradford bulls"],
+        logos: {
+            default: {
+                url: "https://upload.wikimedia.org/wikipedia/en/1/1f/2025_Bradford_Bulls_Logo.png",
+                updated: "2025-01-01",
+            },
+        },
+    },
+    {
+        id: "leeds-rhinos",
+        name: "Leeds Rhinos",
+        aliases: ["leeds", "rhinos", "leeds rhinos"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6f/Leeds_Rhinos_logo.svg" },
+        },
+    },
+    {
+        id: "wigan-warriors",
+        name: "Wigan Warriors",
+        aliases: ["wigan", "warriors", "wigan warriors"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/d/d7/Wigan_Warriors_Logo%2C_November_2020.svg" },
+        },
+    },
+    {
+        id: "hull-fc",
+        name: "Hull FC",
+        aliases: ["hull", "hull fc"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/5/5a/Hull_FC_logo.svg" },
+        },
+    },
+    {
+        id: "hull-kr",
+        name: "Hull KR",
+        aliases: ["hull kr", "hull k r", "hull kingston rovers", "robins"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2c/Hull_KR_logo.svg" },
+        },
+    },
+    {
+        id: "castleford-tigers",
+        name: "Castleford Tigers",
+        aliases: ["castleford", "cas", "tigers", "castleford tigers"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/8/8c/Castleford_Tigers_logo.svg" },
+        },
+    },
+    {
+        id: "wakefield-trinity",
+        name: "Wakefield Trinity",
+        aliases: ["wakefield", "trinity", "wildcats", "wakefield trinity"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2d/Wakefield_Trinity_logo.svg" },
+        },
+    },
+    {
+        id: "huddersfield-giants",
+        name: "Huddersfield Giants",
+        aliases: ["huddersfield", "giants", "huddersfield giants"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4f/Huddersfield_Giants_logo.svg" },
+        },
+    },
+    {
+        id: "st-helens",
+        name: "St Helens",
+        aliases: ["st helens", "saints", "sthelens", "st helens rfc"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/3/3c/St_Helens_RFC_logo.svg" },
+        },
+    },
+    {
+        id: "catalans-dragons",
+        name: "Catalans Dragons",
+        aliases: ["catalan", "catalans", "dragons", "perpignan", "catalan dragons", "catalans dragons"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/a/a6/Catalan_Dragons_logo.svg" },
+        },
+    },
+    {
+        id: "toulouse-olympique",
+        name: "Toulouse Olympique",
+        aliases: ["toulouse", "olympique", "toulouse olympique"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Toulouse_Olympique_logo.svg" },
+        },
+    },
+    {
+        id: "london-broncos",
+        name: "London Broncos",
+        aliases: ["london", "broncos", "london broncos"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/London_Broncos_logo.svg" },
+        },
+    },
+    {
+        id: "salford-red-devils",
+        name: "Salford Red Devils",
+        aliases: ["salford", "red devils", "salford red devils", "salford reds"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Salford_Red_Devils_logo.svg" },
+        },
+    },
+    {
+        id: "warrington-wolves",
+        name: "Warrington Wolves",
+        aliases: ["warrington", "wolves", "wire", "warrington wolves"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/7/7b/Warrington_Wolves_logo.svg" },
+        },
+    },
+    {
+        id: "leigh-leopards",
+        name: "Leigh Leopards",
+        aliases: ["leigh", "leopards", "leigh leopards"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Leigh_Leopards_logo.svg" },
+        },
+    },
 
+    // ── Championship ──────────────────────────────────────────
+    {
+        id: "featherstone-rovers",
+        name: "Featherstone Rovers",
+        aliases: ["featherstone", "fev", "fev rovers", "rovers", "featherstone rovers"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4e/Featherstone_Rovers_logo.svg" },
+        },
+    },
+    {
+        id: "halifax-panthers",
+        name: "Halifax Panthers",
+        aliases: ["halifax", "fax", "panthers", "halifax panthers"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2e/Halifax_Panthers_logo.svg" },
+        },
+    },
+    {
+        id: "batley-bulldogs",
+        name: "Batley Bulldogs",
+        aliases: ["batley", "bulldogs", "batley bulldogs"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/8/8c/Batley_Bulldogs_logo.svg" },
+        },
+    },
+    {
+        id: "dewsbury-rams",
+        name: "Dewsbury Rams",
+        aliases: ["dewsbury", "rams", "dewsbury rams"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4d/Dewsbury_Rams_logo.svg" },
+        },
+    },
+    {
+        id: "sheffield-eagles",
+        name: "Sheffield Eagles",
+        aliases: ["sheffield", "eagles", "sheffield eagles"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2c/Sheffield_Eagles_logo.svg" },
+        },
+    },
+    {
+        id: "swinton-lions",
+        name: "Swinton Lions",
+        aliases: ["swinton", "lions", "swinton lions"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Swinton_Lions_logo.svg" },
+        },
+    },
+    {
+        id: "widnes-vikings",
+        name: "Widnes Vikings",
+        aliases: ["widnes", "vikings", "widnes vikings"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Widnes_Vikings_logo.svg" },
+        },
+    },
+    {
+        id: "york-knights",
+        name: "York Knights",
+        aliases: ["york", "knights", "york knights", "york city knights"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2d/York_Knights_logo.svg" },
+        },
+    },
+    {
+        id: "doncaster-rlfc",
+        name: "Doncaster RLFC",
+        aliases: ["doncaster", "dons", "doncaster rlfc"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4e/Doncaster_RLFC_logo.svg" },
+        },
+    },
+    {
+        id: "whitehaven",
+        name: "Whitehaven",
+        aliases: ["whitehaven", "haven"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Whitehaven_logo.svg" },
+        },
+    },
+    {
+        id: "barrow-raiders",
+        name: "Barrow Raiders",
+        aliases: ["barrow", "raiders", "barrow raiders"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Barrow_Raiders_logo.svg" },
+        },
+    },
+    {
+        id: "newcastle-thunder",
+        name: "Newcastle Thunder",
+        aliases: ["newcastle", "thunder", "newcastle thunder"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2e/Newcastle_Thunder_logo.svg" },
+        },
+    },
+    {
+        id: "cornwall-pirates",
+        name: "Cornwall Pirates",
+        aliases: ["cornwall", "pirates", "cornwall pirates"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Cornwall_Pirates_logo.svg" },
+        },
+    },
+    {
+        id: "london-skolars",
+        name: "London Skolars",
+        aliases: ["skolars", "london skolars"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/London_Skolars_logo.svg" },
+        },
+    },
+    {
+        id: "north-wales-crusaders",
+        name: "North Wales Crusaders",
+        aliases: ["crusaders", "north wales", "north wales crusaders"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/North_Wales_Crusaders_logo.svg" },
+        },
+    },
+    {
+        id: "coventry-bears",
+        name: "Coventry Bears",
+        aliases: ["coventry", "bears", "coventry bears"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2e/Coventry_Bears_logo.svg" },
+        },
+    },
+    {
+        id: "midlands-hurricanes",
+        name: "Midlands Hurricanes",
+        aliases: ["midlands", "hurricanes", "midlands hurricanes"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Midlands_Hurricanes_logo.svg" },
+        },
+    },
+
+    // ── League 1 ───────────────────────────────────────────────
+    {
+        id: "oldham-rlfc",
+        name: "Oldham RLFC",
+        aliases: ["oldham", "roughyeds", "oldham rlfc"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4e/Oldham_RLFC_logo.svg" },
+        },
+    },
+    {
+        id: "rochdale-hornets",
+        name: "Rochdale Hornets",
+        aliases: ["rochdale", "hornets", "rochdale hornets"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Rochdale_Hornets_logo.svg" },
+        },
+    },
+    {
+        id: "keighley-cougars",
+        name: "Keighley Cougars",
+        aliases: ["keighley", "cougars", "keighley cougars"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2c/Keighley_Cougars_logo.svg" },
+        },
+    },
+    {
+        id: "hunslet-rlfc",
+        name: "Hunslet RLFC",
+        aliases: ["hunslet", "hunslet rlfc"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4e/Hunslet_RLFC_logo.svg" },
+        },
+    },
+
+    // ── NRL (Australia / NZ) ──────────────────────────────────
+    // Note: short, ambiguous nicknames shared with English clubs above
+    // (Knights, Raiders, Broncos, Panthers, Tigers, Dragons, Bulldogs,
+    // Warriors, Eagles) are deliberately NOT repeated here — only
+    // unambiguous full names / NRL-specific nicknames are aliased.
+    {
+        id: "newcastle-knights",
+        name: "Newcastle Knights",
+        aliases: ["newcastle knights"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Newcastle_Knights_logo.svg" },
+        },
+    },
+    {
+        id: "canterbury-bankstown-bulldogs",
+        name: "Canterbury-Bankstown Bulldogs",
+        aliases: ["canterbury", "canterbury bulldogs", "canterbury-bankstown", "bankstown", "bankstown bulldogs"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2c/Canterbury_Bulldogs_logo.svg" },
+        },
+    },
+    {
+        id: "melbourne-storm",
+        name: "Melbourne Storm",
+        aliases: ["melbourne", "storm", "melbourne storm"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4e/Melbourne_Storm_logo.svg" },
+        },
+    },
+    {
+        id: "sydney-roosters",
+        name: "Sydney Roosters",
+        aliases: ["sydney", "roosters", "chooks", "sydney roosters"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Sydney_Roosters_logo.svg" },
+        },
+    },
+    {
+        id: "penrith-panthers",
+        name: "Penrith Panthers",
+        aliases: ["penrith", "penrith panthers"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2d/Penrith_Panthers_logo.svg" },
+        },
+    },
+    {
+        id: "brisbane-broncos",
+        name: "Brisbane Broncos",
+        aliases: ["brisbane", "brisbane broncos"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Brisbane_Broncos_logo.svg" },
+        },
+    },
+    {
+        id: "canberra-raiders",
+        name: "Canberra Raiders",
+        aliases: ["canberra", "canberra raiders"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Canberra_Raiders_logo.svg" },
+        },
+    },
+    {
+        id: "cronulla-sharks",
+        name: "Cronulla-Sutherland Sharks",
+        aliases: ["cronulla", "sharks", "cronulla sharks", "cronulla-sutherland"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2c/Cronulla_Sharks_logo.svg" },
+        },
+    },
+    {
+        id: "manly-sea-eagles",
+        name: "Manly Warringah Sea Eagles",
+        aliases: ["manly", "sea eagles", "manly sea eagles", "manly warringah"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4e/Manly_Sea_Eagles_logo.svg" },
+        },
+    },
+    {
+        id: "south-sydney-rabbitohs",
+        name: "South Sydney Rabbitohs",
+        aliases: ["south sydney", "rabbitohs", "bunnies", "souths"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/South_Sydney_Rabbitohs_logo.svg" },
+        },
+    },
+    {
+        id: "parramatta-eels",
+        name: "Parramatta Eels",
+        aliases: ["parramatta", "parra", "eels", "parramatta eels"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2d/Parramatta_Eels_logo.svg" },
+        },
+    },
+    {
+        id: "north-queensland-cowboys",
+        name: "North Queensland Cowboys",
+        aliases: ["north queensland", "cowboys", "nq cowboys", "north queensland cowboys"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/North_Queensland_Cowboys_logo.svg" },
+        },
+    },
+    {
+        id: "wests-tigers",
+        name: "Wests Tigers",
+        aliases: ["wests", "wests tigers"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Wests_Tigers_logo.svg" },
+        },
+    },
+    {
+        id: "st-george-illawarra-dragons",
+        name: "St. George Illawarra Dragons",
+        aliases: ["st george", "st. george", "illawarra", "st george illawarra"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2c/St_George_Illawarra_Dragons_logo.svg" },
+        },
+    },
+    {
+        id: "gold-coast-titans",
+        name: "Gold Coast Titans",
+        aliases: ["gold coast", "titans", "gold coast titans"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4e/Gold_Coast_Titans_logo.svg" },
+        },
+    },
+    {
+        id: "new-zealand-warriors",
+        name: "New Zealand Warriors",
+        aliases: ["new zealand", "nz warriors", "new zealand warriors"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/New_Zealand_Warriors_logo.svg" },
+        },
+    },
+    {
+        id: "dolphins",
+        name: "Dolphins",
+        aliases: ["dolphins", "the dolphins", "redcliffe dolphins"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/2/2d/Dolphins_NRL_logo.svg" },
+        },
+    },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// Normalization
+// ═══════════════════════════════════════════════════════════════
+
+// Variant suffixes -> which `logos.<key>` to prefer. Checked in this
+// order; first match wins and is stripped from the string before the
+// team lookup runs.
+const VARIANT_PATTERNS = [
+    { variant: "wheelchair", re: /\bwheelchair\b/i },
+    { variant: "women", re: /\b(women'?s?|ladies|wmn)\b/i },
+    { variant: "academy", re: /\b(academy|scholarship|u\d{1,2}s?)\b/i },
+    { variant: "reserves", re: /\b(reserves?|2nds?|seconds|development|dev)\b/i },
+];
+
+// Generic club-name boilerplate that doesn't help (and sometimes hurts,
+// e.g. "Hull FC" vs "Hull KR") matching once aliases are in place.
+const CLUB_SUFFIX_RE =
+    /\b(rlfc|r\.?l\.?f\.?c\.?|rfc|r\.?f\.?c\.?|rugby league football club|rugby league club|rugby football club|rugby club|football club|fc)\b/gi;
+
+// Normalizes a raw "opposition" string into:
+//   { core: "<team name with variant + boilerplate stripped>",
+//     variant: "default" | "women" | "academy" | "reserves" | "wheelchair" }
+function normalizeTeamQuery(raw) {
+    let s = String(raw || "")
+        .toLowerCase()
+        .trim();
+
+    s = s.replace(/[.''’]/g, "");
+    s = s.replace(/&/g, "and");
+    s = s.replace(/\s+/g, " ").trim();
+
+    let variant = "default";
+    for (const { variant: v, re } of VARIANT_PATTERNS) {
+        if (re.test(s)) {
+            variant = v;
+            s = s.replace(re, "").trim();
+            break;
+        }
+    }
+
+    s = s.replace(CLUB_SUFFIX_RE, "").trim();
+    s = s.replace(/\s+/g, " ").trim();
+
+    return { core: s, variant };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Fuzzy alias matching (handles typos / unexpected abbreviations)
+// ═══════════════════════════════════════════════════════════════
+
+// alias (normalized, lowercase) -> team record
+const ALIAS_INDEX = new Map();
+for (const team of TEAM_REGISTRY) {
+    for (const alias of team.aliases) {
+        const key = alias.toLowerCase().trim();
+        if (ALIAS_INDEX.has(key) && ALIAS_INDEX.get(key) !== team) {
+            // Surfaces collisions during development — should never fire
+            // if TEAM_REGISTRY is edited carefully (see comments above).
+            console.warn(
+                `[logo] alias collision: "${key}" already maps to ` +
+                    `${ALIAS_INDEX.get(key).id}, ignoring duplicate from ${team.id}`,
+            );
+            continue;
+        }
+        ALIAS_INDEX.set(key, team);
+    }
+}
+
+// Classic iterative Levenshtein edit-distance.
+function levenshteinDistance(a, b) {
+    const m = a.length;
+    const n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+
+    let prev = new Array(n + 1);
+    let curr = new Array(n + 1);
+    for (let j = 0; j <= n; j++) prev[j] = j;
+
+    for (let i = 1; i <= m; i++) {
+        curr[0] = i;
+        for (let j = 1; j <= n; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            curr[j] = Math.min(
+                prev[j] + 1, // deletion
+                curr[j - 1] + 1, // insertion
+                prev[j - 1] + cost, // substitution
+            );
+        }
+        [prev, curr] = [curr, prev];
+    }
+    return prev[n];
+}
+
+// Returns { team, alias, score } for the best registry match, or null.
+// score is 1.0 for an exact alias hit, otherwise a 0-1 similarity.
+function fuzzyFindTeam(core) {
+    if (!core) return null;
+
+    const exact = ALIAS_INDEX.get(core);
+    if (exact) return { team: exact, alias: core, score: 1 };
+
+    let best = null;
+    let bestAlias = null;
+    let bestScore = 0;
+
+    for (const [alias, team] of ALIAS_INDEX) {
+        // Skip very short aliases for fuzzy matching — too easy to false-
+        // positive (exact match above already covers these correctly).
+        if (alias.length < 4) continue;
+        // Quick length-based reject before running Levenshtein.
+        if (Math.abs(alias.length - core.length) > 3) continue;
+
+        const dist = levenshteinDistance(core, alias);
+        const score = 1 - dist / Math.max(alias.length, core.length);
+        if (score > bestScore) {
+            bestScore = score;
+            best = team;
+            bestAlias = alias;
+        }
+    }
+
+    // Shorter strings need a stricter threshold — a 1-character typo on
+    // a 5-letter word is a much bigger relative change than on a
+    // 15-letter one.
+    const threshold = core.length <= 6 ? 0.86 : 0.78;
+    if (best && bestScore >= threshold) {
+        return { team: best, alias: bestAlias, score: bestScore };
+    }
+    return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Public resolver
+// ═══════════════════════════════════════════════════════════════
+
+// Looks up the curated registry only. Returns
+// { url, team, variant, matchScore } or null.
+function resolveRegistryLogo(rawName) {
+    const { core, variant } = normalizeTeamQuery(rawName);
+    if (!core) return null;
+
+    const match = fuzzyFindTeam(core);
+    if (!match) return null;
+
+    const logos = match.team.logos || {};
+    const entry = logos[variant] || logos.default;
+    if (!entry) return null;
+
+    return { url: entry.url, team: match.team, variant, matchScore: match.score };
+}
+
+const logoLookupMemo = new Map();
+const pendingDiscovery = new Set();
+
+// Main entry point — same signature/behaviour as before.
+//   - returns a logo URL string, or null (caller renders shieldSVG)
+//   - registry is authoritative and checked first (instant, no network)
+//   - unknown teams fall back to a TTL'd discovery cache + background
+//     Wikipedia lookup via discoverLogoAsync()
 function getTeamLogo(name) {
     if (!name) return null;
 
-    const lower = name.toLowerCase().trim();
-
-    if (logoLookupMemo.has(lower)) {
-        return logoLookupMemo.get(lower);
+    const memoKey = name.toLowerCase().trim();
+    if (logoLookupMemo.has(memoKey)) {
+        return logoLookupMemo.get(memoKey);
     }
 
-    // Strip suffixes like "Academy", "U16s", "Reserves", etc.
-    const baseName = stripTeamSuffix(name);
-    const baseLower = baseName.toLowerCase().trim();
-
-    // Fuzzy matching: normalize team name using aliases
-    const normalized = TEAM_NAME_ALIASES[baseLower] || baseLower;
-
-    const logo =
-        KNOWN_LOGO_MAP[normalized] ||
-        KNOWN_LOGO_MAP[baseLower] ||
-        KNOWN_LOGO_MAP[lower] ||
-        (logoCache[normalized] !== "NOT_FOUND"
-            ? logoCache[normalized]
-            : null) ||
-        (logoCache[baseLower] !== "NOT_FOUND"
-            ? logoCache[baseLower]
-            : null) ||
-        (logoCache[lower] !== "NOT_FOUND"
-            ? logoCache[lower]
-            : null);
-
-    logoLookupMemo.set(lower, logo);
-
-    if (!logo && logoCache[lower] !== "NOT_FOUND" && logoCache[baseLower] !== "NOT_FOUND" && logoCache[normalized] !== "NOT_FOUND") {
-        discoverLogoAsync(normalized !== baseLower ? normalized : baseName);
+    // 1. Curated registry — fuzzy-matched, variant-aware, always wins.
+    const registryMatch = resolveRegistryLogo(name);
+    if (registryMatch) {
+        logoLookupMemo.set(memoKey, registryMatch.url);
+        return registryMatch.url;
     }
 
-    return logo;
-}
-const brokenLogoUrls = new Set();
+    // 2. Discovery cache for teams not in the registry.
+    const { core } = normalizeTeamQuery(name);
+    const cacheKey = core || memoKey;
+    const rawEntry = logoCache[cacheKey];
 
-function handleLogoError(img) {
-    const url = img.src;
-
-    brokenLogoUrls.add(url);
-
-    img.style.display = "none";
-
-    const fallback = img.nextElementSibling;
-
-    if (fallback) {
-        fallback.style.display = "flex";
+    let result = null;
+    if (rawEntry && rawEntry.url !== "NOT_FOUND") {
+        result = rawEntry.url;
     }
+    logoLookupMemo.set(memoKey, result);
+
+    // 3. If the cache entry is missing or stale (> LOGO_CACHE_TTL_DAYS),
+    // re-run discovery in the background. We still return whatever we
+    // have right now (stale logo or null) so the UI doesn't flicker.
+    const fresh = getCachedEntry(cacheKey);
+    if (!fresh && !pendingDiscovery.has(cacheKey)) {
+        discoverLogoAsync(name, cacheKey);
+    }
+
+    return result;
 }
 
-const pendingDiscovery = new Set();
+// ═══════════════════════════════════════════════════════════════
+// Async discovery fallback (only runs for teams NOT in TEAM_REGISTRY)
+// ═══════════════════════════════════════════════════════════════
 
-async function discoverLogoAsync(name) {
+// Official team websites for logo discovery (Strategy 0).
+const TEAM_WEBSITES = {
+    "bradford bulls": "https://bradfordbulls.co.uk",
+    "leeds rhinos": "https://leedsrhinos.co.uk",
+    "wigan warriors": "https://wiganwarriors.com",
+    "hull fc": "https://hullfc.com",
+    "hull kr": "https://hullkr.co.uk",
+    "castleford tigers": "https://castletigers.com",
+    "wakefield trinity": "https://wakefieldtrinity.co.uk",
+    "huddersfield giants": "https://giantsrl.com",
+    "st helens": "https://saintsrlfc.com",
+    "catalan dragons": "https://catalansdragons.com",
+    "toulouse olympique": "https://toulouseolympique.fr",
+    "london broncos": "https://londonbroncosrl.com",
+    "salford red devils": "https://salfordreddevils.co.uk",
+    "warrington wolves": "https://warringtonwolves.com",
+    "leigh leopards": "https://leighleopards.com",
+    "featherstone rovers": "https://fevrovers.co.uk",
+    "halifax panthers": "https://halifaxpanthers.co.uk",
+    "batley bulldogs": "https://batleybulldogs.com",
+    "dewsbury rams": "https://dewsburyrams.co.uk",
+    "sheffield eagles": "https://sheffieldeagles.com",
+    "swinton lions": "https://swintonlions.com",
+    "widnes vikings": "https://widnesvikings.co.uk",
+    "york knights": "https://yorkknightsrlfc.com",
+    "doncaster": "https://doncasterrlfc.com",
+    "whitehaven": "https://whitehavenrl.co.uk",
+    "barrow": "https://barrowrlfc.com",
+    "newcastle thunder": "https://newcastlethunder.com",
+    "cornwall pirates": "https://cornwall-pirates.com",
+    "london skolars": "https://londonskolars.com",
+    "north wales crusaders": "https://crusadersrl.co",
+    "coventry bears": "https://coventrybearsrl.com",
+    "midlands hurricanes": "https://midlandshurricanes.co.uk",
+    "oldham": "https://oldhamrl.co.uk",
+    "rochdale hornets": "https://rochdalehornets.co.uk",
+    "keighley cougars": "https://keighleycougars.com",
+    "hunslet": "https://hunsletrlfc.co.uk",
+};
+
+// `name` = original opponent text (used for search queries),
+// `cacheKey` = normalized core (used for storage/dedup).
+async function discoverLogoAsync(name, cacheKey) {
+    if (pendingDiscovery.has(cacheKey)) return;
+    pendingDiscovery.add(cacheKey);
+
     const lower = name.toLowerCase().trim();
-    if (pendingDiscovery.has(lower)) return;
-    pendingDiscovery.add(lower);
+    const firstWord = cacheKey.split(" ")[0];
 
-    // ── Strategy 0: Official team websites (highest priority) ─────────
-    const teamWebsite = TEAM_WEBSITES[lower];
+    // ── Strategy 0: Official team website ─────────────────────────
+    const teamWebsite = TEAM_WEBSITES[cacheKey] || TEAM_WEBSITES[lower];
     if (teamWebsite) {
         try {
-            // Use CORS proxy to fetch the team website HTML
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(teamWebsite)}`;
             const proxyRes = await fetch(proxyUrl);
             if (proxyRes.ok) {
                 const data = await proxyRes.json();
                 const html = data.contents;
-                // Look for logo URLs in common patterns
                 const logoPatterns = [
                     /https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/gi,
                     /https?:\/\/[^\s"']+badge[^\s"']*\.(png|svg|jpg|jpeg)/gi,
                     /https?:\/\/[^\s"']+crest[^\s"']*\.(png|svg|jpg|jpeg)/gi,
                 ];
-                
                 for (const pattern of logoPatterns) {
                     const matches = html.match(pattern);
                     if (matches) {
-                        // Filter out non-logo images (stadiums, players, etc.)
-                        const validLogos = matches.filter(url => {
+                        const validLogos = matches.filter((url) => {
                             const lowerUrl = url.toLowerCase();
-                            return !lowerUrl.includes('stadium') &&
-                                   !lowerUrl.includes('player') &&
-                                   !lowerUrl.includes('portrait') &&
-                                   !lowerUrl.includes('ground');
+                            return (
+                                !lowerUrl.includes("stadium") &&
+                                !lowerUrl.includes("player") &&
+                                !lowerUrl.includes("portrait") &&
+                                !lowerUrl.includes("ground")
+                            );
                         });
                         if (validLogos.length > 0) {
-                            // Use the first valid logo found
-                            logoCache[lower] = validLogos[0];
-                            saveLogoCache();
-                            logoLookupMemo.delete(lower);
+                            setCachedLogo(cacheKey, validLogos[0]);
                             updateLogoInDOM(name, validLogos[0]);
-                            pendingDiscovery.delete(lower);
+                            pendingDiscovery.delete(cacheKey);
                             return;
                         }
                     }
@@ -743,7 +1112,7 @@ async function discoverLogoAsync(name) {
         }
     }
 
-    // ── Strategy 1: Super League website ─────────────────────────────
+    // ── Strategy 1: Super League website ───────────────────────────
     try {
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://superleague.co.uk/?s=${encodeURIComponent(name)}&post_type=clubs`)}`;
         const slSearch = await fetch(proxyUrl);
@@ -752,11 +1121,9 @@ async function discoverLogoAsync(name) {
             const text = data.contents;
             const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
             if (logoMatch) {
-                logoCache[lower] = logoMatch[0];
-                saveLogoCache();
-                logoLookupMemo.delete(lower);
+                setCachedLogo(cacheKey, logoMatch[0]);
                 updateLogoInDOM(name, logoMatch[0]);
-                pendingDiscovery.delete(lower);
+                pendingDiscovery.delete(cacheKey);
                 return;
             }
         }
@@ -764,7 +1131,7 @@ async function discoverLogoAsync(name) {
         /* Super League fetch failed — continue */
     }
 
-    // ── Strategy 2: Rugby Football League website ─────────────────────
+    // ── Strategy 2: Rugby Football League website ──────────────────
     try {
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://rfl.co.uk/?s=${encodeURIComponent(name)}`)}`;
         const rflSearch = await fetch(proxyUrl);
@@ -773,11 +1140,9 @@ async function discoverLogoAsync(name) {
             const text = data.contents;
             const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
             if (logoMatch) {
-                logoCache[lower] = logoMatch[0];
-                saveLogoCache();
-                logoLookupMemo.delete(lower);
+                setCachedLogo(cacheKey, logoMatch[0]);
                 updateLogoInDOM(name, logoMatch[0]);
-                pendingDiscovery.delete(lower);
+                pendingDiscovery.delete(cacheKey);
                 return;
             }
         }
@@ -785,16 +1150,8 @@ async function discoverLogoAsync(name) {
         /* RFL fetch failed — continue */
     }
 
-    // ── Strategy 3: Search Wikipedia File namespace directly ──────────
-    // This is far more reliable than pageimages (which returns article
-    // featured images, not logos).
-    const fileQueries = [
-        `${name} logo`,
-        `${name} RLFC logo`,
-        `${name} rugby league logo`,
-    ];
-    const firstWord = lower.split(" ")[0];
-
+    // ── Strategy 3: Wikipedia File namespace search ─────────────────
+    const fileQueries = [`${name} logo`, `${name} RLFC logo`, `${name} rugby league logo`];
     for (const query of fileQueries) {
         try {
             const searchRes = await fetch(
@@ -806,31 +1163,20 @@ async function discoverLogoAsync(name) {
             for (const file of files) {
                 const tl = file.title.toLowerCase();
                 if (!tl.includes(firstWord)) continue;
-                const isLogoFile =
-                    tl.includes("logo") ||
-                    tl.includes("badge") ||
-                    tl.includes("crest");
-                const isPhoto =
-                    tl.includes("stadium") ||
-                    tl.includes("ground") ||
-                    tl.includes("portrait") ||
-                    tl.includes("player");
+                const isLogoFile = tl.includes("logo") || tl.includes("badge") || tl.includes("crest");
+                const isPhoto = tl.includes("stadium") || tl.includes("ground") || tl.includes("portrait") || tl.includes("player");
                 if (!isLogoFile || isPhoto) continue;
 
                 const imgRes = await fetch(
                     `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(file.title)}&prop=imageinfo&iiprop=url&format=json&origin=*`,
                 );
                 const imgData = await imgRes.json();
-                const pages = Object.values(
-                    imgData.query?.pages || {},
-                );
+                const pages = Object.values(imgData.query?.pages || {});
                 const imageUrl = pages[0]?.imageinfo?.[0]?.url;
                 if (imageUrl && !pages[0].missing) {
-                    logoCache[lower] = imageUrl;
-                    saveLogoCache();
-                    logoLookupMemo.delete(lower);
+                    setCachedLogo(cacheKey, imageUrl);
                     updateLogoInDOM(name, imageUrl);
-                    pendingDiscovery.delete(lower);
+                    pendingDiscovery.delete(cacheKey);
                     return;
                 }
             }
@@ -839,12 +1185,8 @@ async function discoverLogoAsync(name) {
         }
     }
 
-    // ── Strategy 4: Fallback to pageimages API ───────────────────────
-    const articleQueries = [
-        `${name} rugby league`,
-        `${name} RLFC`,
-        name,
-    ];
+    // ── Strategy 4: Wikipedia pageimages fallback ───────────────────
+    const articleQueries = [`${name} rugby league`, `${name} RLFC`, name];
     for (const query of articleQueries) {
         try {
             const searchRes = await fetch(
@@ -853,34 +1195,21 @@ async function discoverLogoAsync(name) {
             const searchData = await searchRes.json();
             const titles = searchData[1] || [];
             for (const title of titles) {
-                if (!title.toLowerCase().includes(firstWord))
-                    continue;
+                if (!title.toLowerCase().includes(firstWord)) continue;
                 const imgRes = await fetch(
                     `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&pithumbsize=200&format=json&origin=*`,
                 );
                 const imgData = await imgRes.json();
-                const pages = Object.values(
-                    imgData.query?.pages || {},
-                );
+                const pages = Object.values(imgData.query?.pages || {});
                 const thumb = pages[0]?.thumbnail?.source;
                 if (thumb) {
                     const tl = thumb.toLowerCase();
-                    const isLogo =
-                        tl.includes("logo") ||
-                        tl.includes("badge") ||
-                        tl.includes("crest") ||
-                        tl.includes(".svg");
-                    const isPhoto =
-                        tl.includes("stadium") ||
-                        tl.includes("ground") ||
-                        tl.includes("portrait") ||
-                        tl.includes("player");
+                    const isLogo = tl.includes("logo") || tl.includes("badge") || tl.includes("crest") || tl.includes(".svg");
+                    const isPhoto = tl.includes("stadium") || tl.includes("ground") || tl.includes("portrait") || tl.includes("player");
                     if (isLogo && !isPhoto) {
-                        logoCache[lower] = thumb;
-                        saveLogoCache();
-                        logoLookupMemo.delete(lower);
+                        setCachedLogo(cacheKey, thumb);
                         updateLogoInDOM(name, thumb);
-                        pendingDiscovery.delete(lower);
+                        pendingDiscovery.delete(cacheKey);
                         return;
                     }
                 }
@@ -890,28 +1219,21 @@ async function discoverLogoAsync(name) {
         }
     }
 
-    logoCache[lower] = "NOT_FOUND";
-    saveLogoCache();
-    pendingDiscovery.delete(lower);
+    setCachedNotFound(cacheKey);
+    pendingDiscovery.delete(cacheKey);
 }
 
-function updateLogoInDOM(name, url) {
-    // Invalidate memo so the corrected URL is used on the next render()
-    logoLookupMemo.delete(name.toLowerCase().trim());
-    document
-        .querySelectorAll(".fixture-logo-wrap")
-        .forEach((wrap) => {
-            const card = wrap.closest(".fixture-card");
-            const opponent = card
-                ?.querySelector(".fixture-opponent")
-                ?.textContent?.trim();
-            if (
-                !opponent ||
-                opponent.toLowerCase() !== name.toLowerCase().trim()
-            )
-                return;
-            wrap.innerHTML = logoImgWithFallback(url, name);
-        });
+// Swaps a freshly-discovered logo into every currently-rendered fixture
+// card whose opponent normalizes to the same `core` as `matchedName`.
+function updateLogoInDOM(matchedName, url) {
+    const targetCore = normalizeTeamQuery(matchedName).core;
+    document.querySelectorAll(".fixture-logo-wrap").forEach((wrap) => {
+        const card = wrap.closest(".fixture-card");
+        const opponent = card?.querySelector(".fixture-opponent")?.textContent?.trim();
+        if (!opponent) return;
+        if (normalizeTeamQuery(opponent).core !== targetCore) return;
+        wrap.innerHTML = logoImgWithFallback(url, opponent);
+    });
 }
 
 let syncState = SyncState.CONNECTING;
