@@ -1014,11 +1014,19 @@ function resolveRegistryLogo(rawName) {
 const logoLookupMemo = new Map();
 const pendingDiscovery = new Set();
 
+// Hardcoded registry URLs that have been confirmed dead (404'd in the
+// browser). Once a URL is in here, getTeamLogo() stops returning it and
+// falls through to real discovery (Wikipedia search, not a guessed path).
+const brokenRegistryUrls = new Set();
+
 // Main entry point — same signature/behaviour as before.
 //   - returns a logo URL string, or null (caller renders shieldSVG)
-//   - registry is authoritative and checked first (instant, no network)
-//   - unknown teams fall back to a TTL'd discovery cache + background
-//     Wikipedia lookup via discoverLogoAsync()
+//   - registry is checked first (instant, no network) for NAME matching;
+//     its hardcoded image URL is used UNLESS it's been marked broken by
+//     reportLogoError()
+//   - unknown teams (and registry teams with a broken hardcoded URL) fall
+//     back to a TTL'd discovery cache + background Wikipedia search via
+//     discoverLogoAsync()
 function getTeamLogo(name) {
     if (!name) return null;
 
@@ -1027,21 +1035,33 @@ function getTeamLogo(name) {
         return logoLookupMemo.get(memoKey);
     }
 
-    // 1. Curated registry — fuzzy-matched, variant-aware, always wins.
+    // 1. Curated registry — fuzzy-matched, variant-aware. Its hardcoded
+    // URL wins UNLESS it's already known to 404.
     const registryMatch = resolveRegistryLogo(name);
-    if (registryMatch) {
+    if (registryMatch && !brokenRegistryUrls.has(registryMatch.url)) {
         logoLookupMemo.set(memoKey, registryMatch.url);
         return registryMatch.url;
     }
 
-    // 2. Discovery cache for teams not in the registry.
+    // 2. Discovery cache — for teams with no registry entry, OR a registry
+    // entry whose hardcoded URL turned out to be dead.
     const { core } = normalizeTeamQuery(name);
-    const cacheKey = core || memoKey;
+
+    // Registry teams get a stable per-team cache key (independent of which
+    // alias/variant was typed) and search by their canonical name — far
+    // more likely to find the right Wikipedia file than the raw opponent
+    // string. Non-registry teams use the normalized "core" of the raw name.
+    const cacheKey = registryMatch ? `registry:${registryMatch.team.id}` : core || memoKey;
+    const searchName = registryMatch ? registryMatch.team.name : name;
 
     // The previous version of this system cached entries under the raw
     // lowercased opponent name (suffixes like "RLFC" included), not the
     // normalized `core`. Check both so migrated entries are still found.
-    const candidateKeys = cacheKey === memoKey ? [cacheKey] : [cacheKey, memoKey];
+    const candidateKeys = registryMatch
+        ? [cacheKey]
+        : cacheKey === memoKey
+          ? [cacheKey]
+          : [cacheKey, memoKey];
 
     let rawEntry = null;
     for (const k of candidateKeys) {
@@ -1051,21 +1071,53 @@ function getTeamLogo(name) {
         }
     }
 
-    let result = null;
-    if (rawEntry && rawEntry.url && rawEntry.url !== "NOT_FOUND") {
-        result = rawEntry.url;
+    let result;
+    if (rawEntry) {
+        // Discovery already ran for this team: use its result (a real URL,
+        // or null if it came back NOT_FOUND — no point re-requesting a
+        // hardcoded URL we already know is dead).
+        result = rawEntry.url === "NOT_FOUND" ? null : rawEntry.url;
+    } else if (registryMatch) {
+        // First time seeing this broken registry URL: return it anyway so
+        // the <img onerror> fires once, which calls reportLogoError() to
+        // mark it broken and kick off discovery below.
+        result = registryMatch.url;
+    } else {
+        result = null;
     }
     logoLookupMemo.set(memoKey, result);
 
-    // 3. If neither cache entry is fresh (missing or stale, > TTL),
-    // re-run discovery in the background. We still return whatever we
-    // have right now (stale logo or null) so the UI doesn't flicker.
+    // 3. If nothing fresh is cached (missing or stale, > TTL), run
+    // discovery in the background. We still return whatever we have right
+    // now (stale/broken logo or null) so the UI doesn't flicker.
     const fresh = candidateKeys.some((k) => getCachedEntry(k));
     if (!fresh && !pendingDiscovery.has(cacheKey)) {
-        discoverLogoAsync(name, cacheKey);
+        discoverLogoAsync(searchName, cacheKey);
     }
 
     return result;
+}
+
+// Called from the <img onerror> handler when a logo fails to load. If the
+// failed URL is a registry-provided one, mark it broken so getTeamLogo()
+// stops returning it and instead runs real Wikipedia-search discovery
+// (which doesn't rely on guessing the upload.wikimedia.org hash path).
+function reportLogoError(imgEl) {
+    const failedUrl = imgEl?.src;
+    const teamName = imgEl?.dataset?.team || imgEl?.alt;
+    if (!failedUrl || !teamName) return;
+
+    const registryMatch = resolveRegistryLogo(teamName);
+    if (!registryMatch || registryMatch.url !== failedUrl) return;
+    if (brokenRegistryUrls.has(failedUrl)) return;
+
+    brokenRegistryUrls.add(failedUrl);
+    logoLookupMemo.clear();
+
+    const cacheKey = `registry:${registryMatch.team.id}`;
+    if (!pendingDiscovery.has(cacheKey) && !getCachedEntry(cacheKey)) {
+        discoverLogoAsync(registryMatch.team.name, cacheKey);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
