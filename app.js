@@ -301,6 +301,72 @@ function saveLogoCache() {
     } catch (e) {}
 }
 
+// ─────────────────────────────────────────────────────────────
+// Unmatched team tracking — logs team names that aren't found
+// in the registry so they can be identified and added proactively.
+// ─────────────────────────────────────────────────────────────
+const UNMATCHED_TEAMS_KEY = "bbUnmatchedTeams";
+
+let unmatchedTeams = {};
+try {
+    unmatchedTeams = JSON.parse(localStorage.getItem(UNMATCHED_TEAMS_KEY) || "{}");
+} catch (e) {
+    unmatchedTeams = {};
+}
+
+function saveUnmatchedTeams() {
+    try {
+        localStorage.setItem(UNMATCHED_TEAMS_KEY, JSON.stringify(unmatchedTeams));
+    } catch (e) {}
+}
+
+function trackUnmatchedTeam(rawName, core, variant) {
+    const key = rawName.toLowerCase().trim();
+    if (!unmatchedTeams[key]) {
+        unmatchedTeams[key] = {
+            name: rawName,
+            core: core,
+            variant: variant,
+            firstSeen: Date.now(),
+            lastSeen: Date.now(),
+            count: 1
+        };
+        console.warn(`[logo] Unmatched team detected: "${rawName}" (core: "${core}", variant: "${variant}")`);
+    } else {
+        unmatchedTeams[key].lastSeen = Date.now();
+        unmatchedTeams[key].count++;
+    }
+    saveUnmatchedTeams();
+}
+
+// Dev helper — run `listUnmatchedTeams()` in the console to see all
+// unmatched teams, how often they've been seen, and when they were
+// first/last encountered.
+function listUnmatchedTeams() {
+    const rows = Object.entries(unmatchedTeams).map(([key, data]) => {
+        const firstSeen = new Date(data.firstSeen).toLocaleDateString();
+        const lastSeen = new Date(data.lastSeen).toLocaleDateString();
+        return {
+            name: data.name,
+            core: data.core,
+            variant: data.variant,
+            count: data.count,
+            firstSeen,
+            lastSeen
+        };
+    });
+    console.table(rows);
+    return rows;
+}
+
+// Dev helper — run `clearUnmatchedTeams()` in the console to reset
+// the tracking log (useful after adding missing teams to registry).
+function clearUnmatchedTeams() {
+    unmatchedTeams = {};
+    saveUnmatchedTeams();
+    console.log("[logo] Unmatched teams tracking cleared");
+}
+
 // One-time migration from the old plain-string cache format
 // ({ [key]: "https://...url" } or "NOT_FOUND") to the new
 // { [key]: { url, ts } } format. Runs once: if v3 already has data,
@@ -681,6 +747,30 @@ const TEAM_REGISTRY = [
             default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Midlands_Hurricanes_logo.svg" },
         },
     },
+    {
+        id: "cardiff-demons",
+        name: "Cardiff Demons",
+        aliases: ["cardiff", "demons", "cardiff demons"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Cardiff_Demons_logo.svg" },
+        },
+    },
+    {
+        id: "oulton-raidettes",
+        name: "Oulton Raidettes",
+        aliases: ["oulton", "raidettes", "oulton raidettes"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/4/4c/Oulton_Raidettes_logo.svg" },
+        },
+    },
+    {
+        id: "manchester-swinton",
+        name: "Manchester Swinton",
+        aliases: ["manchester swinton", "swinton manchester"],
+        logos: {
+            default: { url: "https://upload.wikimedia.org/wikipedia/en/6/6e/Swinton_Lions_logo.svg" },
+        },
+    },
 
     // ── League 1 ───────────────────────────────────────────────
     {
@@ -868,7 +958,7 @@ const TEAM_REGISTRY = [
 // team lookup runs.
 const VARIANT_PATTERNS = [
     { variant: "wheelchair", re: /\bwheelchair\b/i },
-    { variant: "women", re: /\b(women'?s?|ladies|wmn)\b/i },
+    { variant: "women", re: /\b(women'?s?|ladies|wmn|lionesses|raidettes)\b/i },
     { variant: "academy", re: /\b(academy|scholarship|u\d{1,2}s?)\b/i },
     { variant: "reserves", re: /\b(reserves?|2nds?|seconds|development|dev)\b/i },
 ];
@@ -1037,15 +1127,20 @@ function getTeamLogo(name) {
 
     // 1. Curated registry — fuzzy-matched, variant-aware. Its hardcoded
     // URL wins UNLESS it's already known to 404.
+    const { core, variant } = normalizeTeamQuery(name);
     const registryMatch = resolveRegistryLogo(name);
     if (registryMatch && !brokenRegistryUrls.has(registryMatch.url)) {
         logoLookupMemo.set(memoKey, registryMatch.url);
         return registryMatch.url;
     }
 
+    // Track unmatched teams for future registry updates
+    if (!registryMatch) {
+        trackUnmatchedTeam(name, core, variant);
+    }
+
     // 2. Discovery cache — for teams with no registry entry, OR a registry
     // entry whose hardcoded URL turned out to be dead.
-    const { core } = normalizeTeamQuery(name);
 
     // Registry teams get a stable per-team cache key (independent of which
     // alias/variant was typed) and search by their canonical name — far
@@ -1167,11 +1262,16 @@ const TEAM_WEBSITES = {
 // `name` = original opponent text (used for search queries),
 // `cacheKey` = normalized core (used for storage/dedup).
 async function discoverLogoAsync(name, cacheKey) {
-    if (pendingDiscovery.has(cacheKey)) return;
+    console.log(`[logo] Starting logo discovery for: "${name}" (cacheKey: "${cacheKey}")`);
+    if (pendingDiscovery.has(cacheKey)) {
+        console.log(`[logo] Discovery already pending for: ${cacheKey}`);
+        return;
+    }
     pendingDiscovery.add(cacheKey);
 
     const lower = name.toLowerCase().trim();
     const firstWord = cacheKey.split(" ")[0];
+    console.log(`[logo] First word for filtering: "${firstWord}"`);
 
     // ── Strategy 0: Official team website ─────────────────────────
     const teamWebsite = TEAM_WEBSITES[cacheKey] || TEAM_WEBSITES[lower];
@@ -1213,53 +1313,96 @@ async function discoverLogoAsync(name, cacheKey) {
         }
     }
 
-    // ── Strategy 1: Super League website ───────────────────────────
+    // ── Strategy 1: Bradford Bulls website ─────────────────────────
+    try {
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://bradfordbulls.co.uk/?s=${encodeURIComponent(name)}`)}`;
+        console.log(`[logo] Trying Bradford Bulls website: ${proxyUrl}`);
+        const bbSearch = await fetch(proxyUrl);
+        console.log(`[logo] Bradford Bulls response status: ${bbSearch.status}`);
+        if (bbSearch.ok) {
+            const data = await bbSearch.json();
+            const text = data.contents;
+            console.log(`[logo] Bradford Bulls content length: ${text?.length || 0}`);
+            const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
+            console.log(`[logo] Bradford Bulls logo match: ${logoMatch ? logoMatch[0] : 'none'}`);
+            if (logoMatch) {
+                setCachedLogo(cacheKey, logoMatch[0]);
+                updateLogoInDOM(name, logoMatch[0]);
+                pendingDiscovery.delete(cacheKey);
+                return;
+            }
+        } else {
+            console.log(`[logo] Bradford Bulls fetch failed with status: ${bbSearch.status}`);
+        }
+    } catch (e) {
+        console.log(`[logo] Bradford Bulls fetch error:`, e.message);
+        /* Bradford Bulls fetch failed — continue */
+    }
+
+    // ── Strategy 2: Super League website ───────────────────────────
     try {
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://superleague.co.uk/?s=${encodeURIComponent(name)}&post_type=clubs`)}`;
+        console.log(`[logo] Trying Super League website: ${proxyUrl}`);
         const slSearch = await fetch(proxyUrl);
+        console.log(`[logo] Super League response status: ${slSearch.status}`);
         if (slSearch.ok) {
             const data = await slSearch.json();
             const text = data.contents;
+            console.log(`[logo] Super League content length: ${text?.length || 0}`);
             const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
+            console.log(`[logo] Super League logo match: ${logoMatch ? logoMatch[0] : 'none'}`);
             if (logoMatch) {
                 setCachedLogo(cacheKey, logoMatch[0]);
                 updateLogoInDOM(name, logoMatch[0]);
                 pendingDiscovery.delete(cacheKey);
                 return;
             }
+        } else {
+            console.log(`[logo] Super League fetch failed with status: ${slSearch.status}`);
         }
     } catch (e) {
+        console.log(`[logo] Super League fetch error:`, e.message);
         /* Super League fetch failed — continue */
     }
 
-    // ── Strategy 2: Rugby Football League website ──────────────────
+    // ── Strategy 3: Rugby Football League website ──────────────────
     try {
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://rfl.co.uk/?s=${encodeURIComponent(name)}`)}`;
+        console.log(`[logo] Trying RFL website: ${proxyUrl}`);
         const rflSearch = await fetch(proxyUrl);
+        console.log(`[logo] RFL response status: ${rflSearch.status}`);
         if (rflSearch.ok) {
             const data = await rflSearch.json();
             const text = data.contents;
+            console.log(`[logo] RFL content length: ${text?.length || 0}`);
             const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
+            console.log(`[logo] RFL logo match: ${logoMatch ? logoMatch[0] : 'none'}`);
             if (logoMatch) {
                 setCachedLogo(cacheKey, logoMatch[0]);
                 updateLogoInDOM(name, logoMatch[0]);
                 pendingDiscovery.delete(cacheKey);
                 return;
             }
+        } else {
+            console.log(`[logo] RFL fetch failed with status: ${rflSearch.status}`);
         }
     } catch (e) {
+        console.log(`[logo] RFL fetch error:`, e.message);
         /* RFL fetch failed — continue */
     }
 
-    // ── Strategy 3: Wikipedia File namespace search ─────────────────
+    // ── Strategy 4: Wikipedia File namespace search ─────────────────
+    console.log(`[logo] Trying Wikipedia File namespace search`);
     const fileQueries = [`${name} logo`, `${name} RLFC logo`, `${name} rugby league logo`];
     for (const query of fileQueries) {
         try {
+            console.log(`[logo] Wikipedia query: ${query}`);
             const searchRes = await fetch(
                 `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&srlimit=5&format=json&origin=*`,
             );
             const searchData = await searchRes.json();
             const files = searchData.query?.search || [];
+            console.log(`[logo] Wikipedia found ${files.length} files for query: ${query}`);
 
             for (const file of files) {
                 const tl = file.title.toLowerCase();
@@ -1268,6 +1411,7 @@ async function discoverLogoAsync(name, cacheKey) {
                 const isPhoto = tl.includes("stadium") || tl.includes("ground") || tl.includes("portrait") || tl.includes("player");
                 if (!isLogoFile || isPhoto) continue;
 
+                console.log(`[logo] Trying Wikipedia file: ${file.title}`);
                 const imgRes = await fetch(
                     `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(file.title)}&prop=imageinfo&iiprop=url&format=json&origin=*`,
                 );
@@ -1275,6 +1419,7 @@ async function discoverLogoAsync(name, cacheKey) {
                 const pages = Object.values(imgData.query?.pages || {});
                 const imageUrl = pages[0]?.imageinfo?.[0]?.url;
                 if (imageUrl && !pages[0].missing) {
+                    console.log(`[logo] Wikipedia file found: ${imageUrl}`);
                     setCachedLogo(cacheKey, imageUrl);
                     updateLogoInDOM(name, imageUrl);
                     pendingDiscovery.delete(cacheKey);
@@ -1282,21 +1427,26 @@ async function discoverLogoAsync(name, cacheKey) {
                 }
             }
         } catch (e) {
+            console.log(`[logo] Wikipedia file search error:`, e.message);
             /* network error — silent */
         }
     }
 
-    // ── Strategy 4: Wikipedia pageimages fallback ───────────────────
+    // ── Strategy 5: Wikipedia pageimages fallback ───────────────────
+    console.log(`[logo] Trying Wikipedia pageimages fallback`);
     const articleQueries = [`${name} rugby league`, `${name} RLFC`, name];
     for (const query of articleQueries) {
         try {
+            console.log(`[logo] Wikipedia article query: ${query}`);
             const searchRes = await fetch(
                 `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=3&format=json&origin=*`,
             );
             const searchData = await searchRes.json();
             const titles = searchData[1] || [];
+            console.log(`[logo] Wikipedia found ${titles.length} articles for query: ${query}`);
             for (const title of titles) {
                 if (!title.toLowerCase().includes(firstWord)) continue;
+                console.log(`[logo] Trying Wikipedia article: ${title}`);
                 const imgRes = await fetch(
                     `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&pithumbsize=200&format=json&origin=*`,
                 );
@@ -1308,6 +1458,7 @@ async function discoverLogoAsync(name, cacheKey) {
                     const isLogo = tl.includes("logo") || tl.includes("badge") || tl.includes("crest") || tl.includes(".svg");
                     const isPhoto = tl.includes("stadium") || tl.includes("ground") || tl.includes("portrait") || tl.includes("player");
                     if (isLogo && !isPhoto) {
+                        console.log(`[logo] Wikipedia pageimage found: ${thumb}`);
                         setCachedLogo(cacheKey, thumb);
                         updateLogoInDOM(name, thumb);
                         pendingDiscovery.delete(cacheKey);
@@ -1316,10 +1467,12 @@ async function discoverLogoAsync(name, cacheKey) {
                 }
             }
         } catch (e) {
+            console.log(`[logo] Wikipedia pageimages error:`, e.message);
             /* network error — silent */
         }
     }
 
+    console.log(`[logo] All discovery strategies failed for: ${name}`);
     setCachedNotFound(cacheKey);
     pendingDiscovery.delete(cacheKey);
 }
