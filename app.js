@@ -1942,7 +1942,7 @@ function renderFixtureGroup(g, side, isPast) {
     // Real logo -> Bradford Bulls placeholder -> SVG shield
     const logoHtml = `<img src="${teamLogo || TEAM_LOGO_FALLBACK}" alt="${esc(f.opponent)}" data-fallback="${TEAM_LOGO_FALLBACK}" onerror="if(this.src!==this.dataset.fallback){this.src=this.dataset.fallback;}else{this.style.display='none';this.nextElementSibling.style.display='flex';}"><div class="fixture-logo-initials" style="display:none;">${shieldSVG(f.opponent)}</div>`;
     const teamBadge = f.teamType
-        ? `<span class="team-badge">${esc(f.teamType)}</span>`
+        ? `<span class="team-badge" data-team-type="${esc(f.teamType)}">${esc(f.teamType)}</span>`
         : "";
     const actsHtml = acts
         .map((a) => renderMiniActivity(a))
