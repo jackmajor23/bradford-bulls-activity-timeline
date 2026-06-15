@@ -282,6 +282,10 @@ function shieldSVG(name) {
 // re-discovered even if we cached "NOT_FOUND" or an old URL.
 // ─────────────────────────────────────────────────────────────
 const LOGO_CACHE_KEY = "bbLogoCache_v3";
+// Older keys this app has used for the same purpose. If v3 is empty
+// (e.g. first run after this update), we migrate whatever we find here
+// so months of previously-discovered logos aren't silently dropped.
+const LEGACY_LOGO_CACHE_KEYS = ["bbLogoCache_v2", "bbLogoCache_v1"];
 const LOGO_CACHE_TTL_DAYS = 60;
 
 let logoCache = {};
@@ -295,6 +299,39 @@ function saveLogoCache() {
     try {
         localStorage.setItem(LOGO_CACHE_KEY, JSON.stringify(logoCache));
     } catch (e) {}
+}
+
+// One-time migration from the old plain-string cache format
+// ({ [key]: "https://...url" } or "NOT_FOUND") to the new
+// { [key]: { url, ts } } format. Runs once: if v3 already has data,
+// it's left alone. Stamps everything with "now" so previously-found
+// logos are treated as fresh (won't be re-discovered for
+// LOGO_CACHE_TTL_DAYS), and previously-NOT_FOUND entries get a fresh
+// TTL window too rather than being permanently stuck.
+if (Object.keys(logoCache).length === 0) {
+    for (const legacyKey of LEGACY_LOGO_CACHE_KEYS) {
+        let legacy;
+        try {
+            legacy = JSON.parse(localStorage.getItem(legacyKey) || "{}");
+        } catch (e) {
+            legacy = {};
+        }
+        const entries = Object.entries(legacy);
+        if (entries.length === 0) continue;
+
+        let migrated = 0;
+        for (const [key, value] of entries) {
+            if (typeof value === "string" && value) {
+                logoCache[key] = { url: value, ts: Date.now() };
+                migrated++;
+            }
+        }
+        if (migrated > 0) {
+            saveLogoCache();
+            console.info(`[logo] migrated ${migrated} cached logo(s) from ${legacyKey} -> ${LOGO_CACHE_KEY}`);
+        }
+        break; // only migrate from the first legacy key that has data
+    }
 }
 
 // Returns the cache entry only if it's still "fresh" (within TTL).
@@ -1000,18 +1037,30 @@ function getTeamLogo(name) {
     // 2. Discovery cache for teams not in the registry.
     const { core } = normalizeTeamQuery(name);
     const cacheKey = core || memoKey;
-    const rawEntry = logoCache[cacheKey];
+
+    // The previous version of this system cached entries under the raw
+    // lowercased opponent name (suffixes like "RLFC" included), not the
+    // normalized `core`. Check both so migrated entries are still found.
+    const candidateKeys = cacheKey === memoKey ? [cacheKey] : [cacheKey, memoKey];
+
+    let rawEntry = null;
+    for (const k of candidateKeys) {
+        if (logoCache[k]) {
+            rawEntry = logoCache[k];
+            break;
+        }
+    }
 
     let result = null;
-    if (rawEntry && rawEntry.url !== "NOT_FOUND") {
+    if (rawEntry && rawEntry.url && rawEntry.url !== "NOT_FOUND") {
         result = rawEntry.url;
     }
     logoLookupMemo.set(memoKey, result);
 
-    // 3. If the cache entry is missing or stale (> LOGO_CACHE_TTL_DAYS),
+    // 3. If neither cache entry is fresh (missing or stale, > TTL),
     // re-run discovery in the background. We still return whatever we
     // have right now (stale logo or null) so the UI doesn't flicker.
-    const fresh = getCachedEntry(cacheKey);
+    const fresh = candidateKeys.some((k) => getCachedEntry(k));
     if (!fresh && !pendingDiscovery.has(cacheKey)) {
         discoverLogoAsync(name, cacheKey);
     }
