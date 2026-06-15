@@ -1135,6 +1135,7 @@ function getTeamLogo(name) {
     const { core, variant } = normalizeTeamQuery(name);
     const registryMatch = resolveRegistryLogo(name);
     if (registryMatch && !brokenRegistryUrls.has(registryMatch.url)) {
+        console.log(`[logo] Returning registry URL for "${name}": ${registryMatch.url}`);
         logoLookupMemo.set(memoKey, registryMatch.url);
         return registryMatch.url;
     }
@@ -1205,12 +1206,20 @@ function getTeamLogo(name) {
 function reportLogoError(imgEl) {
     const failedUrl = imgEl?.src;
     const teamName = imgEl?.dataset?.team || imgEl?.alt;
+    console.log(`[logo] Image error reported for "${teamName}": ${failedUrl}`);
     if (!failedUrl || !teamName) return;
 
     const registryMatch = resolveRegistryLogo(teamName);
-    if (!registryMatch || registryMatch.url !== failedUrl) return;
-    if (brokenRegistryUrls.has(failedUrl)) return;
+    if (!registryMatch || registryMatch.url !== failedUrl) {
+        console.log(`[logo] URL not from registry or mismatch, skipping`);
+        return;
+    }
+    if (brokenRegistryUrls.has(failedUrl)) {
+        console.log(`[logo] URL already marked as broken`);
+        return;
+    }
 
+    console.log(`[logo] Marking registry URL as broken and triggering discovery`);
     brokenRegistryUrls.add(failedUrl);
     logoLookupMemo.clear();
 
@@ -1356,167 +1365,6 @@ async function discoverLogoAsync(name, cacheKey) {
     } catch (e) {
         console.log(`[logo] Bradford Bulls fetch error:`, e.message);
         /* Bradford Bulls fetch failed — continue */
-    }
-
-    // ── Strategy 2: Super League website ───────────────────────────
-    try {
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://superleague.co.uk/?s=${encodeURIComponent(name)}&post_type=clubs`)}`;
-        console.log(`[logo] Trying Super League website: ${proxyUrl}`);
-        const slSearch = await fetch(proxyUrl);
-        console.log(`[logo] Super League response status: ${slSearch.status}`);
-        if (slSearch.ok) {
-            const data = await slSearch.json();
-            const text = data.contents;
-            console.log(`[logo] Super League content length: ${text?.length || 0}`);
-            // More flexible regex - match any image URL that might be a team logo
-            const logoMatch = text.match(/https?:\/\/[^\s"']+\.(png|svg|jpg|jpeg|webp)/gi);
-            console.log(`[logo] Super League found ${logoMatch?.length || 0} image URLs`);
-            if (logoMatch && logoMatch.length > 0) {
-                // Filter for likely logos (avoid stadiums, players, etc.)
-                const validLogos = logoMatch.filter(url => {
-                    const lower = url.toLowerCase();
-                    return !lower.includes('stadium') &&
-                           !lower.includes('player') &&
-                           !lower.includes('portrait') &&
-                           !lower.includes('ground') &&
-                           !lower.includes('fan') &&
-                           (lower.includes('logo') || lower.includes('badge') || lower.includes('crest') || lower.includes('club'));
-                });
-                console.log(`[logo] Super League filtered to ${validLogos.length} potential logos`);
-                if (validLogos.length > 0) {
-                    setCachedLogo(cacheKey, validLogos[0]);
-                    updateLogoInDOM(name, validLogos[0]);
-                    pendingDiscovery.delete(cacheKey);
-                    return;
-                }
-            }
-        } else {
-            console.log(`[logo] Super League fetch failed with status: ${slSearch.status}`);
-        }
-    } catch (e) {
-        console.log(`[logo] Super League fetch error:`, e.message);
-        /* Super League fetch failed — continue */
-    }
-
-    // ── Strategy 3: Rugby Football League website ──────────────────
-    try {
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://rfl.co.uk/?s=${encodeURIComponent(name)}`)}`;
-        console.log(`[logo] Trying RFL website: ${proxyUrl}`);
-        const rflSearch = await fetch(proxyUrl);
-        console.log(`[logo] RFL response status: ${rflSearch.status}`);
-        if (rflSearch.ok) {
-            const data = await rflSearch.json();
-            const text = data.contents;
-            console.log(`[logo] RFL content length: ${text?.length || 0}`);
-            // More flexible regex - match any image URL that might be a team logo
-            const logoMatch = text.match(/https?:\/\/[^\s"']+\.(png|svg|jpg|jpeg|webp)/gi);
-            console.log(`[logo] RFL found ${logoMatch?.length || 0} image URLs`);
-            if (logoMatch && logoMatch.length > 0) {
-                // Filter for likely logos (avoid stadiums, players, etc.)
-                const validLogos = logoMatch.filter(url => {
-                    const lower = url.toLowerCase();
-                    return !lower.includes('stadium') &&
-                           !lower.includes('player') &&
-                           !lower.includes('portrait') &&
-                           !lower.includes('ground') &&
-                           !lower.includes('fan') &&
-                           (lower.includes('logo') || lower.includes('badge') || lower.includes('crest') || lower.includes('club'));
-                });
-                console.log(`[logo] RFL filtered to ${validLogos.length} potential logos`);
-                if (validLogos.length > 0) {
-                    setCachedLogo(cacheKey, validLogos[0]);
-                    updateLogoInDOM(name, validLogos[0]);
-                    pendingDiscovery.delete(cacheKey);
-                    return;
-                }
-            }
-        } else {
-            console.log(`[logo] RFL fetch failed with status: ${rflSearch.status}`);
-        }
-    } catch (e) {
-        console.log(`[logo] RFL fetch error:`, e.message);
-        /* RFL fetch failed — continue */
-    }
-
-    // ── Strategy 4: Wikipedia File namespace search ─────────────────
-    console.log(`[logo] Trying Wikipedia File namespace search`);
-    const fileQueries = [`${name} logo`, `${name} RLFC logo`, `${name} rugby league logo`];
-    for (const query of fileQueries) {
-        try {
-            console.log(`[logo] Wikipedia query: ${query}`);
-            const searchRes = await fetch(
-                `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&srlimit=5&format=json&origin=*`,
-            );
-            const searchData = await searchRes.json();
-            const files = searchData.query?.search || [];
-            console.log(`[logo] Wikipedia found ${files.length} files for query: ${query}`);
-
-            for (const file of files) {
-                const tl = file.title.toLowerCase();
-                if (!tl.includes(firstWord)) continue;
-                const isLogoFile = tl.includes("logo") || tl.includes("badge") || tl.includes("crest");
-                const isPhoto = tl.includes("stadium") || tl.includes("ground") || tl.includes("portrait") || tl.includes("player");
-                if (!isLogoFile || isPhoto) continue;
-
-                console.log(`[logo] Trying Wikipedia file: ${file.title}`);
-                const imgRes = await fetch(
-                    `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(file.title)}&prop=imageinfo&iiprop=url&format=json&origin=*`,
-                );
-                const imgData = await imgRes.json();
-                const pages = Object.values(imgData.query?.pages || {});
-                const imageUrl = pages[0]?.imageinfo?.[0]?.url;
-                if (imageUrl && !pages[0].missing) {
-                    console.log(`[logo] Wikipedia file found: ${imageUrl}`);
-                    setCachedLogo(cacheKey, imageUrl);
-                    updateLogoInDOM(name, imageUrl);
-                    pendingDiscovery.delete(cacheKey);
-                    return;
-                }
-            }
-        } catch (e) {
-            console.log(`[logo] Wikipedia file search error:`, e.message);
-            /* network error — silent */
-        }
-    }
-
-    // ── Strategy 5: Wikipedia pageimages fallback ───────────────────
-    console.log(`[logo] Trying Wikipedia pageimages fallback`);
-    const articleQueries = [`${name} rugby league`, `${name} RLFC`, name];
-    for (const query of articleQueries) {
-        try {
-            console.log(`[logo] Wikipedia article query: ${query}`);
-            const searchRes = await fetch(
-                `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=3&format=json&origin=*`,
-            );
-            const searchData = await searchRes.json();
-            const titles = searchData[1] || [];
-            console.log(`[logo] Wikipedia found ${titles.length} articles for query: ${query}`);
-            for (const title of titles) {
-                if (!title.toLowerCase().includes(firstWord)) continue;
-                console.log(`[logo] Trying Wikipedia article: ${title}`);
-                const imgRes = await fetch(
-                    `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&pithumbsize=200&format=json&origin=*`,
-                );
-                const imgData = await imgRes.json();
-                const pages = Object.values(imgData.query?.pages || {});
-                const thumb = pages[0]?.thumbnail?.source;
-                if (thumb) {
-                    const tl = thumb.toLowerCase();
-                    const isLogo = tl.includes("logo") || tl.includes("badge") || tl.includes("crest") || tl.includes(".svg");
-                    const isPhoto = tl.includes("stadium") || tl.includes("ground") || tl.includes("portrait") || tl.includes("player");
-                    if (isLogo && !isPhoto) {
-                        console.log(`[logo] Wikipedia pageimage found: ${thumb}`);
-                        setCachedLogo(cacheKey, thumb);
-                        updateLogoInDOM(name, thumb);
-                        pendingDiscovery.delete(cacheKey);
-                        return;
-                    }
-                }
-            }
-        } catch (e) {
-            console.log(`[logo] Wikipedia pageimages error:`, e.message);
-            /* network error — silent */
-        }
     }
 
     console.log(`[logo] All discovery strategies failed for: ${name}`);
