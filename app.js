@@ -984,6 +984,7 @@ function normalizeTeamQuery(raw) {
     for (const { variant: v, re } of VARIANT_PATTERNS) {
         if (re.test(s)) {
             variant = v;
+            console.log(`[logo] Variant detected: "${v}" in "${s}"`);
             s = s.replace(re, "").trim();
             break;
         }
@@ -992,6 +993,7 @@ function normalizeTeamQuery(raw) {
     s = s.replace(CLUB_SUFFIX_RE, "").trim();
     s = s.replace(/\s+/g, " ").trim();
 
+    console.log(`[logo] Normalized "${raw}" -> core: "${s}", variant: "${variant}"`);
     return { core: s, variant };
 }
 
@@ -1089,13 +1091,16 @@ function fuzzyFindTeam(core) {
 // { url, team, variant, matchScore } or null.
 function resolveRegistryLogo(rawName) {
     const { core, variant } = normalizeTeamQuery(rawName);
+    console.log(`[logo] Registry lookup for "${rawName}" -> core: "${core}", variant: "${variant}"`);
     if (!core) return null;
 
     const match = fuzzyFindTeam(core);
+    console.log(`[logo] Fuzzy match result:`, match ? { teamId: match.team.id, alias: match.alias, score: match.score } : 'none');
     if (!match) return null;
 
     const logos = match.team.logos || {};
     const entry = logos[variant] || logos.default;
+    console.log(`[logo] Logo lookup: variant="${variant}", hasVariant=${!!logos[variant]}, hasDefault=${!!logos.default}, using=${variant in logos ? variant : 'default'}`);
     if (!entry) return null;
 
     return { url: entry.url, team: match.team, variant, matchScore: match.score };
@@ -1323,13 +1328,27 @@ async function discoverLogoAsync(name, cacheKey) {
             const data = await bbSearch.json();
             const text = data.contents;
             console.log(`[logo] Bradford Bulls content length: ${text?.length || 0}`);
-            const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
-            console.log(`[logo] Bradford Bulls logo match: ${logoMatch ? logoMatch[0] : 'none'}`);
-            if (logoMatch) {
-                setCachedLogo(cacheKey, logoMatch[0]);
-                updateLogoInDOM(name, logoMatch[0]);
-                pendingDiscovery.delete(cacheKey);
-                return;
+            // More flexible regex - match any image URL that might be a team logo
+            const logoMatch = text.match(/https?:\/\/[^\s"']+\.(png|svg|jpg|jpeg|webp)/gi);
+            console.log(`[logo] Bradford Bulls found ${logoMatch?.length || 0} image URLs`);
+            if (logoMatch && logoMatch.length > 0) {
+                // Filter for likely logos (avoid stadiums, players, etc.)
+                const validLogos = logoMatch.filter(url => {
+                    const lower = url.toLowerCase();
+                    return !lower.includes('stadium') &&
+                           !lower.includes('player') &&
+                           !lower.includes('portrait') &&
+                           !lower.includes('ground') &&
+                           !lower.includes('fan') &&
+                           (lower.includes('logo') || lower.includes('badge') || lower.includes('crest') || lower.includes('bradford') || lower.includes('bulls'));
+                });
+                console.log(`[logo] Bradford Bulls filtered to ${validLogos.length} potential logos`);
+                if (validLogos.length > 0) {
+                    setCachedLogo(cacheKey, validLogos[0]);
+                    updateLogoInDOM(name, validLogos[0]);
+                    pendingDiscovery.delete(cacheKey);
+                    return;
+                }
             }
         } else {
             console.log(`[logo] Bradford Bulls fetch failed with status: ${bbSearch.status}`);
@@ -1349,13 +1368,27 @@ async function discoverLogoAsync(name, cacheKey) {
             const data = await slSearch.json();
             const text = data.contents;
             console.log(`[logo] Super League content length: ${text?.length || 0}`);
-            const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
-            console.log(`[logo] Super League logo match: ${logoMatch ? logoMatch[0] : 'none'}`);
-            if (logoMatch) {
-                setCachedLogo(cacheKey, logoMatch[0]);
-                updateLogoInDOM(name, logoMatch[0]);
-                pendingDiscovery.delete(cacheKey);
-                return;
+            // More flexible regex - match any image URL that might be a team logo
+            const logoMatch = text.match(/https?:\/\/[^\s"']+\.(png|svg|jpg|jpeg|webp)/gi);
+            console.log(`[logo] Super League found ${logoMatch?.length || 0} image URLs`);
+            if (logoMatch && logoMatch.length > 0) {
+                // Filter for likely logos (avoid stadiums, players, etc.)
+                const validLogos = logoMatch.filter(url => {
+                    const lower = url.toLowerCase();
+                    return !lower.includes('stadium') &&
+                           !lower.includes('player') &&
+                           !lower.includes('portrait') &&
+                           !lower.includes('ground') &&
+                           !lower.includes('fan') &&
+                           (lower.includes('logo') || lower.includes('badge') || lower.includes('crest') || lower.includes('club'));
+                });
+                console.log(`[logo] Super League filtered to ${validLogos.length} potential logos`);
+                if (validLogos.length > 0) {
+                    setCachedLogo(cacheKey, validLogos[0]);
+                    updateLogoInDOM(name, validLogos[0]);
+                    pendingDiscovery.delete(cacheKey);
+                    return;
+                }
             }
         } else {
             console.log(`[logo] Super League fetch failed with status: ${slSearch.status}`);
@@ -1375,13 +1408,27 @@ async function discoverLogoAsync(name, cacheKey) {
             const data = await rflSearch.json();
             const text = data.contents;
             console.log(`[logo] RFL content length: ${text?.length || 0}`);
-            const logoMatch = text.match(/https?:\/\/[^\s"']+logo[^\s"']*\.(png|svg|jpg|jpeg)/i);
-            console.log(`[logo] RFL logo match: ${logoMatch ? logoMatch[0] : 'none'}`);
-            if (logoMatch) {
-                setCachedLogo(cacheKey, logoMatch[0]);
-                updateLogoInDOM(name, logoMatch[0]);
-                pendingDiscovery.delete(cacheKey);
-                return;
+            // More flexible regex - match any image URL that might be a team logo
+            const logoMatch = text.match(/https?:\/\/[^\s"']+\.(png|svg|jpg|jpeg|webp)/gi);
+            console.log(`[logo] RFL found ${logoMatch?.length || 0} image URLs`);
+            if (logoMatch && logoMatch.length > 0) {
+                // Filter for likely logos (avoid stadiums, players, etc.)
+                const validLogos = logoMatch.filter(url => {
+                    const lower = url.toLowerCase();
+                    return !lower.includes('stadium') &&
+                           !lower.includes('player') &&
+                           !lower.includes('portrait') &&
+                           !lower.includes('ground') &&
+                           !lower.includes('fan') &&
+                           (lower.includes('logo') || lower.includes('badge') || lower.includes('crest') || lower.includes('club'));
+                });
+                console.log(`[logo] RFL filtered to ${validLogos.length} potential logos`);
+                if (validLogos.length > 0) {
+                    setCachedLogo(cacheKey, validLogos[0]);
+                    updateLogoInDOM(name, validLogos[0]);
+                    pendingDiscovery.delete(cacheKey);
+                    return;
+                }
             }
         } else {
             console.log(`[logo] RFL fetch failed with status: ${rflSearch.status}`);
