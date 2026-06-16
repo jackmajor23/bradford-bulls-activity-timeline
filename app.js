@@ -94,6 +94,9 @@ let syncRetryCount = 0;
 let syncRetryTimer = null;
 const MAX_SYNC_RETRIES = 3;
 const SYNC_RETRY_DELAY_MS = 2000;
+// FIX: Track initial load completion to prevent sync overwrites during bootstrap
+let initialLoadComplete = false;
+const INITIAL_LOAD_GRACE_PERIOD_MS = 8000; // 8 second grace period after initial load
 
 // Network connectivity monitoring
 let isOnline = navigator.onLine;
@@ -734,6 +737,19 @@ async function saveToSupabase() {
         return;
     }
 
+    // Ensure device ID is available for proper self-event suppression
+    if (!window.deviceManager?.deviceId) {
+        console.warn('[Sync] Device ID not available, skipping sync to prevent self-event suppression failure');
+        // Retry after a short delay
+        setTimeout(() => {
+            if (window.deviceManager?.deviceId) {
+                console.log('[Sync] Device ID now available, retrying sync');
+                saveToSupabase();
+            }
+        }, 500);
+        return;
+    }
+
     const syncStartTime = Date.now();
     lastWriteTime = Date.now();
     console.log(`[Sync] Starting save at ${new Date(syncStartTime).toISOString()}`);
@@ -1102,7 +1118,7 @@ function handleRealtimeEvent(payload, itemType) {
     const myDeviceId = window.deviceManager?.deviceId;
     
     // Suppress if it's from our device AND within the time window
-    if (remoteDeviceId === myDeviceId && Date.now() - lastWriteTime < 2500) {
+    if (remoteDeviceId === myDeviceId && Date.now() - lastWriteTime < 5000) {
         console.log(`[Realtime] Suppressing self-event from device ${myDeviceId}`);
         return;
     }
@@ -1161,7 +1177,7 @@ function handleAssigneesRealtimeEvent(payload) {
     const myDeviceId = window.deviceManager?.deviceId;
     
     // Suppress if it's from our device AND within the time window
-    if (remoteDeviceId === myDeviceId && Date.now() - lastWriteTime < 2500) {
+    if (remoteDeviceId === myDeviceId && Date.now() - lastWriteTime < 5000) {
         console.log(`[Realtime] Suppressing assignees self-event from device ${myDeviceId}`);
         return;
     }
@@ -1184,8 +1200,14 @@ function handleAssigneesRealtimeEvent(payload) {
 async function periodicSyncCheck() {
     if (!supabaseClient || !useCloudSync) return;
 
+    // Skip if initial load is not complete or within grace period
+    if (!initialLoadComplete) {
+        console.log("[Sync] Skipping periodic sync - initial load not complete");
+        return;
+    }
+    
     // Skip if we recently wrote (to avoid conflicts)
-    if (Date.now() - lastWriteTime < 2000) return;
+    if (Date.now() - lastWriteTime < 5000) return;
 
     try {
         const data = await loadFromSupabase();
@@ -1374,6 +1396,14 @@ async function loadFromCloud() {
             );
             await saveToSupabase();
         }
+        
+        // Mark initial load as complete and start grace period
+        initialLoadComplete = true;
+        console.log("[Sync] Initial load complete, starting grace period");
+        setTimeout(() => {
+            console.log("[Sync] Grace period ended");
+        }, INITIAL_LOAD_GRACE_PERIOD_MS);
+        
         hideSkeleton();
     } catch (e) {
         console.error("Supabase save failed:", e.message || e);
