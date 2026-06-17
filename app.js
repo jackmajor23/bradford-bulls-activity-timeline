@@ -1303,6 +1303,191 @@ let isDraggingActivity = false;
 let dragEndTime = 0;
 let disableToggle = false;
 
+// ─── USER FILTER STATE ────────────────────────────────────────────────────
+let filterUsers = new Set(); // names of currently-selected assignees
+
+// ─── USER FILTER HELPERS ──────────────────────────────────────────────────
+
+/** Union of savedAssignees + every assignee on any item. */
+function getAllAssignees() {
+    const set = new Set(S.savedAssignees || []);
+    S.items.forEach(item => (item.assignees || []).forEach(a => set.add(a)));
+    return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Returns S.items filtered by the active user selection.
+ * Fixtures, milestones, and notes are always included so the timeline
+ * keeps its structural shape; only standalone/cluster activities are gated.
+ */
+function getFilteredItems() {
+    if (filterUsers.size === 0) return S.items;
+    return S.items.filter(item => {
+        if (item.type !== 'activity') return true;
+        return (item.assignees || []).some(a => filterUsers.has(a));
+    });
+}
+
+/** Compact label for the trigger button. */
+function getUserFilterLabel() {
+    if (filterUsers.size === 0) return 'All Activity';
+    const users = [...filterUsers];
+    // Use first name only to keep the button tight
+    const firstName = n => n.split(' ')[0];
+    if (users.length === 1) return firstName(users[0]);
+    if (users.length === 2) return `${firstName(users[0])} + ${firstName(users[1])}`;
+    return `${firstName(users[0])} + ${users.length - 1}`;
+}
+
+/** Sync button label and active styling. */
+function updateUserFilterLabel() {
+    const label = document.getElementById('user-filter-label');
+    const btn   = document.getElementById('user-filter-btn');
+    if (!label || !btn) return;
+    label.textContent = getUserFilterLabel();
+    btn.classList.toggle('active', filterUsers.size > 0);
+}
+
+// ─── FILTER DROPDOWN OPEN / CLOSE ─────────────────────────────────────────
+
+function toggleUserFilter(e) {
+    e.stopPropagation();
+    const wrap = document.getElementById('user-filter-wrap');
+    if (wrap.classList.contains('uf-open')) {
+        closeUserFilter();
+    } else {
+        openUserFilter();
+    }
+}
+
+function openUserFilter() {
+    document.getElementById('user-filter-wrap').classList.add('uf-open');
+    renderUserFilterDropdown('');
+    setTimeout(() => document.getElementById('uf-search')?.focus(), 40);
+}
+
+function closeUserFilter() {
+    document.getElementById('user-filter-wrap')?.classList.remove('uf-open');
+}
+
+// ─── DROPDOWN RENDERER ────────────────────────────────────────────────────
+
+function renderUserFilterDropdown(query) {
+    const dropdown = document.getElementById('user-filter-dropdown');
+    if (!dropdown) return;
+
+    const q        = (query || '').trim().toLowerCase();
+    const allUsers = getAllAssignees();
+    const shown    = q ? allUsers.filter(u => u.toLowerCase().includes(q)) : allUsers;
+
+    const allSelected  = allUsers.length > 0 && allUsers.every(u => filterUsers.has(u));
+    const someSelected = !allSelected && allUsers.some(u => filterUsers.has(u));
+
+    // ── Search ────────────────────────────────────────────────────────────
+    const searchHtml = `
+      <div class="uf-search-wrap">
+        <input
+          class="uf-search"
+          id="uf-search"
+          placeholder="Search users…"
+          value="${esc(query || '')}"
+          oninput="renderUserFilterDropdown(this.value)"
+          onkeydown="handleUfKeydown(event)"
+          autocomplete="off"
+        >
+      </div>`;
+
+    // ── Options ───────────────────────────────────────────────────────────
+    let optionsHtml = '';
+    if (allUsers.length === 0) {
+        optionsHtml = '<div class="uf-empty">No team members yet</div>';
+    } else {
+        const selAllCls = allSelected ? 'checked' : (someSelected ? 'partial' : '');
+        optionsHtml += `
+          <div class="uf-option uf-select-all" onclick="toggleSelectAllUsers()">
+            <div class="uf-checkbox ${selAllCls}"></div>
+            <span class="uf-option-name">Select All</span>
+          </div>`;
+
+        if (shown.length === 0) {
+            optionsHtml += '<div class="uf-empty">No results</div>';
+        } else {
+            shown.forEach(user => {
+                const checked  = filterUsers.has(user);
+                const safeName = esc(user);
+                // Use data-user attribute to avoid quoting issues in onclick
+                optionsHtml += `
+                  <div class="uf-option" data-user="${safeName}" onclick="handleUfOptionClick(this)">
+                    <div class="uf-checkbox ${checked ? 'checked' : ''}"></div>
+                    <span class="uf-option-name">${safeName}</span>
+                  </div>`;
+            });
+        }
+    }
+
+    // ── Footer ────────────────────────────────────────────────────────────
+    const countText  = filterUsers.size > 0
+        ? `${filterUsers.size} of ${allUsers.length} selected`
+        : 'None selected';
+    const clearBtn   = filterUsers.size > 0
+        ? `<button class="uf-clear-btn" onclick="clearUserFilter()">Clear</button>`
+        : '';
+    const footerHtml = `
+      <div class="uf-footer">
+        <span class="uf-count">${countText}</span>
+        ${clearBtn}
+      </div>`;
+
+    dropdown.innerHTML = searchHtml
+        + `<div class="uf-options">${optionsHtml}</div>`
+        + footerHtml;
+}
+
+// ─── FILTER ACTIONS ───────────────────────────────────────────────────────
+
+/** Called from the data-user option divs via onclick. */
+function handleUfOptionClick(el) {
+    toggleUserSelection(el.dataset.user);
+}
+
+function toggleUserSelection(userName) {
+    if (!userName) return;
+    if (filterUsers.has(userName)) {
+        filterUsers.delete(userName);
+    } else {
+        filterUsers.add(userName);
+    }
+    updateUserFilterLabel();
+    render();
+    // Re-render dropdown in place so checkboxes update without closing
+    renderUserFilterDropdown(document.getElementById('uf-search')?.value || '');
+}
+
+function toggleSelectAllUsers() {
+    const allUsers    = getAllAssignees();
+    const allSelected = allUsers.every(u => filterUsers.has(u));
+    if (allSelected) {
+        filterUsers.clear();
+    } else {
+        allUsers.forEach(u => filterUsers.add(u));
+    }
+    updateUserFilterLabel();
+    render();
+    renderUserFilterDropdown(document.getElementById('uf-search')?.value || '');
+}
+
+function clearUserFilter() {
+    filterUsers.clear();
+    updateUserFilterLabel();
+    render();
+    renderUserFilterDropdown('');
+}
+
+function handleUfKeydown(e) {
+    if (e.key === 'Escape') { closeUserFilter(); e.stopPropagation(); }
+    if (e.key === 'Enter')  { e.stopPropagation(); }   // prevent modal submit
+}
+
 // ─── PERSISTENCE ──────────────────────────────────────────────
 function saveToLocal() {
     try {
@@ -1358,6 +1543,8 @@ function loadFromLocal() {
 //   1. Cancels any debounce timer before overwriting state (prevents
 //      demo data being pushed to Supabase after cloud data arrives).
 //   2. Pushes local state to Supabase when the DB is empty on first run.
+//   3. Merges cloud and local data intelligently based on _lastModified timestamps
+//      to prevent losing local changes on initial load.
 async function loadFromCloud() {
     if (!useCloudSync) {
         loadFromLocal();
@@ -1380,9 +1567,48 @@ async function loadFromCloud() {
         }
 
         if (data.items.length > 0) {
-            // Cloud has data — it is the source of truth.
+            // Cloud has data — merge intelligently with local data
             clearTimeout(saveDebounceTimer); // Cancel any pending save
-            S.items = data.items;
+            
+            // Create a map of local items by ID for quick lookup
+            const localItemsMap = new Map();
+            S.items.forEach(item => {
+                localItemsMap.set(item.id, item);
+            });
+            
+            // Merge items: keep the version with the newer _lastModified timestamp
+            const mergedItems = [];
+            const processedIds = new Set();
+            
+            // Process local items first
+            for (const localItem of S.items) {
+                const cloudItem = data.items.find(ci => ci.id === localItem.id);
+                if (!cloudItem) {
+                    // Item only exists locally, keep it
+                    mergedItems.push(localItem);
+                } else {
+                    // Item exists in both, compare timestamps
+                    const localTime = localItem._lastModified || 0;
+                    const cloudTime = cloudItem._lastModified || 0;
+                    if (localTime >= cloudTime) {
+                        // Local version is newer or same, keep local
+                        mergedItems.push(localItem);
+                    } else {
+                        // Cloud version is newer, use cloud
+                        mergedItems.push(cloudItem);
+                    }
+                    processedIds.add(localItem.id);
+                }
+            }
+            
+            // Add cloud items that don't exist locally
+            for (const cloudItem of data.items) {
+                if (!processedIds.has(cloudItem.id)) {
+                    mergedItems.push(cloudItem);
+                }
+            }
+            
+            S.items = mergedItems;
             S.savedAssignees = data.savedAssignees.length
                 ? data.savedAssignees
                 : S.savedAssignees;
@@ -1683,10 +1909,10 @@ function handleFixtureLinkKeydown(event) {
 }
 
 // ─── GROUPS BUILDER ───────────────────────────────────────────
-function buildGroups(items) {
+function buildGroups(items, allItems = S.items) {
     const seen = new Set();
     const fixtureActMap = {};
-    S.items
+    allItems
         .filter((i) => i.type === "activity" && i.fixtureId)
         .forEach((a) => {
             if (!fixtureActMap[a.fixtureId])
@@ -1863,10 +2089,11 @@ function decorateLinkContainers(root = document) {
 function render() {
     const content = document.getElementById("timeline-content");
     const today = todayStr();
-    const pastItems = S.items.filter((i) => i.date < today);
-    const activeItems = S.items.filter((i) => i.date >= today);
-    const pastGroups = buildGroups(pastItems);
-    const activeGroups = buildGroups(activeItems);
+    const filteredItems = getFilteredItems();
+    const pastItems = filteredItems.filter((i) => i.date < today);
+    const activeItems = filteredItems.filter((i) => i.date >= today);
+    const pastGroups = buildGroups(pastItems, filteredItems);
+    const activeGroups = buildGroups(activeItems, filteredItems);
     let html = "";
     if (pastGroups.length > 0) {
         let inner = "",
@@ -1904,10 +2131,15 @@ function render() {
         side++;
     });
     if (activeGroups.length === 0 && pastGroups.length === 0) {
-        html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
+        if (filterUsers.size > 0) {
+            html += `<div class="empty-state"><h2>No activity found</h2><p>No activity found for the selected team members. <button class="btn btn-outline" style="margin-top:12px;font-size:11px" onclick="clearUserFilter()">Clear filter</button></p></div>`;
+        } else {
+            html += `<div class="empty-state"><h2>No events planned</h2><p>Add your first match, milestone or activity above.</p></div>`;
+        }
     }
     content.innerHTML = html;
     decorateLinkContainers(content);
+    updateUserFilterLabel();
     attachEvents();
 }
 
@@ -2323,6 +2555,14 @@ document.addEventListener("click", (event) => {
         !fixturePicker.contains(event.target)
     ) {
         hideFixtureLinkSuggestions();
+    }
+});
+
+// Separate click handler for user filter dropdown
+document.addEventListener("click", (event) => {
+    const ufWrap = document.getElementById('user-filter-wrap');
+    if (ufWrap && !ufWrap.contains(event.target)) {
+        closeUserFilter();
     }
 });
 
@@ -4138,7 +4378,7 @@ function setupDotHoverAnimations() {
 
 // ─── BOOTSTRAP ────────────────────────────────────────────────
 document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeModal();
+    if (e.key === "Escape") { closeModal(); closeUserFilter(); }
 });
 
 const _baseRender = render;
