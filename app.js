@@ -230,6 +230,20 @@ function saveLogoCache() {
     } catch (e) {}
 }
 
+// CORS proxy to bypass Wikipedia image CORS restrictions
+// Disabled for now - some Wikipedia URLs work without proxy
+const CORS_PROXY = "";
+
+// Helper function to add CORS proxy to Wikipedia URLs
+function proxifyUrl(url) {
+    if (!url) return url;
+    // Only proxy Wikipedia URLs if CORS proxy is enabled
+    if (CORS_PROXY && (url.includes('upload.wikimedia.org') || url.includes('wikipedia.org'))) {
+        return CORS_PROXY + encodeURIComponent(url);
+    }
+    return url;
+}
+
 // Confirmed working URLs (verified via Wikipedia File API).
 // All other clubs are resolved asynchronously by discoverLogoAsync.
 const KNOWN_LOGOS = {
@@ -281,28 +295,113 @@ function logoImgWithFallback(url, name) {
 
 const logoLookupMemo = new Map();
 
+// Clear memo cache on page load to ensure fresh lookups
+logoLookupMemo.clear();
+
+// Clear logo cache to force re-discovery of logos
+logoCache = {};
+saveLogoCache();
+
+// Normalize team name variations to base team names for logo lookup
+function normalizeTeamName(name) {
+    if (!name) return name;
+    
+    const lower = name.toLowerCase().trim();
+    
+    // Map specific variations to their base team names
+    const teamMappings = {
+        'hull fc academy': 'hull fc',
+        'oldham rlfc womens': 'oldham rlfc',
+        'oldham rlfc women\'s': 'oldham rlfc',
+        'wakefield trinity u16s': 'wakefield trinity',
+        'wakefield trinity u16': 'wakefield trinity',
+        'huddersfield giants u16s': 'huddersfield giants',
+        'huddersfield giants u16': 'huddersfield giants',
+        'manchester swinton lionesses': 'swinton lions',
+        'swinton lionesses': 'swinton lions',
+        'wigan warriors u16s': 'wigan warriors',
+        'wigan warriors u16': 'wigan warriors',
+        'leigh leopards academy': 'leigh leopards',
+        'st helens academy': 'st helens',
+        'warrington wolves womens': 'warrington wolves',
+        'warrington wolves women\'s': 'warrington wolves',
+    };
+    
+    // Check if the team name matches any mapping
+    for (const [variant, base] of Object.entries(teamMappings)) {
+        if (lower === variant) {
+            return base;
+        }
+    }
+    
+    // Also check if the name contains a pattern like "U16s", "U16", "Academy", "Womens", etc.
+    // and strip it to get the base team name
+    const suffixPatterns = [
+        /\s+(u\d+s?)$/i,           // U16s, U16, U18s, etc.
+        /\s+academy$/i,             // Academy
+        /\s+womens?$/i,             // Womens, Women's
+        /\s+reserves$/i,           // Reserves
+        /\s+scholarship$/i,        // Scholarship
+        /\s+lionesses$/i,          // Lionesses
+    ];
+    
+    for (const pattern of suffixPatterns) {
+        const match = lower.match(pattern);
+        if (match) {
+            const baseName = lower.replace(pattern, '').trim();
+            // Only use this if it's a known team or if we want to try discovery
+            // For now, return the original name to avoid false positives
+            // But we can add specific mappings for known teams
+            if (baseName === 'hull fc' || 
+                baseName === 'oldham rlfc' || 
+                baseName === 'wakefield trinity' || 
+                baseName === 'huddersfield giants' ||
+                baseName === 'swinton lions' ||
+                baseName === 'manchester swinton' ||
+                baseName === 'wigan warriors' ||
+                baseName === 'leigh leopards' ||
+                baseName === 'st helens' ||
+                baseName === 'sheffield eagles' ||
+                baseName === 'oulton raidettes' ||
+                baseName === 'warrington wolves' ||
+                baseName === 'toulouse olympique xiii' ||
+                baseName === 'toulouse olympique') {
+                return baseName;
+            }
+        }
+    }
+    
+    return name;
+}
+
 function getTeamLogo(name) {
     if (!name) return null;
 
-    const lower = name.toLowerCase().trim();
+    // Normalize the team name before lookup
+    const normalizedName = normalizeTeamName(name);
+    const lower = normalizedName.toLowerCase().trim();
 
     if (logoLookupMemo.has(lower)) {
         return logoLookupMemo.get(lower);
     }
 
-    const logo =
-        KNOWN_LOGO_MAP[lower] ||
-        (logoCache[lower] !== "NOT_FOUND"
-            ? logoCache[lower]
-            : null);
+    // Check KNOWN_LOGOS first (highest priority), then logoCache
+    const knownLogo = KNOWN_LOGO_MAP[lower];
+    const cachedLogo = logoCache[lower];
+    const logo = knownLogo || cachedLogo;
 
-    logoLookupMemo.set(lower, logo);
-
-    if (!logo && logoCache[lower] !== "NOT_FOUND") {
-        discoverLogoAsync(name);
+    // Only memoize actual logo URLs, not null or "NOT_FOUND" values
+    // This allows re-discovery if async logo lookup finds a logo later
+    if (logo && logo !== "NOT_FOUND") {
+        logoLookupMemo.set(lower, logo);
     }
 
-    return logo;
+    // Only trigger discovery if we don't have a logo and haven't already marked it as NOT_FOUND
+    if (!logo && logoCache[lower] !== "NOT_FOUND") {
+        discoverLogoAsync(normalizedName);
+    }
+
+    return logo && logo !== "NOT_FOUND" ? logo : null;
 }
 const brokenLogoUrls = new Set();
 
@@ -438,8 +537,13 @@ async function discoverLogoAsync(name) {
 }
 
 function updateLogoInDOM(name, url) {
+    // Normalize the name for consistent cache key usage
+    const normalizedName = normalizeTeamName(name);
+    const lower = normalizedName.toLowerCase().trim();
+    
     // Invalidate memo so the corrected URL is used on the next render()
-    logoLookupMemo.delete(name.toLowerCase().trim());
+    logoLookupMemo.delete(lower);
+    
     document
         .querySelectorAll(".fixture-logo-wrap")
         .forEach((wrap) => {
@@ -447,12 +551,16 @@ function updateLogoInDOM(name, url) {
             const opponent = card
                 ?.querySelector(".fixture-opponent")
                 ?.textContent?.trim();
-            if (
-                !opponent ||
-                opponent.toLowerCase() !== name.toLowerCase().trim()
-            )
-                return;
-            wrap.innerHTML = logoImgWithFallback(url, name);
+            
+            if (!opponent) return;
+            
+            // Normalize the opponent name for comparison
+            const normalizedOpponent = normalizeTeamName(opponent).toLowerCase().trim();
+            
+            // Compare normalized names to handle variations like "Hull FC Academy" vs "Hull FC"
+            if (normalizedOpponent !== lower) return;
+            
+            wrap.innerHTML = logoImgWithFallback(url, opponent);
         });
 }
 
@@ -925,33 +1033,15 @@ async function saveToSupabase() {
             }
         }
 
-        // Sync saved assignees using merge logic to prevent race conditions
-        // Instead of delete-all + re-insert, we fetch remote assignees and merge with local
+        // Sync saved assignees - local state is authoritative
+        // Use local savedAssignees as the source of truth, don't merge with remote
         if (S.savedAssignees) {
-            const { data: remoteAssignees, error: fetchError } = await supabaseClient
-                .from("saved_assignees")
-                .select("name");
-            
-            if (fetchError) {
-                console.error(
-                    "Saved assignees fetch error:",
-                    JSON.stringify(fetchError),
-                );
-                throw new Error(`Failed to fetch saved assignees: ${JSON.stringify(fetchError)}`);
-            }
-
-            const remoteNames = new Set((remoteAssignees || []).map(a => a.name));
-            const localNames = new Set(S.savedAssignees);
-            
-            // Merge: union of remote and local assignees
-            const mergedAssignees = [...new Set([...remoteNames, ...localNames])];
-            
             // Delete all remote assignees
             const { error: deleteError } = await supabaseClient
                 .from("saved_assignees")
                 .delete()
                 .neq("id", "00000000-0000-0000-0000-000000000000");
-            
+
             if (deleteError) {
                 console.error(
                     "Saved assignees delete error:",
@@ -960,12 +1050,12 @@ async function saveToSupabase() {
                 throw new Error(`Failed to delete saved assignees: ${JSON.stringify(deleteError)}`);
             }
 
-            // Insert merged assignees
-            if (mergedAssignees.length > 0) {
+            // Insert local assignees
+            if (S.savedAssignees.length > 0) {
                 const { error: insertError } = await supabaseClient
                     .from("saved_assignees")
-                    .insert(mergedAssignees.map((name) => ({ name })));
-                
+                    .insert(S.savedAssignees.map((name) => ({ name })));
+
                 if (insertError) {
                     console.error(
                         "Saved assignees insert error:",
@@ -974,9 +1064,6 @@ async function saveToSupabase() {
                     throw new Error(`Failed to insert saved assignees: ${JSON.stringify(insertError)}`);
                 }
             }
-
-            // Update local state with merged assignees
-            S.savedAssignees = mergedAssignees;
         }
 
         const syncDuration = Date.now() - syncStartTime;
@@ -1352,22 +1439,39 @@ function updateUserFilterLabel() {
 
 function toggleUserFilter(e) {
     e.stopPropagation();
+    const isMobile = window.innerWidth <= 700;
     const wrap = document.getElementById('user-filter-wrap');
-    if (wrap.classList.contains('uf-open')) {
-        closeUserFilter();
+    const row = document.querySelector('.brand-sub-row');
+
+    if (isMobile) {
+        if (row.classList.contains('uf-open')) {
+            closeUserFilter();
+        } else {
+            openUserFilter();
+        }
     } else {
-        openUserFilter();
+        if (wrap.classList.contains('uf-open')) {
+            closeUserFilter();
+        } else {
+            openUserFilter();
+        }
     }
 }
 
 function openUserFilter() {
-    document.getElementById('user-filter-wrap').classList.add('uf-open');
+    const isMobile = window.innerWidth <= 700;
+    if (isMobile) {
+        document.querySelector('.brand-sub-row')?.classList.add('uf-open');
+    } else {
+        document.getElementById('user-filter-wrap')?.classList.add('uf-open');
+    }
     renderUserFilterDropdown('');
     setTimeout(() => document.getElementById('uf-search')?.focus(), 40);
 }
 
 function closeUserFilter() {
     document.getElementById('user-filter-wrap')?.classList.remove('uf-open');
+    document.querySelector('.brand-sub-row')?.classList.remove('uf-open');
 }
 
 // ─── DROPDOWN RENDERER ────────────────────────────────────────────────────
@@ -3754,10 +3858,24 @@ function addInlineName() {
 }
 
 function deleteInlineName(idx) {
+    const name = S.savedAssignees[idx];
     S.savedAssignees.splice(idx, 1);
+    // Also remove from all items' assignee arrays so they disappear from filter
+    S.items.forEach(item => {
+        if (item.assignees && item.assignees.includes(name)) {
+            item.assignees = item.assignees.filter(a => a !== name);
+        }
+    });
+    // Remove from active filter selection if present
+    if (filterUsers.has(name)) {
+        filterUsers.delete(name);
+        updateUserFilterLabel();
+    }
     saveAssignees();
+    saveToLocal();
     renderInlineNames();
     refreshAssigneeUI();
+    render();
     showToast("Name removed");
 }
 

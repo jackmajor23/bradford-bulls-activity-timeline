@@ -219,7 +219,8 @@ body {
     overflow: hidden;
 }
 
-#user-filter-wrap.uf-open #user-filter-dropdown {
+#user-filter-wrap.uf-open #user-filter-dropdown,
+.brand-sub-row.uf-open #user-filter-dropdown {
     display: block;
     animation: ufDropIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -395,26 +396,43 @@ body {
 @media (max-width: 700px) {
     .brand-sub-row {
         gap: 8px;
+        position: relative;
     }
 
-    #user-filter-btn {
-        max-width: 36px;
-        padding: 5px;
-        width: 36px;
-        height: 36px;
-        justify-content: center;
+    #user-filter-icon-mobile {
+        display: inline-block;
+        margin-left: 6px;
     }
 
-    #user-filter-btn #user-filter-label,
-    #user-filter-btn #uf-chevron {
+    #user-filter-wrap {
         display: none;
     }
 
     #user-filter-dropdown {
-        /* Align to right edge of the button if it overflows left */
+        /* Position relative to brand-sub-row on mobile */
+        position: fixed;
+        top: auto;
         left: auto;
-        right: 0;
+        right: 20px;
+        top: 70px;
         min-width: 200px;
+    }
+}
+
+/* Desktop: hide mobile icon, show button */
+@media (min-width: 701px) {
+    #user-filter-icon-mobile {
+        display: none;
+    }
+
+    #user-filter-dropdown {
+        /* Reset to absolute positioning relative to wrap on desktop */
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: auto;
+        min-width: 210px;
+        max-width: 250px;
     }
 }
 
