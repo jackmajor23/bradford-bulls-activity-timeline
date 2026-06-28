@@ -2410,6 +2410,7 @@ body {
     color: var(--blue);
     font-size: 11px;
     font-weight: 700;
+    margin-right: 6px;
 }
 
 .fixture-link-clear {

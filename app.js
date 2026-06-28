@@ -1936,9 +1936,8 @@ function renderFixtureLinkSelection() {
     }
     const fixtures = selectedIds.map(id => findFixtureById(id)).filter(Boolean);
 
-    // Clear the input text while pills are open.
-    const input = document.getElementById("a-linked-fixture-query");
-    if (input) input.value = fixtures.length ? "" : input.value;
+    // Don't clear the input - let users type to search for additional fixtures
+    // The input will show the placeholder when empty
 
     container.innerHTML = fixtures
         .map(fixture => `<span class="fixture-link-pill">🏉 ${esc(fixtureDisplayLabel(fixture))}<button class="fixture-link-clear" type="button" onclick="removeLinkedFixture('${fixture.id}')" title="Remove linked match">✕</button></span>`)
@@ -1963,8 +1962,9 @@ function selectLinkedFixture(fixtureId) {
     
     hidden.value = JSON.stringify(selectedIds);
 
-    // Clear the input text while the pill is open (pill is the selection UI).
+    // Clear the input text and keep focus so user can search for more fixtures
     input.value = "";
+    input.focus();
 
     renderFixtureLinkSelection();
     hideFixtureLinkSuggestions();
@@ -2016,21 +2016,11 @@ function handleFixtureLinkInput() {
     const hidden = document.getElementById("a-linked-fixture-id");
     if (!input || !hidden) return;
 
-    // Keep selection/pill while the user is editing within the field,
-    // but clear it once the text no longer matches the selected fixture label.
+    // Don't clear selection when user is typing to search for additional fixtures
+    // Only clear if the user explicitly clears the input
     const selectedIdsValue = hidden.value || "";
     const selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
-    if (selectedIds.length > 0) {
-        const fixtures = selectedIds.map(id => findFixtureById(id)).filter(Boolean);
-        const selectedLabels = fixtures.map(f => fixtureDisplayLabel(f)).join(", ");
-        const typed = (input.value || "".trim());
-
-        // If the user types something that doesn't match the selected fixtures, clear selection
-        if (typed && typed !== selectedLabels) {
-            hidden.value = "";
-        }
-    }
-
+    
     renderFixtureLinkSelection();
     showFixtureLinkSuggestions(input.value);
 }
