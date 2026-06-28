@@ -1923,7 +1923,13 @@ function renderFixtureLinkSelection() {
 
     const selectedIdsValue =
         document.getElementById("a-linked-fixture-id")?.value || "";
-    const selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
+    let selectedIds = [];
+    try {
+        selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
+    } catch (e) {
+        // Handle legacy single-value format
+        selectedIds = selectedIdsValue ? [selectedIdsValue] : [];
+    }
     const fixtures = selectedIds.map(id => findFixtureById(id)).filter(Boolean);
 
     // Clear the input text while pills are open.
