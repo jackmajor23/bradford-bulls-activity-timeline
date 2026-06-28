@@ -1924,11 +1924,15 @@ function renderFixtureLinkSelection() {
     const selectedIdsValue =
         document.getElementById("a-linked-fixture-id")?.value || "";
     let selectedIds = [];
-    try {
-        selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
-    } catch (e) {
-        // Handle legacy single-value format
-        selectedIds = selectedIdsValue ? [selectedIdsValue] : [];
+    if (selectedIdsValue && selectedIdsValue.trim() !== "") {
+        try {
+            const parsed = JSON.parse(selectedIdsValue);
+            selectedIds = Array.isArray(parsed) ? parsed : [selectedIdsValue];
+        } catch (e) {
+            // Handle legacy single-value format or malformed JSON
+            console.warn("Failed to parse linked fixture IDs:", e, "Value was:", selectedIdsValue);
+            selectedIds = [selectedIdsValue];
+        }
     }
     const fixtures = selectedIds.map(id => findFixtureById(id)).filter(Boolean);
 
@@ -3761,6 +3765,7 @@ function renderModal() {
         const typeOptions = ACTIVITY_TYPES.map((t) => '<option value="' + t.id + '"' + (a.actType === t.id || (!a.actType && t.id === "other") ? ' selected' : '') + '>' + t.icon + ' ' + t.label + '</option>').join("");
         const dateTypeHtml = `<div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${typeOptions}</select></div></div>`;
         const linkedInputValue = selectedFixtureIds.length ? JSON.stringify(selectedFixtureIds) : "";
+        console.log("Setting linked fixture input value:", linkedInputValue, "from selectedFixtureIds:", selectedFixtureIds);
         const linkedHtml = `<div class="form-group fixture-link-picker"><label class="form-label">Linked Matches</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixtureLabels)}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${linkedInputValue}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div></div>`;
         const notesHtml = `<div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>`;
         body.innerHTML = titleHtml + dateTypeHtml + linkedHtml + notesHtml + assigneeSection();
