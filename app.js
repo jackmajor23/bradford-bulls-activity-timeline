@@ -643,8 +643,9 @@ function convertSupabaseRecord(record, itemType) {
                     notes: record.notes || "",
                     complete: record.completed || false,
                     fixtureId: record.fixture_id || null,
-                    linkedFixtureId:
-                        record.linked_fixture_id || null,
+                    linkedFixtureId: Array.isArray(record.linked_fixture_id)
+                        ? record.linked_fixture_id
+                        : (record.linked_fixture_id ? [record.linked_fixture_id] : []),
                     clusterOrder: record.cluster_order || 0,
                     _deviceId: record._device_id || null,
                     _lastModified: record._last_modified || null,
@@ -970,7 +971,7 @@ async function saveToSupabase() {
                             notes: a.notes || "",
                             fixture_id: a.fixtureId || null,
                             linked_fixture_id:
-                                a.linkedFixtureId || null,
+                                a.linkedFixtureId || [],
                             cluster_order: a.clusterOrder || 0,
                             _device_id: window.deviceManager?.deviceId || null,
                             _last_modified: a._lastModified || Date.now(),
@@ -1920,27 +1921,37 @@ function renderFixtureLinkSelection() {
     const container = document.getElementById("a-linked-fixture-current");
     if (!container) return;
 
-    const selectedId =
+    const selectedIdsValue =
         document.getElementById("a-linked-fixture-id")?.value || "";
-    const fixture = findFixtureById(selectedId);
+    const selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
+    const fixtures = selectedIds.map(id => findFixtureById(id)).filter(Boolean);
 
-    // Clear the input text while the pill is open.
+    // Clear the input text while pills are open.
     const input = document.getElementById("a-linked-fixture-query");
-    if (input) input.value = fixture ? "" : input.value;
+    if (input) input.value = fixtures.length ? "" : input.value;
 
-    container.innerHTML = fixture
-        ? `<span class="fixture-link-pill">🏉 ${esc(fixtureDisplayLabel(fixture))}<button class="fixture-link-clear" type="button" onclick="clearLinkedFixtureSelection()" title="Clear linked match">✕</button></span>`
-        : "";
+    container.innerHTML = fixtures
+        .map(fixture => `<span class="fixture-link-pill">🏉 ${esc(fixtureDisplayLabel(fixture))}<button class="fixture-link-clear" type="button" onclick="removeLinkedFixture('${fixture.id}')" title="Remove linked match">✕</button></span>`)
+        .join("");
 
-    // If no fixture, hide the pill overlay.
-    container.style.display = fixture ? "block" : "none";
+    // If no fixtures, hide the pill overlay.
+    container.style.display = fixtures.length ? "block" : "none";
 }
 function selectLinkedFixture(fixtureId) {
     const fixture = findFixtureById(fixtureId);
     const hidden = document.getElementById("a-linked-fixture-id");
     const input = document.getElementById("a-linked-fixture-query");
     if (!hidden || !input) return;
-    hidden.value = fixture?.id || "";
+    
+    const selectedIdsValue = hidden.value || "";
+    const selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
+    
+    // Add the fixture if not already selected
+    if (fixture && !selectedIds.includes(fixture.id)) {
+        selectedIds.push(fixture.id);
+    }
+    
+    hidden.value = JSON.stringify(selectedIds);
 
     // Clear the input text while the pill is open (pill is the selection UI).
     input.value = "";
@@ -1958,6 +1969,22 @@ function clearLinkedFixtureSelection() {
     }
     renderFixtureLinkSelection();
     showFixtureLinkSuggestions("");
+}
+function removeLinkedFixture(fixtureId) {
+    const hidden = document.getElementById("a-linked-fixture-id");
+    if (!hidden) return;
+    
+    const selectedIdsValue = hidden.value || "";
+    const selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
+    
+    // Remove the fixture from the array
+    const index = selectedIds.indexOf(fixtureId);
+    if (index > -1) {
+        selectedIds.splice(index, 1);
+    }
+    
+    hidden.value = selectedIds.length ? JSON.stringify(selectedIds) : "";
+    renderFixtureLinkSelection();
 }
 function showFixtureLinkSuggestions(query) {
     const dropdown = document.getElementById(
@@ -1981,15 +2008,15 @@ function handleFixtureLinkInput() {
 
     // Keep selection/pill while the user is editing within the field,
     // but clear it once the text no longer matches the selected fixture label.
-    const selectedId = hidden.value || "";
-    if (selectedId) {
-        const fixture = findFixtureById(selectedId);
-        const selectedLabel = fixture
-            ? fixtureDisplayLabel(fixture)
-            : "";
-        const typed = (input.value || "").trim();
+    const selectedIdsValue = hidden.value || "";
+    const selectedIds = selectedIdsValue ? JSON.parse(selectedIdsValue) : [];
+    if (selectedIds.length > 0) {
+        const fixtures = selectedIds.map(id => findFixtureById(id)).filter(Boolean);
+        const selectedLabels = fixtures.map(f => fixtureDisplayLabel(f)).join(", ");
+        const typed = (input.value || "".trim());
 
-        if (typed !== selectedLabel) {
+        // If the user types something that doesn't match the selected fixtures, clear selection
+        if (typed && typed !== selectedLabels) {
             hidden.value = "";
         }
     }
@@ -2335,9 +2362,9 @@ function renderActivityGroup(g, side, isPast) {
     const aType =
         ACTIVITY_TYPES.find((t) => t.id === a.actType) ||
         ACTIVITY_TYPES[ACTIVITY_TYPES.length - 1];
-    const linkedFixture = a.linkedFixtureId
-        ? findFixtureById(a.linkedFixtureId)
-        : null;
+    const linkedFixtures = Array.isArray(a.linkedFixtureId)
+        ? a.linkedFixtureId.map(id => findFixtureById(id)).filter(Boolean)
+        : (a.linkedFixtureId ? [findFixtureById(a.linkedFixtureId)].filter(Boolean) : []);
     const completeCls = a.complete ? " complete" : "";
     const pastCls = isPast ? " past" : "";
     const assigneesHtml = (a.assignees || [])
@@ -2346,18 +2373,22 @@ function renderActivityGroup(g, side, isPast) {
                 `<span class="assignee-chip">👤 ${esc(p)}</span>`,
         )
         .join("");
-    const linkedRow = linkedFixture
+    const linkedRow = linkedFixtures.length > 0
         ? (() => {
-            const days = daysUntil(linkedFixture.date);
-            let daysText = "";
-            if (days > 0) {
-                daysText = days === 1 ? "tomorrow" : `in ${days}d`;
-            } else if (days === 0) {
-                daysText = "today";
-            } else {
-                daysText = `${Math.abs(days)}d ago`;
-            }
-            return `<div class="activity-link-row"><span class="activity-link-label">Related match</span><span class="linked-match-chip">🏉 ${esc(linkedFixture.opponent)} <span class="match-days-indicator">${daysText}</span></span></div>`;
+            const label = linkedFixtures.length === 1 ? "Related match" : "Related matches";
+            const chips = linkedFixtures.map(fixture => {
+                const days = daysUntil(fixture.date);
+                let daysText = "";
+                if (days > 0) {
+                    daysText = days === 1 ? "tomorrow" : `in ${days}d`;
+                } else if (days === 0) {
+                    daysText = "today";
+                } else {
+                    daysText = `${Math.abs(days)}d ago`;
+                }
+                return `<span class="linked-match-chip">🏉 ${esc(fixture.opponent)} <span class="match-days-indicator">${daysText}</span></span>`;
+            }).join("");
+            return `<div class="activity-link-row"><span class="activity-link-label">${label}</span>${chips}</div>`;
         })()
         : "";
     return `<div class="tl-row ${side}" data-id="${a.id}"><div class="tl-spacer"></div><div class="tl-node"><div class="node-dot${a.complete ? " complete-dot" : ""}${isPast && !a.complete ? " past-dot" : ""}"></div></div><div class="tl-card-wrap"><div class="activity-card${completeCls}${pastCls}" data-id="${a.id}" id="act-${a.id}" draggable="true"><div class="act-row"><div class="drag-handle">⠿</div><div class="activity-icon ${aType.cls}">${aType.icon}</div><div class="activity-body"><div class="activity-title">${esc(a.title)}</div>${linkedRow}<div class="activity-meta${a.complete ? " complete-meta" : ""}"><span class="subtle-date">${fmtDisplay(a.date)}</span> · ${aType.label}${a.complete ? " · ✓ Done" : ""}${a.notes ? " · [[NOTES]]" + esc(a.notes) + "[[/NOTES]]" : ""}</div>${assigneesHtml ? `<div class="assignees-row">${assigneesHtml}</div>` : ""}</div><div class="activity-btns"><button class="activity-btn complete-btn${a.complete ? " done" : ""}" title="Mark complete" onclick="event.stopPropagation(); toggleComplete('${a.id}')">✓</button><button class="activity-btn edit" title="Edit" onclick="event.stopPropagation(); editActivity('${a.id}')">✎</button><button class="activity-btn del" title="Delete" onclick="event.stopPropagation(); deleteItem('${a.id}')">✕</button></div></div></div></div></div>`;
@@ -2447,7 +2478,7 @@ function moveToTimeline(id) {
         showToast("Activity is already on the main timeline");
         return;
     }
-    item.linkedFixtureId = item.linkedFixtureId || item.fixtureId;
+    item.linkedFixtureId = item.linkedFixtureId || (item.fixtureId ? [item.fixtureId] : []);
     item.fixtureId = null;
     save();
     render();
@@ -2678,7 +2709,7 @@ function openActivityForFixture(fixtureId) {
         data: {
             date: fixture?.date || todayStr(),
             fixtureId: fixtureId || null,
-            linkedFixtureId: fixtureId || null,
+            linkedFixtureId: fixtureId ? [fixtureId] : [],
             _placementMode: "fixture",
         },
         assignees: [],
@@ -2712,10 +2743,10 @@ function attachEvents() {
             if (!activityId) return;
 
             const activity = S.items.find((i) => i.id === activityId && i.type === "activity");
-            const fixtureId = activity?.linkedFixtureId;
-            if (!fixtureId) return;
+            const linkedFixtureIds = activity?.linkedFixtureId;
+            if (!linkedFixtureIds || !Array.isArray(linkedFixtureIds) || linkedFixtureIds.length === 0) return;
 
-            const target = document.getElementById("fc-" + fixtureId);
+            const target = document.getElementById("fc-" + linkedFixtureIds[0]);
             if (!target) return;
 
             scrollToEl(target);
@@ -3045,7 +3076,7 @@ function attachEvents() {
                     draggedItem.type === "activity"
                 ) {
                     draggedItem.fixtureId = fixtureId;
-                    draggedItem.linkedFixtureId = fixtureId;
+                    draggedItem.linkedFixtureId = [fixtureId];
                 }
                 const order = Array.from(
                     cluster.querySelectorAll(".mini-activity"),
@@ -3072,7 +3103,7 @@ function attachEvents() {
                 const fixtureId =
                     fc.dataset.fixtureId || fc.dataset.id;
                 draggedItem.fixtureId = fixtureId;
-                draggedItem.linkedFixtureId = fixtureId;
+                draggedItem.linkedFixtureId = [fixtureId];
                 // Animate fixture card feedback
                 fc.style.transition = "all 0.3s ease";
                 fc.style.transform = "scale(1.02)";
@@ -3093,7 +3124,7 @@ function attachEvents() {
                             ?.dataset.date;
                     if (date && draggedItem) {
                         draggedItem.fixtureId = null;
-                        draggedItem.linkedFixtureId = null;
+                        draggedItem.linkedFixtureId = [];
                         if (draggedItem.date !== date) {
                             draggedItem.date = date;
                         }
@@ -3149,7 +3180,7 @@ function attachEvents() {
             if (act && act.type === "activity") {
                 const fixtureId = fc.dataset.fixtureId;
                 act.fixtureId = fixtureId;
-                act.linkedFixtureId = fixtureId;
+                act.linkedFixtureId = [fixtureId];
                 save();
                 render();
                 showToast("🏉 Activity linked to match!");
@@ -3297,7 +3328,7 @@ function attachEvents() {
                 );
                 if (draggedAct && draggedAct.type === "activity") {
                     draggedAct.fixtureId = fixtureId;
-                    draggedAct.linkedFixtureId = fixtureId;
+                    draggedAct.linkedFixtureId = [fixtureId];
                 }
                 
                 // Update clusterOrder based on new visual order
@@ -3715,10 +3746,16 @@ function renderModal() {
             );
     } else if (type === "activity") {
         const a = data || {};
-        const selectedFixtureId =
-            a.fixtureId || a.linkedFixtureId || "";
-        const selectedFixture = findFixtureById(selectedFixtureId);
-        body.innerHTML = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div><div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : ""}>${t.icon} ${t.label}</option>`).join("")}</select></div></div><div class="form-group fixture-link-picker"><label class="form-label">Linked Match</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixture ? fixtureDisplayLabel(selectedFixture) : "")}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureId}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div></div><div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>${assigneeSection()}`;
+        const selectedFixtureIds = Array.isArray(a.linkedFixtureId)
+            ? a.linkedFixtureId
+            : (a.linkedFixtureId ? [a.linkedFixtureId] : []);
+        const selectedFixtures = selectedFixtureIds.map(id => findFixtureById(id)).filter(Boolean);
+        const selectedFixtureLabels = selectedFixtures.map(f => fixtureDisplayLabel(f)).join(", ");
+        const titleHtml = `<div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="a-title" value="${esc(a.title || "")}"></div>`;
+        const dateTypeHtml = `<div class="form-row"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="a-date" type="date" value="${a.date || todayStr()}"></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="a-type">${ACTIVITY_TYPES.map((t) => `<option value="${t.id}" ${a.actType === t.id || (!a.actType && t.id === "other") ? "selected" : "">${t.icon} ${t.label}</option>`).join("")}</select></div></div>`;
+        const linkedHtml = `<div class="form-group fixture-link-picker"><label class="form-label">Linked Matches</label><input class="form-input" id="a-linked-fixture-query" placeholder="Search by opponent or date" value="${esc(selectedFixtureLabels)}" oninput="handleFixtureLinkInput()" onfocus="showFixtureLinkSuggestions(this.value)" onkeydown="handleFixtureLinkKeydown(event)"><input type="hidden" id="a-linked-fixture-id" value="${selectedFixtureIds.length ? JSON.stringify(selectedFixtureIds) : ""}"><div class="autocomplete-dropdown" id="a-linked-fixture-dropdown"></div><div class="fixture-link-current" id="a-linked-fixture-current"></div></div>`;
+        const notesHtml = `<div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="a-notes" rows="3">${esc(a.notes || "")}</textarea></div>`;
+        body.innerHTML = titleHtml + dateTypeHtml + linkedHtml + notesHtml + assigneeSection();
         renderFixtureLinkSelection();
     } else if (type === "milestone") {
         const m = data || {};
@@ -4004,28 +4041,25 @@ function saveModal() {
             "a-linked-fixture-id",
         );
         const selectedLinkedFixtureId = linkedFixtureInput
-            ? linkedFixtureInput.value || null
-            : currentModal?.data?.linkedFixtureId ||
-              (existing ? existing.linkedFixtureId : null) ||
-              (existing ? existing.fixtureId : null) ||
-              null;
+            ? (linkedFixtureInput.value ? JSON.parse(linkedFixtureInput.value) : [])
+            : (Array.isArray(currentModal?.data?.linkedFixtureId) ? currentModal?.data?.linkedFixtureId :
+              (currentModal?.data?.linkedFixtureId ? [currentModal?.data?.linkedFixtureId] : []) ||
+              (existing ? (Array.isArray(existing.linkedFixtureId) ? existing.linkedFixtureId : (existing.linkedFixtureId ? [existing.linkedFixtureId] : [])) : []) ||
+              (existing && existing.fixtureId ? [existing.fixtureId] : []) ||
+              []);
         const placementMode =
             currentModal?.data?._placementMode ||
             (existing && existing.fixtureId
                 ? "fixture"
                 : "timeline");
         const resolvedFixtureId =
-            placementMode === "fixture"
-                ? selectedLinkedFixtureId ||
-                  currentModal?.data?.fixtureId ||
-                  (existing ? existing.fixtureId : null) ||
-                  null
+            placementMode === "fixture" && selectedLinkedFixtureId.length > 0
+                ? selectedLinkedFixtureId[0]
                 : null;
         const resolvedLinkedFixtureId =
-            selectedLinkedFixtureId ||
-            (placementMode === "fixture"
-                ? resolvedFixtureId
-                : null);
+            selectedLinkedFixtureId.length > 0
+                ? selectedLinkedFixtureId
+                : (placementMode === "fixture" && resolvedFixtureId ? [resolvedFixtureId] : []);
 
         const obj = {
             id: editId || uid(),
@@ -4149,9 +4183,10 @@ function showDeleteConfirm(id) {
             S.items.forEach((item) => {
                 if (
                     item.type === "activity" &&
-                    item.linkedFixtureId === pendingDeleteId
+                    Array.isArray(item.linkedFixtureId) &&
+                    item.linkedFixtureId.includes(pendingDeleteId)
                 ) {
-                    item.linkedFixtureId = null;
+                    item.linkedFixtureId = item.linkedFixtureId.filter(id => id !== pendingDeleteId);
                 }
             });
         }
