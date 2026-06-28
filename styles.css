@@ -2395,7 +2395,7 @@ body {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 6px 8px;
     margin-top: 8px;
 }
 
