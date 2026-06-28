@@ -2365,6 +2365,8 @@ function renderActivityGroup(g, side, isPast) {
     const linkedFixtures = Array.isArray(a.linkedFixtureId)
         ? a.linkedFixtureId.map(id => findFixtureById(id)).filter(Boolean)
         : (a.linkedFixtureId ? [findFixtureById(a.linkedFixtureId)].filter(Boolean) : []);
+    // Sort linked fixtures by date (soonest first)
+    linkedFixtures.sort((a, b) => new Date(a.date) - new Date(b.date));
     const completeCls = a.complete ? " complete" : "";
     const pastCls = isPast ? " past" : "";
     const assigneesHtml = (a.assignees || [])
@@ -2386,7 +2388,7 @@ function renderActivityGroup(g, side, isPast) {
                 } else {
                     daysText = `${Math.abs(days)}d ago`;
                 }
-                return `<span class="linked-match-chip">🏉 ${esc(fixture.opponent)} <span class="match-days-indicator">${daysText}</span></span>`;
+                return `<span class="linked-match-chip" data-fixture-id="${fixture.id}">🏉 ${esc(fixture.opponent)} <span class="match-days-indicator">${daysText}</span></span>`;
             }).join("");
             return `<div class="activity-link-row"><span class="activity-link-label">${label}</span>${chips}</div>`;
         })()
@@ -2738,15 +2740,10 @@ function attachEvents() {
             e.preventDefault();
             e.stopPropagation();
 
-            const activityCard = chip.closest(".activity-card");
-            const activityId = activityCard?.dataset?.id;
-            if (!activityId) return;
+            const fixtureId = chip.dataset.fixtureId;
+            if (!fixtureId) return;
 
-            const activity = S.items.find((i) => i.id === activityId && i.type === "activity");
-            const linkedFixtureIds = activity?.linkedFixtureId;
-            if (!linkedFixtureIds || !Array.isArray(linkedFixtureIds) || linkedFixtureIds.length === 0) return;
-
-            const target = document.getElementById("fc-" + linkedFixtureIds[0]);
+            const target = document.getElementById("fc-" + fixtureId);
             if (!target) return;
 
             scrollToEl(target);

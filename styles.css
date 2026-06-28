@@ -2397,18 +2397,19 @@ body {
     flex-wrap: wrap;
     gap: 6px 8px;
     margin-top: 8px;
+    padding: 3px 0;
 }
 
 .fixture-link-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
+    gap: 4px;
+    padding: 3px 8px;
     border-radius: 999px;
     background: rgba(26, 79, 139, 0.12);
     border: 1px solid rgba(26, 79, 139, 0.18);
     color: var(--blue);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     margin-right: 6px;
 }
